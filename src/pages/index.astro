@@ -6,9 +6,9 @@ import SearchBar from '@/components/SearchBar';
 import { includeSamples } from '@/lib/sampleGate';
 import { getPublicListings } from '@/lib/publicListings';
 import { getPublicTestimonials } from '@/lib/publicReviews';
-import { FOCUS_CITIES } from '@/data/locations';
 import { ARTICLES } from '@/data/articles';
 import { SAMPLE_EVENTS, eventDate } from '@/data/events';
+import { slugify } from '@/lib/slug';
 
 const user = Astro.locals.user;
 
@@ -18,6 +18,35 @@ const testimonials = await getPublicTestimonials();
 const samplesOn = includeSamples();
 const verified = corpus.filter((l) => l.verified).length;
 const recent = corpus.filter((l) => l.addedDaysAgo <= 30).length;
+
+// ---- Compute dynamic locations from published listings only (no empty or hardcoded cards) ----
+interface ActiveLocation {
+  city: string;
+  region: string;
+  slug: string;
+  count: number;
+}
+
+const locationMap = new Map<string, ActiveLocation>();
+for (const item of corpus) {
+  if (!item.isOnlineOnly && item.city && item.region) {
+    const key = `${item.city.trim().toLowerCase()}-${item.region.trim().toLowerCase()}`;
+    const existing = locationMap.get(key);
+    if (existing) {
+      existing.count += 1;
+    } else {
+      locationMap.set(key, {
+        city: item.city.trim(),
+        region: item.region.trim().toUpperCase(),
+        slug: slugify(`${item.city.trim()}-${item.region.trim()}`),
+        count: 1,
+      });
+    }
+  }
+}
+const activeLocations = Array.from(locationMap.values()).sort((a, b) => b.count - a.count);
+const onlineOnlyCount = corpus.filter((l) => l.isOnlineOnly).length;
+const hasLocations = activeLocations.length > 0 || onlineOnlyCount > 0;
 
 // ---- Featured & verified first, then recent, then community picks ----
 const featured = corpus.filter((l) => l.featured && l.verified).slice(0, 6);
@@ -95,7 +124,7 @@ const seo = {
         <SearchBar client:load />
         <div class="mt-3 flex flex-wrap items-center justify-center gap-2 text-[13px]">
           <span style="color:var(--text-mute)">Popular:</span>
-          {['plumber Dallas', 'wedding cake Fort Worth', 'counselor #Tricare', 'accountant Nashville'].map((s) => (
+          {['plumber', 'counselor #Tricare', 'contractor', 'accountant'].map((s) => (
             <a href={`/search?q=${encodeURIComponent(s)}`} class="chip hover:border-[var(--accent)]">{s}</a>
           ))}
         </div>
@@ -145,26 +174,52 @@ const seo = {
     </div>
   </Section>
 
-  <!-- ============ POPULAR CITIES ============ -->
-  <Section title="Where we serve" sub="Featured locations and growing coverage across the United States." href="/browse/locations" linkLabel="Browse by state →">
-    <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3" data-animate="grid">
-      {FOCUS_CITIES.map((c) => (
-        <a href={`/locations/${c.slug}`} class="card card-hover p-5">
-          <div class="flex items-baseline justify-between">
-            <p class="font-extrabold">{c.city}, {c.region}</p>
-            <span class="chip !py-0.5 !text-[11px] font-bold">{corpus.filter((l) => l.city === c.city && !l.isOnlineOnly).length} listings</span>
-          </div>
-          <p class="mt-1 text-[13px]" style="color:var(--text-soft)">{c.blurb}</p>
-        </a>
-      ))}
-      <a href="/search?onlineOnly=1" class="card card-hover p-5">
-        <div class="flex items-baseline justify-between">
-          <p class="font-extrabold">Online-only businesses</p>
-          <span class="chip !py-0.5 !text-[11px] font-bold">{corpus.filter((l) => l.isOnlineOnly).length} listings</span>
+  <!-- ============ WHERE WE SERVE (Dynamic, no 0-listing or hardcoded cards) ============ -->
+  <Section
+    title="Where we serve"
+    sub={hasLocations ? "Featured locations and growing coverage across the United States." : "Nationwide coverage is growing as new listings are added."}
+    href={activeLocations.length > 0 ? "/browse/locations" : undefined}
+    linkLabel={activeLocations.length > 0 ? "Browse by state →" : undefined}
+  >
+    {hasLocations ? (
+      <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3" data-animate="grid">
+        {activeLocations.map((loc) => (
+          <a href={`/locations/${loc.slug}`} class="card card-hover p-5">
+            <div class="flex items-baseline justify-between">
+              <p class="font-extrabold">{loc.city}, {loc.region}</p>
+              <span class="chip !py-0.5 !text-[11px] font-bold">{loc.count} {loc.count === 1 ? 'listing' : 'listings'}</span>
+            </div>
+            <p class="mt-1 text-[13px]" style="color:var(--text-soft)">Verified Christian-owned businesses and organizations.</p>
+          </a>
+        ))}
+        {onlineOnlyCount > 0 && (
+          <a href="/search?onlineOnly=1" class="card card-hover p-5">
+            <div class="flex items-baseline justify-between">
+              <p class="font-extrabold">Online-only businesses</p>
+              <span class="chip !py-0.5 !text-[11px] font-bold">{onlineOnlyCount} {onlineOnlyCount === 1 ? 'listing' : 'listings'}</span>
+            </div>
+            <p class="mt-1 text-[13px]" style="color:var(--text-soft)">Web, media, and services that work from anywhere.</p>
+          </a>
+        )}
+      </div>
+    ) : (
+      <div class="card flex flex-col items-center justify-center p-8 text-center sm:p-12">
+        <div class="flex h-12 w-12 items-center justify-center rounded-2xl" style="background:var(--surface-2);color:var(--teal)">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/>
+            <circle cx="12" cy="10" r="3"/>
+          </svg>
         </div>
-        <p class="mt-1 text-[13px]" style="color:var(--text-soft)">Web, media, and writing services that work from anywhere.</p>
-      </a>
-    </div>
+        <h3 class="mt-4 text-lg font-bold">Locations coming soon</h3>
+        <p class="mt-2 max-w-md text-sm leading-relaxed" style="color:var(--text-soft)">
+          We’re building a nationwide directory. Browse back soon as businesses and organizations are added.
+        </p>
+        <div class="mt-5 flex flex-wrap justify-center gap-3">
+          <a href="/add-listing" class="btn btn-primary !py-2 !text-sm">List Your Business</a>
+          <a href="/search" class="btn btn-secondary !py-2 !text-sm">Search Directory</a>
+        </div>
+      </div>
+    )}
   </Section>
 
   <!-- ============ RECENTLY ADDED ============ -->

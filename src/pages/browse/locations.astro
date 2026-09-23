@@ -1,58 +1,132 @@
 ---
 import BaseLayout from '@/layouts/BaseLayout.astro';
 import { getPublicListings } from '@/lib/publicListings';
-import { FOCUS_STATES, FOCUS_CITIES } from '@/data/locations';
+import { FOCUS_STATES } from '@/data/locations';
+import { slugify } from '@/lib/slug';
 
 const corpus = await getPublicListings();
 const user = Astro.locals.user;
-const listingsIn = (city: string) => corpus.filter((l) => l.city === city && !l.isOnlineOnly).length;
+
+// Only display states and cities that actually have published listings
+interface CityItem {
+  city: string;
+  region: string;
+  slug: string;
+  count: number;
+}
+
+interface StateGroup {
+  name: string;
+  abbr: string;
+  slug: string;
+  count: number;
+  cities: CityItem[];
+}
+
+const stateMap = new Map<string, StateGroup>();
+for (const item of corpus) {
+  if (!item.isOnlineOnly && item.city && item.region) {
+    const regionUpper = item.region.trim().toUpperCase();
+    const cityTrimmed = item.city.trim();
+    const matchingFocusState = FOCUS_STATES.find((s) => s.abbr === regionUpper);
+    const stateName = matchingFocusState?.name ?? regionUpper;
+    const stateSlug = matchingFocusState?.slug ?? slugify(stateName);
+
+    let group = stateMap.get(regionUpper);
+    if (!group) {
+      group = {
+        name: stateName,
+        abbr: regionUpper,
+        slug: stateSlug,
+        count: 0,
+        cities: [],
+      };
+      stateMap.set(regionUpper, group);
+    }
+    group.count += 1;
+
+    let cityItem = group.cities.find((c) => c.city.toLowerCase() === cityTrimmed.toLowerCase());
+    if (!cityItem) {
+      cityItem = {
+        city: cityTrimmed,
+        region: regionUpper,
+        slug: slugify(`${cityTrimmed}-${regionUpper}`),
+        count: 0,
+      };
+      group.cities.push(cityItem);
+    }
+    cityItem.count += 1;
+  }
+}
+
+const activeStates = Array.from(stateMap.values()).sort((a, b) => b.count - a.count);
+activeStates.forEach((s) => s.cities.sort((a, b) => b.count - a.count));
+
 const seo = {
-  title: 'Browse by State — Where CrossLinkd Operates | CrossLinkd',
-  description: 'CrossLinkd currently serves Texas, Tennessee, Georgia, Arizona, and Colorado. See the cities we cover and the reviewed listings in each.',
+  title: 'Browse by State — Locations | CrossLinkd',
+  description: 'Browse Christian-owned businesses, churches, and ministries across the United States. Only active locations with verified listings are displayed.',
   path: '/browse/locations',
 };
 ---
 <BaseLayout user={user} seo={seo}>
   <div class="mx-auto max-w-5xl px-4 py-10">
     <h1 class="text-3xl font-extrabold">Browse by state</h1>
-    <p class="section-sub">We operate in five states today. A city page is only built once it has enough reviewed listings to be genuinely useful — no empty pages, no SEO filler.</p>
+    <p class="section-sub">
+      {activeStates.length > 0
+        ? 'A state or city is listed once it has verified businesses — no empty pages or placeholder listings.'
+        : 'Nationwide coverage is expanding. States and cities will appear here as soon as verified listings are published.'}
+    </p>
 
-    {FOCUS_STATES.map((state) => {
-      const cities = FOCUS_CITIES.filter((c) => c.region === state.abbr);
-      const stateCount = corpus.filter((l) => l.region === state.abbr && !l.isOnlineOnly).length;
-      return (
+    {activeStates.length > 0 ? (
+      activeStates.map((state) => (
         <section class="mt-8" aria-label={state.name}>
           <div class="flex items-baseline justify-between">
             <h2 class="text-xl font-extrabold">
               <a href={`/states/${state.slug}`} class="hover:underline">{state.name}</a>
             </h2>
-            <span class="chip">{stateCount} listings</span>
+            <span class="chip">{state.count} {state.count === 1 ? 'listing' : 'listings'}</span>
           </div>
           <div class="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3" data-animate="grid">
-            {cities.map((c) => (
+            {state.cities.map((c) => (
               <a href={`/locations/${c.slug}`} class="card card-hover p-4">
                 <div class="flex items-baseline justify-between gap-2">
                   <p class="font-bold">{c.city}, {c.region}</p>
-                  <span class="chip !py-0.5 !text-[11px] font-bold">{listingsIn(c.city)}</span>
+                  <span class="chip !py-0.5 !text-[11px] font-bold">{c.count}</span>
                 </div>
-                <p class="mt-1 text-[13px]" style="color:var(--text-soft)">{c.blurb}</p>
+                <p class="mt-1 text-[13px]" style="color:var(--text-soft)">Verified listings in {c.city}.</p>
               </a>
             ))}
             <a href={`/search?near=${encodeURIComponent(state.name)}`} class="card card-hover p-4">
               <p class="font-bold">All of {state.name}</p>
-              <p class="mt-1 text-[13px]" style="color:var(--text-soft)">Search everything we have reviewed statewide.</p>
+              <p class="mt-1 text-[13px]" style="color:var(--text-soft)">Search all verified listings statewide.</p>
             </a>
           </div>
         </section>
-      );
-    })}
+      ))
+    ) : (
+      <div class="card mt-8 flex flex-col items-center justify-center p-8 text-center sm:p-12">
+        <div class="flex h-12 w-12 items-center justify-center rounded-2xl" style="background:var(--surface-2);color:var(--teal)">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/>
+            <circle cx="12" cy="10" r="3"/>
+          </svg>
+        </div>
+        <h2 class="mt-4 text-lg font-bold">Locations coming soon</h2>
+        <p class="mt-2 max-w-md text-sm leading-relaxed" style="color:var(--text-soft)">
+          We’re building a nationwide directory. Browse back soon as businesses and organizations are added across the country.
+        </p>
+        <div class="mt-5 flex flex-wrap justify-center gap-3">
+          <a href="/add-listing" class="btn btn-primary !py-2 !text-sm">List Your Business</a>
+          <a href="/search" class="btn btn-secondary !py-2 !text-sm">Search Directory</a>
+        </div>
+      </div>
+    )}
 
     <div class="card mt-10 p-6">
-      <h2 class="font-extrabold">Not in these states yet?</h2>
+      <h2 class="font-extrabold">Online-only & nationwide services</h2>
       <p class="mt-1 text-sm" style="color:var(--text-soft)">
         Online-only businesses serve customers nationwide — <a href="/search?onlineOnly=1" class="underline">browse them here</a>. If you own a
-        Christian-owned business elsewhere, you can still <a href="/add-listing" class="underline">submit a free listing</a>; we will publish it
-        as soon as your area has enough reviewed businesses to be useful.
+        Christian-owned business anywhere in the US, you can <a href="/add-listing" class="underline">submit a free listing</a> today.
       </p>
     </div>
   </div>
