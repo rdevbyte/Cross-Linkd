@@ -1,10 +1,11 @@
 ---
 import DashboardLayout from '@/layouts/DashboardLayout.astro';
-import { and, eq, desc } from 'drizzle-orm';
+import { and, eq, desc, isNull, inArray } from 'drizzle-orm';
 import { getDb, hasDatabase } from '@/db/client';
-import { listings, listingLocations } from '@/db/schema';
-import { STATUS_LABEL } from '@/lib/submissions';
+import { listings, listingLocations, listingDenominations, denominations } from '@/db/schema';
+import { STATUS_LABEL, STATUS_CHIP } from '@/lib/submissions';
 import { requireUserPage } from '@/lib/guards';
+import { DENOMINATIONS } from '@/data/denominations';
 
 const gate = requireUserPage(Astro);
 if (gate) return gate;
@@ -13,42 +14,35 @@ const user = Astro.locals.user!;
 const dbReady = hasDatabase();
 let rows: Array<{
   id: string; slug: string; name: string; typeSlug: string; status: string;
-  city: string | null; region: string | null; updatedAt: Date; reviewNote: string | null;
+  city: string | null; region: string | null; updatedAt: Date;
   data: Record<string, unknown>;
 }> = [];
+
 if (dbReady) {
   const db = getDb()!;
   const mine = await db
     .select({ listing: listings, loc: listingLocations })
     .from(listings)
     .leftJoin(listingLocations, and(eq(listingLocations.listingId, listings.id), eq(listingLocations.isPrimary, true)))
-    .where(and(eq(listings.ownerId, user.id), eq(listings.status, 'draft')))
+    .where(and(eq(listings.ownerId, user.id), isNull(listings.deletedAt)))
     .orderBy(desc(listings.updatedAt));
-  const rest = await db
-    .select({ listing: listings, loc: listingLocations })
-    .from(listings)
-    .leftJoin(listingLocations, and(eq(listingLocations.listingId, listings.id), eq(listingLocations.isPrimary, true)))
-    .where(and(eq(listings.ownerId, user.id), eq(listings.status, 'pending_review')))
-    .orderBy(desc(listings.updatedAt));
-  const review = await db
-    .select({ listing: listings, loc: listingLocations })
-    .from(listings)
-    .leftJoin(listingLocations, and(eq(listingLocations.listingId, listings.id), eq(listingLocations.isPrimary, true)))
-    .where(and(eq(listings.ownerId, user.id), eq(listings.status, 'changes_requested')))
-    .orderBy(desc(listings.updatedAt));
-  const rejected = await db
-    .select({ listing: listings, loc: listingLocations })
-    .from(listings)
-    .leftJoin(listingLocations, and(eq(listingLocations.listingId, listings.id), eq(listingLocations.isPrimary, true)))
-    .where(and(eq(listings.ownerId, user.id), eq(listings.status, 'rejected')))
-    .orderBy(desc(listings.updatedAt));
-  const published = await db
-    .select({ listing: listings, loc: listingLocations })
-    .from(listings)
-    .leftJoin(listingLocations, and(eq(listingLocations.listingId, listings.id), eq(listingLocations.isPrimary, true)))
-    .where(and(eq(listings.ownerId, user.id), eq(listings.status, 'published')))
-    .orderBy(desc(listings.publishedAt));
-  rows = [...mine, ...rest, ...review, ...rejected, ...published].map(({ listing: l, loc }) => ({
+
+  const ids = mine.map((m) => m.listing.id);
+  const denomsByListing = new Map<string, string[]>();
+  if (ids.length) {
+    const denomRows = await db
+      .select({ listingId: listingDenominations.listingId, slug: denominations.slug })
+      .from(listingDenominations)
+      .innerJoin(denominations, eq(listingDenominations.denominationId, denominations.id))
+      .where(inArray(listingDenominations.listingId, ids));
+    for (const d of denomRows) {
+      const list = denomsByListing.get(d.listingId) ?? [];
+      list.push(d.slug);
+      denomsByListing.set(d.listingId, list);
+    }
+  }
+
+  rows = mine.map(({ listing: l, loc }) => ({
     id: l.id,
     slug: l.slug,
     name: l.name,
@@ -57,7 +51,6 @@ if (dbReady) {
     city: loc?.city ?? null,
     region: loc?.region ?? null,
     updatedAt: l.updatedAt,
-    reviewNote: l.reviewNote ?? null,
     data: {
       name: l.name,
       typeSlug: l.typeSlug,
@@ -66,6 +59,13 @@ if (dbReady) {
       website: l.website ?? '',
       phone: l.phone ?? '',
       email: l.email ?? '',
+      showEmail: l.showEmail,
+      showPhone: l.showPhone,
+      showWebsite: l.showWebsite,
+      showAddress: l.showAddress,
+      showDenomination: l.showDenomination,
+      customDenomination: l.customDenomination ?? '',
+      denominations: denomsByListing.get(l.id)?.[0] ?? '',
       city: loc?.city ?? '',
       region: loc?.region ?? '',
       postalCode: loc?.postalCode ?? '',
@@ -77,17 +77,24 @@ if (dbReady) {
 
 const notice = Astro.url.searchParams.get('notice') ?? '';
 const notices: Record<string, { title: string; body: string; tone: string }> = {
-  'verify-email': { title: 'Verify your email', body: 'We sent a verification link to your inbox. Verify to build trust with reviewers.', tone: 'var(--accent)' },
+  'verify-email': { title: 'Verify your email', body: 'We sent a verification link to your inbox.', tone: 'var(--accent)' },
   'email-verified': { title: 'Email verified — thank you!', body: 'Your email address is confirmed.', tone: 'var(--teal)' },
-  'listing-saved': { title: 'Draft saved', body: 'Your changes were saved.', tone: 'var(--teal)' },
-  'listing-submitted': { title: 'Submitted for review', body: 'Our review team typically responds within 2–3 business days. You will see the decision here.', tone: 'var(--teal)' },
-  'verification-failed': { title: 'Verification link invalid', body: 'The link was used, expired, or malformed. Request a new email from your settings.', tone: 'var(--accent)' },
+  'listing-published': { title: 'Listing published!', body: 'Your business profile is now live in the CrossLinkd directory.', tone: 'var(--teal)' },
+  'listing-saved': { title: 'Changes saved', body: 'Your listing updates have been saved.', tone: 'var(--teal)' },
 };
 const banner = notices[notice];
+
+const sortedDenominations = [...DENOMINATIONS]
+  .filter((d) => d.slug !== 'non-denominational')
+  .sort((a, b) => a.name.localeCompare(b.name));
 ---
-<DashboardLayout user={user} active="listings" seo={{ title: 'My listings — CrossLinkd', description: 'Manage your business submissions.', path: '/dashboard/listings', noindex: true }}>
-  <h1 class="text-2xl font-extrabold">My listings</h1>
-  <p class="section-sub">Draft, submit, and track your business listings. Public listings are marked Approved.</p>
+<DashboardLayout user={user} active="listings" seo={{ title: 'My listings — CrossLinkd', description: 'Manage your business listings.', path: '/dashboard/listings', noindex: true }}>
+  <div class="flex flex-wrap items-center justify-between gap-3">
+    <div>
+      <h1 class="text-2xl font-extrabold">My listings</h1>
+      <p class="section-sub">Create, edit, and manage your business listings. Active listings are published live in the directory.</p>
+    </div>
+  </div>
 
   {banner && (
     <div class="card mt-4 border-l-4 p-4" style={`border-left-color:${banner.tone}`} role="status">
@@ -99,7 +106,7 @@ const banner = notices[notice];
   {!dbReady && (
     <div class="card mt-4 border-l-4 p-4" style="border-left-color:var(--accent)">
       <p class="text-sm font-bold">Preview mode</p>
-      <p class="mt-0.5 text-sm" style="color:var(--text-soft)">Submissions need the production database. Sign in on a deployment with <code>DATABASE_URL</code> configured.</p>
+      <p class="mt-0.5 text-sm" style="color:var(--text-soft)">Submissions need the database configured. Sign in on a deployment with <code>DATABASE_URL</code> configured.</p>
     </div>
   )}
 
@@ -107,16 +114,17 @@ const banner = notices[notice];
     <p id="form-banner-text" class="text-sm font-bold"></p>
   </div>
 
-  <!-- New / edit listing -->
-  <details class="card mt-5 p-5" id="listing-form-card">
+  <!-- New / edit listing card -->
+  <details class="card mt-5 p-5 sm:p-6" id="listing-form-card">
     <summary class="cursor-pointer select-none">
-      <span class="font-extrabold" id="form-title">Submit a business</span>
-      <span class="text-sm" style="color:var(--text-mute)"> — takes about 5 minutes. A person reviews every submission.</span>
+      <span class="font-extrabold" id="form-title">+ Create a new listing</span>
+      <span class="text-sm" style="color:var(--text-mute)"> — your business profile goes live immediately.</span>
     </summary>
-    <form id="listing-form" class="mt-4 space-y-4" data-listing-id="">
+    <form id="listing-form" class="mt-5 space-y-5" data-listing-id="">
+      <!-- Section 1: Overview -->
       <div class="grid gap-4 sm:grid-cols-2">
         <label class="block text-sm font-semibold">Business name *
-          <input name="name" required minlength="2" maxlength="240" class="input mt-1 w-full" placeholder="Grace & Grain Bakery" />
+          <input name="name" required minlength="2" maxlength="240" class="input mt-1 w-full" placeholder="Enter your business name" />
         </label>
         <label class="block text-sm font-semibold">Listing type *
           <select name="typeSlug" required class="input mt-1 w-full">
@@ -128,46 +136,124 @@ const banner = notices[notice];
           </select>
         </label>
       </div>
+
       <label class="block text-sm font-semibold">Tagline
-        <input name="tagline" maxlength="280" class="input mt-1 w-full" placeholder="One sentence people will remember." />
+        <input name="tagline" maxlength="280" class="input mt-1 w-full" placeholder="Brief summary of what your business does" />
       </label>
-      <label class="block text-sm font-semibold">Description * <span class="font-normal" style="color:var(--text-mute)">(30+ characters to submit)</span>
-        <textarea name="description" rows="4" minlength="30" maxlength="8000" class="input mt-1 w-full" placeholder="What you do, who you serve, what makes your business distinct."></textarea>
+
+      <label class="block text-sm font-semibold">Description * <span class="font-normal" style="color:var(--text-mute)">(30+ characters to publish)</span>
+        <textarea name="description" rows="4" minlength="30" maxlength="8000" class="input mt-1 w-full" placeholder="Describe what your business offers, who you serve, and what makes your business distinct"></textarea>
       </label>
+
+      <!-- Section 2: Faith & Denomination -->
+      <div class="rounded-2xl p-4 border" style="border-color:var(--border);background:var(--surface-2)">
+        <h3 class="text-sm font-bold">Faith affiliation &amp; denomination</h3>
+        <p class="text-xs" style="color:var(--text-mute)">Optional. Lets members discover faith-aligned services.</p>
+
+        <div class="mt-3 grid gap-3 sm:grid-cols-2">
+          <label class="block text-sm font-semibold">Denomination / affiliation
+            <select name="denominations" id="dash-denom-select" class="input mt-1 w-full">
+              <option value="">Select denomination / affiliation (optional)…</option>
+              <option value="non-denominational">Non-Denominational</option>
+              {sortedDenominations.map((d) => <option value={d.slug}>{d.name}</option>)}
+              <option value="other">Other (specify custom denomination)</option>
+            </select>
+          </label>
+
+          <label class="block text-sm font-semibold">Custom denomination
+            <input name="customDenomination" id="dash-custom-denom" class="input mt-1 w-full" placeholder="e.g. Calvary Chapel, Vineyard, etc." maxlength="180" />
+          </label>
+        </div>
+
+        <label class="mt-3 flex items-center gap-2 text-xs font-semibold cursor-pointer">
+          <input type="checkbox" name="showDenomination" value="1" checked class="h-4 w-4 accent-[var(--accent)]" />
+          Display faith affiliation publicly on listing
+        </label>
+      </div>
+
+      <!-- Section 3: Location -->
       <div class="grid gap-4 sm:grid-cols-3">
         <label class="block text-sm font-semibold">City *
-          <input name="city" maxlength="120" class="input mt-1 w-full" placeholder="Dallas" />
+          <input name="city" maxlength="120" class="input mt-1 w-full" placeholder="Enter city" />
         </label>
-        <label class="block text-sm font-semibold">State *
-          <input name="region" maxlength="120" class="input mt-1 w-full" placeholder="TX" />
+        <label class="block text-sm font-semibold">State / Region *
+          <input name="region" maxlength="120" class="input mt-1 w-full" placeholder="Enter state or region" />
         </label>
-        <label class="block text-sm font-semibold">ZIP
-          <input name="postalCode" maxlength="24" class="input mt-1 w-full" />
-        </label>
-      </div>
-      <div class="grid gap-4 sm:grid-cols-2">
-        <label class="block text-sm font-semibold">Contact email *
-          <input name="email" type="email" class="input mt-1 w-full" placeholder="you@business.com" />
-        </label>
-        <label class="block text-sm font-semibold">Phone
-          <input name="phone" maxlength="60" class="input mt-1 w-full" />
+        <label class="block text-sm font-semibold">ZIP / Postal code
+          <input name="postalCode" maxlength="24" class="input mt-1 w-full" placeholder="Postal code" />
         </label>
       </div>
-      <div class="grid gap-4 sm:grid-cols-2">
-        <label class="block text-sm font-semibold">Website
-          <input name="website" type="url" class="input mt-1 w-full" placeholder="https://" />
-        </label>
-        <label class="block text-sm font-semibold">Price range
-          <select name="priceRange" class="input mt-1 w-full">
-            <option value="">—</option><option>$</option><option>$$</option><option>$$$</option><option>$$$$</option>
-          </select>
-        </label>
+
+      <label class="flex items-center gap-2 text-xs font-semibold cursor-pointer">
+        <input type="checkbox" name="showAddress" value="1" class="h-4 w-4 accent-[var(--accent)]" />
+        Display full address publicly on listing
+      </label>
+
+      <label class="flex items-center gap-2 text-sm font-semibold">
+        <input type="checkbox" name="isOnlineOnly" class="h-4 w-4 accent-[var(--accent)]" />
+        Online only — serves nationwide (no physical storefront)
+      </label>
+
+      <!-- Section 4: Contact & Privacy Controls -->
+      <div class="rounded-2xl p-4 border" style="border-color:var(--border)">
+        <h3 class="text-sm font-bold">Contact information &amp; privacy controls</h3>
+        <p class="text-xs" style="color:var(--text-mute)">Private contact details are kept secure for account purposes and never exposed publicly.</p>
+
+        <!-- Contact Email -->
+        <div class="mt-3 space-y-1">
+          <label class="block text-sm font-semibold">Contact email *
+            <input name="email" type="email" class="input mt-1 w-full" placeholder="contact@yourbusiness.com" value={user.email} />
+          </label>
+          <p class="text-[11px]" style="color:var(--text-soft)">
+            Account email: <strong>{user.email}</strong>. Pre-filled for your convenience; feel free to change it to your organization's inquiry address.
+          </p>
+          <label class="flex items-center gap-2 text-xs font-semibold cursor-pointer pt-1">
+            <input type="checkbox" name="showEmail" value="1" class="h-4 w-4 accent-[var(--accent)]" />
+            Display email address publicly on listing
+          </label>
+          <p class="text-[11px]" style="color:var(--text-mute)">When unchecked, customers can still contact you via our safe on-site form without seeing your email address.</p>
+        </div>
+
+        <!-- Phone -->
+        <div class="mt-4 space-y-1">
+          <label class="block text-sm font-semibold">Phone number
+            <input name="phone" maxlength="60" class="input mt-1 w-full" placeholder="Enter phone number" />
+          </label>
+          <label class="flex items-center gap-2 text-xs font-semibold cursor-pointer">
+            <input type="checkbox" name="showPhone" value="1" class="h-4 w-4 accent-[var(--accent)]" />
+            Display phone number publicly on listing
+          </label>
+        </div>
+
+        <!-- Website -->
+        <div class="mt-4 space-y-1">
+          <label class="block text-sm font-semibold">Website
+            <input name="website" type="url" class="input mt-1 w-full" placeholder="https://yourbusiness.com" />
+          </label>
+          <label class="flex items-center gap-2 text-xs font-semibold cursor-pointer">
+            <input type="checkbox" name="showWebsite" value="1" class="h-4 w-4 accent-[var(--accent)]" />
+            Display website link publicly on listing
+          </label>
+        </div>
+
+        <!-- Price Range -->
+        <div class="mt-4">
+          <label class="block text-sm font-semibold">Price range
+            <select name="priceRange" class="input mt-1 w-full">
+              <option value="">Select price range (optional)</option>
+              <option value="$">$ (Inexpensive)</option>
+              <option value="$$">$$ (Moderate)</option>
+              <option value="$$$">$$$ (Upscale)</option>
+              <option value="$$$$">$$$$ (Premium)</option>
+            </select>
+          </label>
+        </div>
       </div>
-      <label class="flex items-center gap-2 text-sm font-semibold"><input type="checkbox" name="isOnlineOnly" class="h-4 w-4 accent-[var(--accent)]" /> Online only — serves nationwide</label>
-      <p class="text-xs" style="color:var(--text-mute)">By submitting you confirm the information is accurate and that you are authorized to list this business.</p>
-      <div class="flex flex-wrap gap-2">
-        <button type="button" data-intent="submit" class="btn btn-primary">Submit for review</button>
+
+      <div class="flex flex-wrap gap-2 pt-2">
+        <button type="button" data-intent="publish" class="btn btn-primary" id="form-submit-btn">Publish listing</button>
         <button type="button" data-intent="draft" class="btn btn-secondary">Save draft</button>
+        <button type="button" id="form-cancel-btn" class="btn btn-ghost hidden">Cancel edit</button>
         <span id="form-status" class="self-center text-sm" style="color:var(--text-mute)" role="status"></span>
       </div>
     </form>
@@ -178,35 +264,42 @@ const banner = notices[notice];
     {rows.length === 0 ? (
       <div class="p-8 text-center">
         <p class="font-bold">No listings yet</p>
-        <p class="mt-1 text-sm" style="color:var(--text-soft)">Submit your first business above — drafts are private until you submit them.</p>
+        <p class="mt-1 text-sm" style="color:var(--text-soft)">Create your first business listing above — it goes live immediately.</p>
       </div>
     ) : (
       <table class="w-full min-w-[680px] text-sm">
-        <thead><tr class="text-left text-xs uppercase" style="color:var(--text-mute)">
-          <th class="p-3">Business</th><th class="p-3">Location</th><th class="p-3">Status</th><th class="p-3">Updated</th><th class="p-3 text-right">Actions</th>
-        </tr></thead>
+        <thead>
+          <tr class="text-left text-xs uppercase" style="color:var(--text-mute)">
+            <th class="p-3">Business</th>
+            <th class="p-3">Location</th>
+            <th class="p-3">Status</th>
+            <th class="p-3">Updated</th>
+            <th class="p-3 text-right">Actions</th>
+          </tr>
+        </thead>
         <tbody>
           {rows.map((r) => (
             <tr class="border-t align-top" style="border-color:var(--border)" data-row-id={r.id}>
               <td class="p-3">
                 <p class="font-medium">{r.name}</p>
                 <p class="text-xs" style="color:var(--text-mute)">{r.typeSlug}</p>
-                {r.reviewNote && r.status !== 'published' && (
-                  <p class="mt-1 max-w-sm rounded-lg p-2 text-xs" style="background:var(--accent-soft);color:var(--text)">
-                    <strong>Reviewer:</strong> {r.reviewNote}
-                  </p>
-                )}
               </td>
               <td class="p-3">{r.city || '—'}{r.region ? `, ${r.region}` : ''}</td>
-              <td class="p-3"><span class="chip !text-[11px]" style={r.status === 'published' ? 'color:var(--teal)' : r.status === 'rejected' ? 'color:var(--accent)' : ''}>{STATUS_LABEL[r.status] ?? r.status}</span></td>
-              <td class="p-3 text-xs" style="color:var(--text-mute)">{r.updatedAt.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</td>
+              <td class="p-3">
+                <span class={`chip !text-[11px] ${STATUS_CHIP[r.status] ?? ''}`} style={r.status === 'published' ? 'color:var(--teal)' : ''}>
+                  {STATUS_LABEL[r.status] ?? r.status}
+                </span>
+              </td>
+              <td class="p-3 text-xs" style="color:var(--text-mute)">
+                {r.updatedAt.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+              </td>
               <td class="p-3">
                 <div class="flex flex-wrap justify-end gap-1.5" data-actions data-listing={JSON.stringify(r.data)} data-id={r.id} data-name={r.name} data-status={r.status}>
                   <button type="button" class="btn btn-ghost !px-2.5 !py-1 !text-xs" data-act="edit">Edit</button>
-                  {(r.status === 'draft') && <button type="button" class="btn btn-primary !px-2.5 !py-1 !text-xs" data-act="submit">Submit</button>}
-                  {(r.status === 'rejected' || r.status === 'changes_requested') && <button type="button" class="btn btn-primary !px-2.5 !py-1 !text-xs" data-act="resubmit">Revise &amp; resubmit</button>}
-                  {r.status !== 'published' && <button type="button" class="btn btn-ghost !px-2.5 !py-1 !text-xs" data-act="delete" style="color:var(--accent)">Delete</button>}
-                  {r.status === 'published' && <a href={`/directory/${r.slug}`} class="btn btn-ghost !px-2.5 !py-1 !text-xs">View public</a>}
+                  {r.status === 'published' && (
+                    <a href={`/directory/${r.slug}`} class="btn btn-secondary !px-2.5 !py-1 !text-xs" target="_blank">View live</a>
+                  )}
+                  <button type="button" class="btn btn-ghost !px-2.5 !py-1 !text-xs" data-act="delete" style="color:var(--accent)">Delete</button>
                 </div>
               </td>
             </tr>
@@ -222,7 +315,9 @@ const banner = notices[notice];
     const banner = document.getElementById('form-banner');
     const bannerText = document.getElementById('form-banner-text');
     const formTitle = document.getElementById('form-title');
-    const formCard = document.getElementById('listing-form-card');
+    const formSubmitBtn = document.getElementById('form-submit-btn') as HTMLButtonElement | null;
+    const formCancelBtn = document.getElementById('form-cancel-btn') as HTMLButtonElement | null;
+    const formCard = document.getElementById('listing-form-card') as HTMLDetailsElement | null;
 
     function showBanner(ok: boolean, msg: string) {
       if (!banner || !bannerText) return;
@@ -232,22 +327,45 @@ const banner = notices[notice];
       banner.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }
 
+    function resetForm() {
+      if (!form) return;
+      form.reset();
+      form.dataset.listingId = '';
+      if (formTitle) formTitle.textContent = '+ Create a new listing';
+      if (formSubmitBtn) formSubmitBtn.textContent = 'Publish listing';
+      formCancelBtn?.classList.add('hidden');
+    }
+
     function fillForm(data: Record<string, unknown>, id: string, name: string) {
       if (!form) return;
       form.dataset.listingId = id;
       for (const [k, v] of Object.entries(data)) {
         const el = form.elements.namedItem(k) as HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement | null;
         if (!el) continue;
-        if (el instanceof HTMLInputElement && el.type === 'checkbox') el.checked = Boolean(v);
-        else el.value = String(v ?? '');
+        if (el instanceof HTMLInputElement && el.type === 'checkbox') {
+          el.checked = Boolean(v);
+        } else {
+          el.value = String(v ?? '');
+        }
       }
       if (formTitle) formTitle.textContent = `Edit “${name}”`;
-      if (formCard) (formCard as unknown as HTMLDetailsElement).open = true;
+      if (formSubmitBtn) formSubmitBtn.textContent = 'Save changes';
+      formCancelBtn?.classList.remove('hidden');
+      if (formCard) formCard.open = true;
       formCard?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
 
+    formCancelBtn?.addEventListener('click', () => {
+      resetForm();
+      if (formCard) formCard.open = false;
+    });
+
     async function send(url: string, method: string, body: unknown) {
-      const res = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: body ? JSON.stringify(body) : undefined });
+      const res = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: body ? JSON.stringify(body) : undefined,
+      });
       const json = await res.json().catch(() => ({ ok: false, error: 'Unexpected server response.' }));
       return { ok: res.ok && json.ok, json } as { ok: boolean; json: { ok: boolean; error?: string } };
     }
@@ -258,21 +376,27 @@ const banner = notices[notice];
       const out: Record<string, unknown> = {};
       fd.forEach((v, k) => { out[k] = v; });
       out.isOnlineOnly = (form.elements.namedItem('isOnlineOnly') as HTMLInputElement)?.checked ?? false;
+      out.showEmail = (form.elements.namedItem('showEmail') as HTMLInputElement)?.checked ?? false;
+      out.showPhone = (form.elements.namedItem('showPhone') as HTMLInputElement)?.checked ?? false;
+      out.showWebsite = (form.elements.namedItem('showWebsite') as HTMLInputElement)?.checked ?? false;
+      out.showAddress = (form.elements.namedItem('showAddress') as HTMLInputElement)?.checked ?? false;
+      out.showDenomination = (form.elements.namedItem('showDenomination') as HTMLInputElement)?.checked ?? true;
+      const denom = String(form.elements.namedItem('denominations') ? (form.elements.namedItem('denominations') as HTMLSelectElement).value : '');
+      out.denominations = denom ? [denom] : [];
       return out;
     };
 
     async function handleRowAction(act: string, id: string, data: Record<string, unknown>, name: string) {
-      if (act === 'edit') { fillForm(data, id, name); return; }
+      if (act === 'edit') {
+        fillForm(data, id, name);
+        return;
+      }
       if (act === 'delete') {
         if (!confirm(`Delete “${name}”? This cannot be undone.`)) return;
         const { ok, json } = await send(`/api/listings/${id}`, 'DELETE', null);
         if (ok) location.reload();
         else showBanner(false, json.error ?? 'Delete failed.');
-        return;
       }
-      // submit / resubmit from a row: load into form first so the owner can review
-      fillForm(data, id, name);
-      showBanner(true, act === 'resubmit' ? 'Review the details below, address the reviewer note, then press “Revise & resubmit”.' : 'Review the details below, then press “Submit for review”.');
     }
 
     document.querySelectorAll<HTMLButtonElement>('[data-act]').forEach((btn) => {
@@ -288,21 +412,25 @@ const banner = notices[notice];
     form?.querySelectorAll<HTMLButtonElement>('button[data-intent]').forEach((btn) => {
       btn.addEventListener('click', async () => {
         if (!form || !statusEl) return;
-        const intent = btn.dataset.intent as 'draft' | 'submit';
+        const intent = btn.dataset.intent as 'draft' | 'publish';
         const id = form.dataset.listingId || '';
-        const body = { action: intent === 'draft' ? (id ? 'save' : 'draft') : (id ? 'resubmit' : 'submit'), listing: collect() };
+        const body = { action: intent === 'draft' ? 'draft' : 'publish', listing: collect() };
+
         if (intent !== 'draft') {
-          if (!String(body.listing ? (body.listing as Record<string, unknown>).description ?? '' : '').trim()) {
-            showBanner(false, 'A description is required to submit.');
+          const descVal = String(body.listing ? (body.listing as Record<string, unknown>).description ?? '' : '').trim();
+          if (descVal.length < 30) {
+            showBanner(false, 'A description of at least 30 characters is required to publish.');
             return;
           }
         }
+
         btn.disabled = true;
-        statusEl.textContent = intent === 'draft' ? 'Saving…' : 'Submitting…';
+        statusEl.textContent = intent === 'draft' ? 'Saving draft…' : (id ? 'Saving changes…' : 'Publishing listing…');
+
         try {
           const { ok, json } = await send(id ? `/api/listings/${id}` : '/api/submissions', id ? 'PATCH' : 'POST', body);
           if (ok) {
-            sessionStorage.setItem('cl:flash', intent === 'draft' ? 'listing-saved' : 'listing-submitted');
+            sessionStorage.setItem('cl:flash', intent === 'draft' ? 'listing-saved' : 'listing-published');
             location.reload();
           } else {
             showBanner(false, json.error ?? 'Something went wrong.');
@@ -321,7 +449,7 @@ const banner = notices[notice];
     if (flash) {
       sessionStorage.removeItem('cl:flash');
       const b = document.querySelector(`[role="status"]`);
-      if (!b) showBanner(true, flash === 'listing-saved' ? 'Draft saved.' : 'Submitted for review.');
+      if (!b) showBanner(true, flash === 'listing-saved' ? 'Draft saved.' : 'Listing published! Your business profile is live.');
     }
   </script>
 </DashboardLayout>

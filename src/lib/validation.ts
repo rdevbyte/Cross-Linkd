@@ -35,6 +35,12 @@ export const listingInputSchema = z.object({
   website: z.string().url().optional().or(z.literal('')),
   phone: z.string().max(60).optional(),
   email: z.string().email().optional().or(z.literal('')),
+  showEmail: z.boolean().default(false),
+  showPhone: z.boolean().default(false),
+  showWebsite: z.boolean().default(false),
+  showAddress: z.boolean().default(false),
+  showDenomination: z.boolean().default(true),
+  customDenomination: z.string().max(180).optional(),
   city: z.string().max(120).optional(),
   region: z.string().max(120).optional(),
   postalCode: z.string().max(24).optional(),
@@ -90,12 +96,12 @@ export const listingSubmitRequirements = {
 };
 
 export const listingActionSchema = z.object({
-  action: z.enum(['draft', 'submit', 'resubmit']),
+  action: z.enum(['publish', 'draft', 'submit', 'resubmit', 'save']).default('publish'),
   listing: listingInputSchema,
 });
 
 export const listingPatchSchema = z.object({
-  action: z.enum(['save', 'submit', 'resubmit']),
+  action: z.enum(['publish', 'save', 'submit', 'resubmit', 'draft']).default('publish'),
   listing: listingInputSchema.partial().required({ name: true, typeSlug: true }),
 });
 

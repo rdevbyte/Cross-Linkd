@@ -40,6 +40,12 @@ export interface SampleListing {
   phone?: string;
   email?: string;
   website?: string;
+  showEmail?: boolean;
+  showPhone?: boolean;
+  showWebsite?: boolean;
+  showAddress?: boolean;
+  showDenomination?: boolean;
+  customDenomination?: string;
   priceRange?: string;
   industries: string[];
   professions: string[];

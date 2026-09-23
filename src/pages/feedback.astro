@@ -1,0 +1,85 @@
+---
+import BaseLayout from '@/layouts/BaseLayout.astro';
+const user = Astro.locals.user;
+const sent = Astro.url.searchParams.get('sent') === '1';
+const error = Astro.url.searchParams.get('error');
+
+const seo = {
+  title: 'Suggest an Improvement — CrossLinkd',
+  description: 'Share your feedback, feature ideas, or suggestions to help us improve CrossLinkd.',
+  path: '/feedback',
+};
+---
+<BaseLayout user={user} seo={seo}>
+  <div class="mx-auto max-w-xl px-4 py-12">
+    <h1 class="text-3xl font-extrabold">Suggest an improvement</h1>
+    <p class="section-sub">Have an idea to make CrossLinkd better? We appreciate your feedback and read every submission.</p>
+
+    {sent ? (
+      <div class="card mt-6 border-l-4 p-6" style="border-left-color:var(--teal)" role="status">
+        <p class="font-bold">Thank you for your suggestion!</p>
+        <p class="mt-1 text-sm" style="color:var(--text-soft)">Your feedback has been received and will help shape upcoming updates to CrossLinkd.</p>
+        <div class="mt-4 flex gap-3">
+          <a href="/" class="btn btn-primary !py-2 !text-sm">Back to home</a>
+          <a href="/feedback" class="btn btn-secondary !py-2 !text-sm">Send another note</a>
+        </div>
+      </div>
+    ) : (
+      <form method="POST" action="/api/feedback" class="card mt-6 space-y-4 p-6">
+        {error && (
+          <div class="rounded-xl bg-red-500/10 p-3 text-sm font-medium text-red-600" role="alert">
+            {error}
+          </div>
+        )}
+
+        <!-- Anti-spam honeypot -->
+        <input type="text" name="website_hp" style="display:none" tabindex="-1" autocomplete="off" aria-hidden="true" />
+
+        <label class="block text-sm font-medium">Topic or category
+          <select name="category" class="input mt-1.5 w-full">
+            <option value="Feature suggestion">Feature suggestion</option>
+            <option value="Directory accuracy">Directory accuracy or missing info</option>
+            <option value="Usability & design">Usability or design feedback</option>
+            <option value="New category or profession">New category or tag request</option>
+            <option value="General feedback">General feedback</option>
+          </select>
+        </label>
+
+        <label class="block text-sm font-medium">Your suggestion or feedback *
+          <textarea
+            name="message"
+            required
+            minlength="10"
+            maxlength="3000"
+            rows="5"
+            class="input mt-1.5 w-full"
+            placeholder="Describe what would improve your experience or report an issue you encountered..."
+          ></textarea>
+        </label>
+
+        <div class="grid gap-4 sm:grid-cols-2">
+          <label class="block text-sm font-medium">Name <span class="font-normal" style="color:var(--text-mute)">(optional)</span>
+            <input
+              name="name"
+              class="input mt-1.5 w-full"
+              placeholder="Your name"
+              value={user?.displayName ?? ''}
+            />
+          </label>
+          <label class="block text-sm font-medium">Email <span class="font-normal" style="color:var(--text-mute)">(optional)</span>
+            <input
+              name="email"
+              type="email"
+              class="input mt-1.5 w-full"
+              placeholder="you@example.com"
+              value={user?.email ?? ''}
+            />
+          </label>
+        </div>
+        <p class="text-xs" style="color:var(--text-mute)">Providing an email is optional—only share it if you'd like a direct follow-up from our team.</p>
+
+        <button class="btn btn-primary w-full !py-3" type="submit">Send suggestion</button>
+      </form>
+    )}
+  </div>
+</BaseLayout>

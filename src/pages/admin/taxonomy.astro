@@ -12,8 +12,10 @@ if (__adminGate) return __adminGate;
 ---
 <DashboardLayout user={user} admin active="taxonomy" seo={{ title: 'Admin: Taxonomy', description: 'Manage taxonomy.', path: '/admin/taxonomy', noindex: true }}>
   <div class="flex flex-wrap items-center justify-between gap-2">
-    <h1 class="text-2xl font-extrabold">Taxonomy</h1>
-  <div class="card p-3 text-[13px] mt-3" style="border-left:4px solid var(--accent)" role="note"><strong>Preview data.</strong> This section shows illustrative sample content while the platform is in preview; live data replaces it as activity grows.</div>
+    <div>
+      <h1 class="text-2xl font-extrabold">Taxonomy</h1>
+      <p class="mt-1 text-sm" style="color:var(--text-soft)">Manage industries, categories, professions, denominations, and official hashtags.</p>
+    </div>
     <div class="flex gap-2">
       <a href="/api/admin/export?table=taxonomy" class="btn btn-secondary !py-2 !text-sm">Export JSON</a>
       <button class="btn btn-secondary !py-2 !text-sm" type="button" onclick="alert('Import dialog opens in production. (demo)')">Import</button>
@@ -30,8 +32,8 @@ if (__adminGate) return __adminGate;
       <label class="text-sm font-medium">Kind
         <select class="input mt-1.5" name="kind"><option>Industry</option><option>Category</option><option>Profession</option><option>Denomination</option><option>Hashtag</option></select>
       </label>
-      <label class="text-sm font-medium">Name<input name="name" required class="input mt-1.5" placeholder="e.g. Solar Installer" /></label>
-      <label class="text-sm font-medium">Parent slug<input name="parent" class="input mt-1.5" placeholder="e.g. construction-skilled-trades" /></label>
+      <label class="text-sm font-medium">Name<input name="name" required class="input mt-1.5" placeholder="Category or trade name" /></label>
+      <label class="text-sm font-medium">Parent slug<input name="parent" class="input mt-1.5" placeholder="Parent category slug (optional)" /></label>
     </div>
     <button class="btn btn-primary !py-2 !text-sm" type="submit">Save entry</button>
   </form>

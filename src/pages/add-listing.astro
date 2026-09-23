@@ -3,75 +3,219 @@ import BaseLayout from '@/layouts/BaseLayout.astro';
 import { LISTING_TYPES } from '@/data/listing-types';
 import { INDUSTRIES } from '@/data/industries';
 import { DENOMINATIONS } from '@/data/denominations';
+
 const user = Astro.locals.user;
 const error = Astro.url.searchParams.get('error');
 const success = Astro.url.searchParams.get('success') === '1';
+const slug = Astro.url.searchParams.get('slug');
+
+const sortedDenominations = [...DENOMINATIONS]
+  .filter((d) => d.slug !== 'non-denominational')
+  .sort((a, b) => a.name.localeCompare(b.name));
 ---
-<BaseLayout user={user} seo={{ title: 'List Your Business — Free Directory Listing | CrossLinkd', description: 'Create a free listing for your Christian-owned business, church, ministry, or professional practice. Hand-reviewed and live in about a day. Free to list.', path: '/add-listing' }}>
+<BaseLayout user={user} seo={{ title: 'List Your Business — Free Directory Listing | CrossLinkd', description: 'Create a free listing for your Christian-owned business, church, ministry, or professional practice. Published immediately and free to list.', path: '/add-listing' }}>
   <div class="mx-auto max-w-3xl px-4 py-10">
     <h1 class="text-3xl font-extrabold">List your business</h1>
-    <p class="section-sub">Free to list. A person reviews every submission — most go live in under a business day. <a href="/submission-policy" class="underline">Submission policy</a> · <a href="/verification" class="underline">how verification works</a></p>
+    <p class="section-sub">Free to list. Your business profile is published immediately to the CrossLinkd directory and searchable right away.</p>
 
     {success ? (
       <div class="card mt-6 border-l-4 p-6" style="border-left-color:var(--teal)">
-        <h2 class="text-lg font-extrabold">Listing submitted!</h2>
-        <p class="mt-1 text-sm" style="color:var(--text-soft)">Our moderation team will review it shortly. {user ? 'Track its status in your dashboard.' : 'Create an account to manage it.'}</p>
-        <div class="mt-4 flex gap-2"><a href="/dashboard/listings" class="btn btn-primary">Go to dashboard</a><a href="/search" class="btn btn-secondary">Browse directory</a></div>
+        <h2 class="text-lg font-extrabold">Your listing is now live!</h2>
+        <p class="mt-1 text-sm" style="color:var(--text-soft)">Your business profile has been published to the CrossLinkd directory and is visible to visitors immediately.</p>
+        <div class="mt-4 flex flex-wrap gap-2">
+          {slug && <a href={`/directory/${slug}`} class="btn btn-primary">View public listing</a>}
+          {user ? <a href="/dashboard/listings" class="btn btn-secondary">Manage your listings</a> : <a href="/auth/signup" class="btn btn-secondary">Create account to manage listing</a>}
+          <a href="/search" class="btn btn-ghost">Browse directory</a>
+        </div>
       </div>
     ) : (
-      <form method="POST" action="/api/listings" class="card mt-6 space-y-5 p-6 sm:p-8">
+      <form method="POST" action="/api/listings" class="card mt-6 space-y-6 p-6 sm:p-8">
         {error && <p class="rounded-xl bg-red-500/10 p-3 text-sm font-medium text-red-600" role="alert">{error}</p>}
-        {!user && <p class="rounded-xl p-3 text-sm" style="background:rgba(216,149,34,.12)">You’re submitting as a guest. <a href="/auth/signup" class="font-bold underline">Create a free account</a> to manage this listing later.</p>}
+        {!user && <p class="rounded-xl p-3 text-sm" style="background:rgba(216,149,34,.12)">You’re creating a listing as a guest. <a href="/auth/signup" class="font-bold underline">Create a free account</a> to edit and manage this listing later.</p>}
 
-        <div class="grid gap-4 sm:grid-cols-2">
-          <label class="text-sm font-medium">Listing name *
-            <input name="name" required minlength="2" maxlength="240" class="input mt-1.5" placeholder="Grace & Grain Bakery" />
+        <!-- Basic Business Details -->
+        <div>
+          <h2 class="text-base font-bold">Business overview</h2>
+          <div class="mt-3 grid gap-4 sm:grid-cols-2">
+            <label class="text-sm font-medium">Business name *
+              <input name="name" required minlength="2" maxlength="240" class="input mt-1.5" placeholder="Enter your business name" />
+            </label>
+            <label class="text-sm font-medium">Listing type *
+              <select name="typeSlug" class="input mt-1.5" required>
+                {LISTING_TYPES.map((t) => <option value={t.slug}>{t.label}</option>)}
+              </select>
+            </label>
+          </div>
+
+          <label class="mt-4 block text-sm font-medium">Tagline
+            <input name="tagline" maxlength="280" class="input mt-1.5" placeholder="Brief summary of what your business does" />
           </label>
-          <label class="text-sm font-medium">Listing type *
-            <select name="typeSlug" class="input mt-1.5" required>
-              {LISTING_TYPES.map((t) => <option value={t.slug}>{t.label}</option>)}
-            </select>
+
+          <label class="mt-4 block text-sm font-medium">Description
+            <textarea name="description" rows="4" maxlength="8000" class="input mt-1.5" placeholder="Describe what your business offers, who you serve, and what makes your business distinct..."></textarea>
+          </label>
+
+          <div class="mt-4 grid gap-4 sm:grid-cols-2">
+            <label class="text-sm font-medium">Industry / Category
+              <select name="industries" class="input mt-1.5">
+                <option value="">Select a category…</option>
+                {INDUSTRIES.map((i) => <option value={i.slug}>{i.name}</option>)}
+              </select>
+            </label>
+            <label class="text-sm font-medium">Price range
+              <select name="priceRange" class="input mt-1.5">
+                <option value="">Select price range (optional)</option>
+                <option value="$">$ (Inexpensive / Budget-friendly)</option>
+                <option value="$$">$$ (Moderate / Standard)</option>
+                <option value="$$$">$$$ (Upscale / Premium)</option>
+                <option value="$$$$">$$$$ (High-end / Specialized)</option>
+              </select>
+            </label>
+          </div>
+        </div>
+
+        <hr style="border-color:var(--border)" />
+
+        <!-- Faith Affiliation & Denomination -->
+        <div>
+          <h2 class="text-base font-bold">Faith affiliation &amp; denomination</h2>
+          <p class="mt-0.5 text-xs" style="color:var(--text-soft)">Optional. Helps community members discover faith-aligned businesses and ministries.</p>
+
+          <div class="mt-3 grid gap-4 sm:grid-cols-2">
+            <label class="text-sm font-medium">Denomination / affiliation <span class="font-normal" style="color:var(--text-mute)">(optional)</span>
+              <select name="denominations" id="denomination-select" class="input mt-1.5">
+                <option value="">Select denomination / affiliation (optional)…</option>
+                <option value="non-denominational">Non-Denominational</option>
+                {sortedDenominations.map((d) => <option value={d.slug}>{d.name}</option>)}
+                <option value="other">Other (specify custom denomination below)</option>
+              </select>
+            </label>
+
+            <label class="text-sm font-medium" id="custom-denom-label">Custom denomination name
+              <input
+                name="customDenomination"
+                id="custom-denom-input"
+                class="input mt-1.5"
+                placeholder="e.g. Calvary Chapel, Vineyard, Independent Baptist..."
+                maxlength="180"
+              />
+            </label>
+          </div>
+
+          <label class="mt-3 flex items-center gap-2 text-xs font-semibold cursor-pointer">
+            <input type="checkbox" name="showDenomination" value="1" checked class="h-4 w-4 accent-[var(--accent)]" />
+            Display faith affiliation publicly on listing
+          </label>
+          <p class="mt-0.5 text-[11px]" style="color:var(--text-mute)">When unchecked, your denomination is stored privately and will not appear on your public listing.</p>
+
+          <label class="mt-4 block text-sm font-medium">Statement of faith <span style="color:var(--text-mute)">(optional, displayed on your profile)</span>
+            <textarea name="statementOfFaith" rows="3" maxlength="8000" class="input mt-1.5" placeholder="Brief statement of faith, mission, or Christian core values (optional)..."></textarea>
           </label>
         </div>
-        <label class="block text-sm font-medium">Tagline
-          <input name="tagline" maxlength="280" class="input mt-1.5" placeholder="One sentence that makes people smile" />
-        </label>
-        <label class="block text-sm font-medium">Description
-          <textarea name="description" rows="4" maxlength="8000" class="input mt-1.5" placeholder="What you do, who you serve, and what makes you distinct…"></textarea>
-        </label>
-        <div class="grid gap-4 sm:grid-cols-3">
-          <label class="text-sm font-medium">Industry
-            <select name="industries" class="input mt-1.5"><option value="">Select…</option>{INDUSTRIES.map((i) => <option value={i.slug}>{i.name}</option>)}</select>
-          </label>
-          <label class="text-sm font-medium">Denomination / affiliation
-            <select name="denominations" class="input mt-1.5"><option value="">Select…</option>{DENOMINATIONS.map((d) => <option value={d.slug}>{d.name}</option>)}</select>
-          </label>
-          <label class="text-sm font-medium">Price range
-            <select name="priceRange" class="input mt-1.5"><option value="">—</option><option>$</option><option>$$</option><option>$$$</option><option>$$$$</option></select>
-          </label>
+
+        <hr style="border-color:var(--border)" />
+
+        <!-- Location & Contact with Privacy Controls -->
+        <div>
+          <div class="flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <h2 class="text-base font-bold">Location, contact &amp; privacy preferences</h2>
+              <p class="mt-0.5 text-xs" style="color:var(--text-soft)">Choose exactly which contact details appear publicly on your listing profile.</p>
+            </div>
+          </div>
+
+          <div class="card mt-3 p-3.5 text-xs leading-relaxed" style="background:var(--surface-2);color:var(--text-soft)">
+            <strong>Privacy Guarantee:</strong> Information kept private is used solely for account administration and verification. Private fields are never exposed in search results, cards, page metadata, or public APIs.
+          </div>
+
+          <!-- Physical Location -->
+          <div class="mt-4 space-y-2">
+            <div class="grid gap-4 sm:grid-cols-3">
+              <label class="text-sm font-medium">City
+                <input name="city" maxlength="120" class="input mt-1.5" placeholder="Enter city" />
+              </label>
+              <label class="text-sm font-medium">State / region
+                <input name="region" maxlength="120" class="input mt-1.5" placeholder="Enter state or region" />
+              </label>
+              <label class="text-sm font-medium">ZIP / Postal code
+                <input name="postalCode" maxlength="24" class="input mt-1.5" placeholder="Enter postal code" />
+              </label>
+            </div>
+
+            <label class="flex items-center gap-2 text-xs font-semibold cursor-pointer pt-1">
+              <input type="checkbox" name="showAddress" value="1" class="h-4 w-4 accent-[var(--accent)]" />
+              Display postal code / full address publicly on listing
+            </label>
+            <p class="text-[11px]" style="color:var(--text-mute)">When unchecked, only your general city and state are displayed; specific postal codes remain private.</p>
+
+            <label class="flex items-center gap-2 text-sm pt-2">
+              <input type="checkbox" name="isOnlineOnly" value="1" class="h-4 w-4 accent-[var(--accent)]" />
+              This is an online-only listing (serves nationwide, no physical storefront)
+            </label>
+          </div>
+
+          <!-- Website -->
+          <div class="mt-5 space-y-1.5">
+            <label class="block text-sm font-medium">Website URL
+              <input name="website" type="url" class="input mt-1.5" placeholder="https://yourbusiness.com" />
+            </label>
+            <label class="flex items-center gap-2 text-xs font-semibold cursor-pointer">
+              <input type="checkbox" name="showWebsite" value="1" class="h-4 w-4 accent-[var(--accent)]" />
+              Display website publicly on listing
+            </label>
+            <p class="text-[11px]" style="color:var(--text-mute)">When checked, a direct "Website" link will appear on your public profile.</p>
+          </div>
+
+          <!-- Phone Number -->
+          <div class="mt-5 space-y-1.5">
+            <label class="block text-sm font-medium">Phone number
+              <input name="phone" class="input mt-1.5" placeholder="Enter phone number" />
+            </label>
+            <label class="flex items-center gap-2 text-xs font-semibold cursor-pointer">
+              <input type="checkbox" name="showPhone" value="1" class="h-4 w-4 accent-[var(--accent)]" />
+              Display phone number publicly on listing
+            </label>
+            <p class="text-[11px]" style="color:var(--text-mute)">When unchecked, phone number is stored for verification only and not shown to the public.</p>
+          </div>
+
+          <!-- Contact Email -->
+          <div class="mt-5 space-y-1.5">
+            <label class="block text-sm font-medium">Contact email
+              <input
+                name="email"
+                type="email"
+                class="input mt-1.5"
+                placeholder="contact@yourbusiness.com"
+                value={user?.email ?? ''}
+              />
+            </label>
+            {user?.email && (
+              <p class="text-xs" style="color:var(--text-soft)">
+                Account email: <strong>{user.email}</strong>. Pre-filled for your convenience; feel free to change it to your organization's inquiry address.
+              </p>
+            )}
+            <label class="flex items-center gap-2 text-xs font-semibold cursor-pointer pt-1">
+              <input type="checkbox" name="showEmail" value="1" class="h-4 w-4 accent-[var(--accent)]" />
+              Display email address publicly on listing
+            </label>
+            <p class="text-[11px]" style="color:var(--text-mute)">When unchecked, your email is kept strictly private. Prospective clients can still reach you securely using our on-site inquiry form without seeing your email address.</p>
+          </div>
         </div>
-        <div class="grid gap-4 sm:grid-cols-3">
-          <label class="text-sm font-medium">City<input name="city" maxlength="120" class="input mt-1.5" placeholder="Dallas" /></label>
-          <label class="text-sm font-medium">State / region<input name="region" maxlength="120" class="input mt-1.5" placeholder="TX" /></label>
-          <label class="text-sm font-medium">ZIP<input name="postalCode" maxlength="24" class="input mt-1.5" placeholder="75201" /></label>
-        </div>
-        <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="isOnlineOnly" value="1" class="h-4 w-4 accent-[var(--accent)]" /> This is an online-only listing</label>
-        <div class="grid gap-4 sm:grid-cols-3">
-          <label class="text-sm font-medium">Website<input name="website" type="url" class="input mt-1.5" placeholder="https://…" /></label>
-          <label class="text-sm font-medium">Phone<input name="phone" class="input mt-1.5" placeholder="(555) 123-4567" /></label>
-          <label class="text-sm font-medium">Contact email<input name="email" type="email" class="input mt-1.5" placeholder="hello@example.com" /></label>
-        </div>
-        <label class="block text-sm font-medium">Hashtags <span style="color:var(--text-mute)">(comma-separated, e.g. Baptist, FamilyOwned)</span>
-          <input name="hashtags" class="input mt-1.5" placeholder="Baptist, FamilyOwned, Dallas" />
+
+        <hr style="border-color:var(--border)" />
+
+        <!-- Hashtags -->
+        <label class="block text-sm font-medium">Hashtags <span style="color:var(--text-mute)">(comma-separated)</span>
+          <input name="hashtags" class="input mt-1.5" placeholder="e.g. ChristianOwned, FamilyOwned, VeteranOwned" />
         </label>
-        <label class="block text-sm font-medium">Statement of faith <span style="color:var(--text-mute)">(optional, shown on your profile)</span>
-          <textarea name="statementOfFaith" rows="3" maxlength="8000" class="input mt-1.5" placeholder="What your organization believes…"></textarea>
-        </label>
+
+        <!-- Agreement -->
         <label class="flex items-start gap-2 text-[13px]" style="color:var(--text-soft)">
           <input type="checkbox" required class="mt-1 h-4 w-4 accent-[var(--accent)]" />
-          I affirm this submission is accurate, I have the right to list it, and I agree to the <a href="/terms" class="underline">Terms</a> and <a href="/guidelines" class="underline">Community Guidelines</a>. I understand directory inclusion is not denominational endorsement.
+          I affirm this information is accurate, I am authorized to list this business, and I agree to the <a href="/terms" class="underline">Terms of Service</a> and <a href="/guidelines" class="underline">Community Guidelines</a>.
         </label>
-        <button class="btn btn-primary w-full !py-3" type="submit" data-animate="cta">Submit listing for review</button>
+
+        <button class="btn btn-primary w-full !py-3" type="submit" data-animate="cta">Publish business listing</button>
       </form>
     )}
   </div>

@@ -10,16 +10,16 @@ const gate = requireAdminPage(Astro);
 if (gate) return gate;
 const user = Astro.locals.user!;
 
-const statusParam = Astro.url.searchParams.get('status') ?? 'pending_review';
+const statusParam = Astro.url.searchParams.get('status') ?? 'published';
 const TABS = [
-  ['pending_review', 'Pending review'],
+  ['published', 'Published'],
+  ['draft', 'Drafts'],
   ['changes_requested', 'Changes requested'],
   ['rejected', 'Rejected'],
-  ['published', 'Approved'],
-  ['draft', 'Drafts'],
+  ['pending_review', 'Pending review'],
   ['archived', 'Archived'],
 ] as const;
-const activeStatus = TABS.some(([v]) => v === statusParam) ? statusParam : 'pending_review';
+const activeStatus = TABS.some(([v]) => v === statusParam) ? statusParam : 'published';
 
 let rows: Array<{
   id: string; slug: string; name: string; typeSlug: string; status: string;

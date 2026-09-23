@@ -1,23 +1,61 @@
 ---
 import DashboardLayout from '@/layouts/DashboardLayout.astro';
 import { requireAdminPage } from '@/lib/guards';
-const user = Astro.locals.user;
-const searches = [['church near me', '12,480'], ['christian counselor', '8,204'], ['bakery #baptist', '5,911'], ['plumber dallas', '4,377'], ['worship night', '3,902']];
+import { getDb, hasDatabase } from '@/db/client';
+import { listings, reviews, users, listingClaims } from '@/db/schema';
+import { sql } from 'drizzle-orm';
+
 const __adminGate = requireAdminPage(Astro);
 if (__adminGate) return __adminGate;
+const user = Astro.locals.user;
 
+let totalListings = 0;
+let totalReviews = 0;
+let totalUsers = 0;
+let totalClaims = 0;
+
+if (hasDatabase()) {
+  const db = getDb();
+  if (db) {
+    try {
+      const [lCount, rCount, uCount, cCount] = await Promise.all([
+        db.select({ count: sql<number>`count(*)::int` }).from(listings),
+        db.select({ count: sql<number>`count(*)::int` }).from(reviews),
+        db.select({ count: sql<number>`count(*)::int` }).from(users),
+        db.select({ count: sql<number>`count(*)::int` }).from(listingClaims),
+      ]);
+      totalListings = lCount[0]?.count ?? 0;
+      totalReviews = rCount[0]?.count ?? 0;
+      totalUsers = uCount[0]?.count ?? 0;
+      totalClaims = cCount[0]?.count ?? 0;
+    } catch (err) {
+      console.error('[admin/analytics] query failed:', err);
+    }
+  }
+}
 ---
 <DashboardLayout user={user} admin active="analytics" seo={{ title: 'Admin: Analytics', description: 'Platform analytics.', path: '/admin/analytics', noindex: true }}>
   <h1 class="text-2xl font-extrabold">Platform analytics</h1>
-  <div class="card p-3 text-[13px] mt-3" style="border-left:4px solid var(--accent)" role="note"><strong>Preview data.</strong> This section shows illustrative sample content while the platform is in preview; live data replaces it as activity grows.</div>
+  <p class="mt-1 text-sm" style="color:var(--text-soft)">Live database records and platform usage metrics.</p>
+
   <div class="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-    {[['Searches (30d)', '184k'], ['Listing views', '96k'], ['New listings', '312'], ['Reviews submitted', '1,204']].map(([l, v]) => (
-      <div class="card p-4"><p class="text-[13px]" style="color:var(--text-mute)">{l}</p><p class="text-2xl font-extrabold">{v}</p></div>
+    {[
+      ['Total listings', totalListings],
+      ['Submitted reviews', totalReviews],
+      ['Registered members', totalUsers],
+      ['Ownership claims', totalClaims],
+    ].map(([l, v]) => (
+      <div class="card p-4">
+        <p class="text-[13px]" style="color:var(--text-mute)">{l}</p>
+        <p class="text-2xl font-extrabold">{v}</p>
+      </div>
     ))}
   </div>
-  <div class="card mt-4 p-6">
-    <h2 class="font-extrabold">Top search terms</h2>
-    <ul class="mt-3 space-y-2 text-sm">{searches.map(([t, n]) => <li class="flex justify-between"><span>{t}</span><strong>{n}</strong></li>)}</ul>
-    <p class="mt-3 text-[13px]" style="color:var(--text-mute)">Zero-result terms feed the taxonomy + content backlog. Full event-level analytics ship in Phase 2.</p>
+
+  <div class="card mt-6 p-6">
+    <h2 class="font-extrabold">Search & discovery insights</h2>
+    <p class="mt-2 text-sm leading-relaxed" style="color:var(--text-soft)">
+      Search telemetry is aggregated as visitors explore categories, denominations, and regional directories. Search queries yielding zero matches are monitored to inform category expansion.
+    </p>
   </div>
 </DashboardLayout>

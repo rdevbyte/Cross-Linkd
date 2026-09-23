@@ -13,7 +13,7 @@ const faqs = [
 <BaseLayout user={user} seo={{ title: 'Help Center — CrossLinkd', description: 'Answers about adding listings, claiming profiles, verification, hashtags, and more.', path: '/help' }}>
   <div class="mx-auto max-w-3xl px-4 py-12">
     <h1 class="text-3xl font-extrabold">Help center</h1>
-    <p class="section-sub">Quick answers. Still stuck? <a href="/contact" class="underline">Contact us</a>.</p>
+    <p class="section-sub">Quick answers. Still stuck? <a href="/contact" class="underline">Contact us</a> · <a href="/feedback" class="underline">Suggest an improvement</a>.</p>
     <div class="mt-6 space-y-3">
       {faqs.map(([q, a]) => (
         <details class="card p-5"><summary class="cursor-pointer font-bold">{q}</summary><p class="mt-2 text-sm" style="color:var(--text-soft)">{a}</p></details>

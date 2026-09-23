@@ -1,36 +1,98 @@
 ---
 import DashboardLayout from '@/layouts/DashboardLayout.astro';
 import { requireAdminPage } from '@/lib/guards';
-const user = Astro.locals.user;
-const queue = [
-  ['⏳ Pending listings', '14', '/admin/listings'],
-  ['Open claims', '6', '/admin/claims'],
-  ['Verifications', '9', '/admin/verifications'],
-  ['Flagged reviews', '3', '/admin/reviews'],
-  ['Open reports', '5', '/admin/reports'],
-  ['Events to moderate', '4', '/admin/listings'],
-];
-const activity = [
-  'Moderator approved “Psalm 23 Media” verification — 12 min ago',
-  'New claim filed for “Living Waters Worship Collective” — 40 min ago',
-  'Review flagged on “Cornerstone Plumbing Co.” — 2h ago',
-  'Duplicate detected: “Grace & Grain” vs “Grace and Grain Bakery” — 3h ago',
-  'Taxonomy import completed: 212 professions — yesterday',
-];
+import { getDb, hasDatabase } from '@/db/client';
+import { listings, reviews, listingClaims, reports, auditLogs } from '@/db/schema';
+import { and, eq, isNull, desc, sql } from 'drizzle-orm';
+
 const __adminGate = requireAdminPage(Astro);
 if (__adminGate) return __adminGate;
+const user = Astro.locals.user;
 
+let publishedListings = 0;
+let openClaims = 0;
+let pendingReviews = 0;
+let openReports = 0;
+let recentActivity: Array<{ action: string; targetType: string | null; createdAt: Date }> = [];
+
+if (hasDatabase()) {
+  const db = getDb();
+  if (db) {
+    try {
+      const [pubListings] = await db
+        .select({ count: sql<number>`count(*)` })
+        .from(listings)
+        .where(and(eq(listings.status, 'published'), isNull(listings.deletedAt)));
+      publishedListings = Number(pubListings?.count ?? 0);
+
+      const [pReviews] = await db
+        .select({ count: sql<number>`count(*)` })
+        .from(reviews)
+        .where(and(eq(reviews.status, 'pending'), isNull(reviews.deletedAt)));
+      pendingReviews = Number(pReviews?.count ?? 0);
+
+      const [oClaims] = await db
+        .select({ count: sql<number>`count(*)` })
+        .from(listingClaims)
+        .where(eq(listingClaims.status, 'pending'));
+      openClaims = Number(oClaims?.count ?? 0);
+
+      const [oReports] = await db
+        .select({ count: sql<number>`count(*)` })
+        .from(reports)
+        .where(eq(reports.status, 'open'));
+      openReports = Number(oReports?.count ?? 0);
+
+      const logs = await db
+        .select({
+          action: auditLogs.action,
+          targetType: auditLogs.targetType,
+          createdAt: auditLogs.createdAt,
+        })
+        .from(auditLogs)
+        .orderBy(desc(auditLogs.createdAt))
+        .limit(6);
+      recentActivity = logs;
+    } catch (err) {
+      console.error('[admin/index] metrics error:', err);
+    }
+  }
+}
+
+const queue = [
+  ['Published listings', publishedListings.toString(), '/admin/listings?status=published'],
+  ['Open reports', openReports.toString(), '/admin/reports'],
+  ['Open claims', openClaims.toString(), '/admin/claims'],
+  ['Pending reviews', pendingReviews.toString(), '/admin/reviews'],
+];
 ---
-<DashboardLayout user={user} admin active="overview" seo={{ title: 'Admin — CrossLinkd', description: 'Admin dashboard.', path: '/admin', noindex: true }}>
-  {!user && <div class="card mb-4 border-l-4 p-4" style="border-left-color:var(--accent)"><p class="text-sm"><strong>Demo admin view.</strong> <a href="/auth/signin?next=/admin" class="font-bold underline">Sign in</a> as an admin in production (role-gated).</p></div>}
-  <h1 class="text-2xl font-extrabold">Moderation overview</h1>
+<DashboardLayout user={user} admin active="overview" seo={{ title: 'Admin — CrossLinkd', description: 'Admin moderation console.', path: '/admin', noindex: true }}>
+  <div class="flex flex-wrap items-center justify-between gap-3">
+    <div>
+      <h1 class="text-2xl font-extrabold">Moderation overview</h1>
+      <p class="text-sm" style="color:var(--text-soft)">Live counts from the directory queue.</p>
+    </div>
+  </div>
+
   <div class="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
     {queue.map(([label, n, href]) => (
-      <a href={href} class="card card-hover p-4"><p class="text-[13px]" style="color:var(--text-mute)">{label}</p><p class="text-3xl font-extrabold">{n}</p></a>
+      <a href={href} class="card card-hover p-4">
+        <p class="text-[13px]" style="color:var(--text-mute)">{label}</p>
+        <p class="mt-1 text-3xl font-extrabold">{n}</p>
+      </a>
     ))}
   </div>
-  <div class="card mt-4 p-5">
+
+  <div class="card mt-6 p-5">
     <h2 class="font-extrabold">Recent activity</h2>
-    <ul class="mt-2 space-y-1.5 text-sm" style="color:var(--text-soft)">{activity.map((a) => <li>• {a}</li>)}</ul>
+    {recentActivity.length === 0 ? (
+      <p class="mt-2 text-sm" style="color:var(--text-mute)">No administrative actions logged yet.</p>
+    ) : (
+      <ul class="mt-2 space-y-1.5 text-sm" style="color:var(--text-soft)">
+        {recentActivity.map((a) => (
+          <li>• {a.action} on {a.targetType ?? 'record'} ({new Date(a.createdAt).toLocaleDateString()})</li>
+        ))}
+      </ul>
+    )}
   </div>
 </DashboardLayout>

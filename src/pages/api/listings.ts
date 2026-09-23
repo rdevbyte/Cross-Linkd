@@ -1,10 +1,9 @@
 import type { APIRoute } from 'astro';
-import { getDb, hasDatabase } from '@/db/client';
-import { listings } from '@/db/schema';
+import { hasDatabase } from '@/db/client';
 import { listingInputSchema } from '@/lib/validation';
-import { slugify } from '@/lib/slug';
+import { saveListing } from '@/lib/submissions';
 
-/** POST /api/listings — create a listing (pending_review). Rate-limited in prod via Vercel Firewall rules. */
+/** POST /api/listings — create a listing (published immediately). */
 export const POST: APIRoute = async ({ request, locals, redirect }) => {
   const form = await request.formData();
   const get = (k: string) => String(form.get(k) ?? '').trim();
@@ -17,6 +16,12 @@ export const POST: APIRoute = async ({ request, locals, redirect }) => {
     website: get('website'),
     phone: get('phone'),
     email: get('email'),
+    showEmail: form.get('showEmail') === '1',
+    showPhone: form.get('showPhone') === '1',
+    showWebsite: form.get('showWebsite') === '1',
+    showAddress: form.get('showAddress') === '1',
+    showDenomination: form.get('showDenomination') === '1',
+    customDenomination: get('customDenomination') || undefined,
     city: get('city'),
     region: get('region'),
     postalCode: get('postalCode'),
@@ -33,30 +38,19 @@ export const POST: APIRoute = async ({ request, locals, redirect }) => {
   }
   const d = parsed.data;
 
+  let createdSlug = '';
   if (hasDatabase()) {
     try {
-      const db = getDb()!;
-      await db.insert(listings).values({
-        slug: `${slugify(d.name)}-${Date.now().toString(36)}`,
-        name: d.name,
-        typeSlug: d.typeSlug,
-        tagline: d.tagline || null,
-        description: d.description || null,
-        website: d.website || null,
-        phone: d.phone || null,
-        email: d.email || null,
-        status: 'pending_review',
-        isOnlineOnly: d.isOnlineOnly,
-        priceRange: d.priceRange || null,
-        statementOfFaith: d.statementOfFaith || null,
-        ownerId: locals.user?.id ?? null,
-      });
+      const ownerId = locals.user?.id ?? '00000000-0000-0000-0000-000000000000';
+      const result = await saveListing(ownerId, d, { action: 'publish' });
+      createdSlug = result.slug;
     } catch (err) {
       console.error('[api/listings] insert failed:', err);
       return redirect(`/add-listing?error=${encodeURIComponent('Something went wrong saving your listing. Please try again.')}`, 303);
     }
   } else {
-    console.log('[demo] listing submitted:', d.name, `by ${locals.user?.email ?? 'guest'}`);
+    console.log('[demo] listing published:', d.name, `by ${locals.user?.email ?? 'guest'}`);
   }
-  return redirect('/add-listing?success=1', 303);
+
+  return redirect(`/add-listing?success=1${createdSlug ? `&slug=${encodeURIComponent(createdSlug)}` : ''}`, 303);
 };

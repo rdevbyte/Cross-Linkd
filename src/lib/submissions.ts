@@ -1,12 +1,11 @@
 /**
- * Business submission workflow (database-backed).
- * Statuses: draft → pending_review → published | rejected | changes_requested
- * Owners manage only their own rows; publication is admin-only.
+ * Business listing workflow (database-backed).
+ * Listings are published immediately upon creation.
+ * Owners manage and edit their own listings.
  */
-import { and, eq, ilike, ne, sql } from 'drizzle-orm';
+import { and, eq, ilike, ne, sql, inArray } from 'drizzle-orm';
 import { getDb } from '@/db/client';
 import { listings, listingLocations, listingIndustries, listingDenominations, industries, denominations } from '@/db/schema';
-import { inArray } from 'drizzle-orm';
 import type { SampleListing } from '@/data/listings';
 import { slugify } from '@/lib/slug';
 
@@ -41,25 +40,48 @@ export async function uniqueSlug(name: string): Promise<string> {
 }
 
 export interface ListingFormValues {
-  name: string; typeSlug: string; tagline?: string; description?: string;
-  website?: string; phone?: string; email?: string;
-  city?: string; region?: string; postalCode?: string;
-  isOnlineOnly?: boolean; priceRange?: string;
-  industries?: string[]; professions?: string[]; denominations?: string[]; hashtags?: string[];
-  languages?: string[]; accessibility?: string[]; statementOfFaith?: string;
+  name: string;
+  typeSlug: string;
+  tagline?: string;
+  description?: string;
+  website?: string;
+  phone?: string;
+  email?: string;
+  showEmail?: boolean;
+  showPhone?: boolean;
+  showWebsite?: boolean;
+  showAddress?: boolean;
+  showDenomination?: boolean;
+  customDenomination?: string;
+  city?: string;
+  region?: string;
+  postalCode?: string;
+  isOnlineOnly?: boolean;
+  priceRange?: string;
+  industries?: string[];
+  professions?: string[];
+  denominations?: string[];
+  hashtags?: string[];
+  languages?: string[];
+  accessibility?: string[];
+  statementOfFaith?: string;
 }
 
 /** Creates or updates the listing row plus its primary location and taxonomy links. */
 export async function saveListing(
   userId: string,
   values: ListingFormValues,
-  opts: { listingId?: string; action: 'draft' | 'submit' | 'resubmit'; currentStatus?: typeof listings.$inferInsert['status'] },
+  opts: {
+    listingId?: string;
+    action?: 'publish' | 'draft' | 'save' | 'submit' | 'resubmit';
+    currentStatus?: typeof listings.$inferInsert['status'];
+  } = {},
 ): Promise<{ id: string; slug: string; status: string }> {
   const db = getDb();
   if (!db) throw new Error('Database is not configured.');
-  const status =
-    opts.action === 'draft' ? (opts.currentStatus ?? 'draft') :
-    opts.action === 'resubmit' ? 'pending_review' : 'pending_review';
+
+  // Unless explicitly saved as a draft, all created/edited listings are published immediately
+  const status = opts.action === 'draft' ? (opts.currentStatus ?? 'draft') : 'published';
 
   const base: Partial<typeof listings.$inferInsert> = {
     name: values.name.trim(),
@@ -69,19 +91,31 @@ export async function saveListing(
     website: values.website || null,
     phone: values.phone?.trim() || null,
     email: values.email?.trim() || null,
+    showEmail: values.showEmail ?? false,
+    showPhone: values.showPhone ?? false,
+    showWebsite: values.showWebsite ?? false,
+    showAddress: values.showAddress ?? false,
+    showDenomination: values.showDenomination ?? true,
+    customDenomination: values.customDenomination?.trim() || null,
     isOnlineOnly: values.isOnlineOnly ?? false,
     priceRange: values.priceRange || null,
     statementOfFaith: values.statementOfFaith?.trim() || null,
     languages: values.languages?.length ? values.languages : ['English'],
+    status,
+    publishedAt: status === 'published' ? new Date() : null,
     updatedAt: new Date(),
   };
 
   let listingId = opts.listingId;
   let slug: string;
+
   if (listingId) {
-    const patch: Partial<typeof listings.$inferInsert> =
-      status === 'draft' && opts.currentStatus === 'draft' ? base : { ...base, status };
-    const [row] = await db.update(listings).set(patch).where(eq(listings.id, listingId)).returning({ id: listings.id, slug: listings.slug });
+    const patch: Partial<typeof listings.$inferInsert> = base;
+    const [row] = await db
+      .update(listings)
+      .set(patch)
+      .where(eq(listings.id, listingId))
+      .returning({ id: listings.id, slug: listings.slug });
     if (!row) throw new Error('Listing not found.');
     slug = row.slug;
     await db.delete(listingLocations).where(eq(listingLocations.listingId, listingId));
@@ -111,6 +145,7 @@ export async function saveListing(
       isPrimary: true,
     });
   }
+
   // Taxonomy child tables key on seeded UUIDs — resolve slugs, ignore unknowns.
   const industrySlugs = [...new Set([...(values.industries ?? []), ...(values.professions ?? [])])].slice(0, 12);
   if (industrySlugs.length) {
@@ -119,46 +154,50 @@ export async function saveListing(
       await db.insert(listingIndustries).values(known.map((k) => ({ listingId: listingId!, industryId: k.id })));
     }
   }
+
   if (values.denominations?.length) {
     const known = await db.select({ id: denominations.id, slug: denominations.slug }).from(denominations).where(inArray(denominations.slug, values.denominations.slice(0, 8)));
     if (known.length) {
       await db.insert(listingDenominations).values(known.map((k) => ({ listingId: listingId!, denominationId: k.id })));
     }
   }
+
   return { id: listingId!, slug, status };
 }
 
 /** Owner-visible status list. */
-export const OWNER_STATUSES = ['draft', 'pending_review', 'published', 'changes_requested', 'rejected'] as const;
+export const OWNER_STATUSES = ['published', 'draft', 'archived'] as const;
 export type OwnerStatus = (typeof OWNER_STATUSES)[number];
 
 export const STATUS_LABEL: Record<string, string> = {
+  published: 'Published',
   draft: 'Draft',
-  pending_review: 'Pending Review',
-  published: 'Approved',
-  changes_requested: 'Changes Requested',
-  rejected: 'Rejected',
+  pending_review: 'Published',
   suspended: 'Suspended',
   archived: 'Archived',
+  rejected: 'Rejected',
+  changes_requested: 'Changes Requested',
 };
 
 export const STATUS_CHIP: Record<string, string> = {
-  draft: '',
-  pending_review: 'chip-active',
   published: 'badge-verify',
-  changes_requested: 'chip-active',
-  rejected: 'chip',
+  draft: '',
+  pending_review: 'badge-verify',
   suspended: 'chip',
   archived: 'chip',
+  rejected: 'chip',
+  changes_requested: 'chip-active',
 };
 
 /** DB listing row (+primary location) → the SampleListing shape the UI renders. */
 export function mapListingRow(
   row: ListingRow,
   loc: { city: string | null; region: string | null; postalCode: string | null; latitude: string | null; longitude: string | null } | undefined,
+  denominationsList: string[] = [],
 ): SampleListing {
   let hue = 0;
   for (const ch of row.slug) hue = (hue * 31 + ch.charCodeAt(0)) % 360;
+
   return {
     id: `db-${row.id}`,
     slug: row.slug,
@@ -168,17 +207,25 @@ export function mapListingRow(
     description: row.description ?? '',
     city: loc?.city ?? '—',
     region: loc?.region ?? '—',
-    postalCode: loc?.postalCode ?? undefined,
+    // Only expose postal code if showAddress is enabled
+    postalCode: row.showAddress ? (loc?.postalCode ?? undefined) : undefined,
     lat: loc?.latitude ? Number(loc.latitude) : undefined,
     lng: loc?.longitude ? Number(loc.longitude) : undefined,
     isOnlineOnly: row.isOnlineOnly,
-    phone: row.phone ?? undefined,
-    email: row.email ?? undefined,
-    website: row.website ?? undefined,
+    // Strictly respect privacy settings for public display
+    phone: row.showPhone ? (row.phone ?? undefined) : undefined,
+    email: row.showEmail ? (row.email ?? undefined) : undefined,
+    website: row.showWebsite ? (row.website ?? undefined) : undefined,
+    showEmail: row.showEmail,
+    showPhone: row.showPhone,
+    showWebsite: row.showWebsite,
+    showAddress: row.showAddress,
+    showDenomination: row.showDenomination,
+    customDenomination: row.showDenomination ? (row.customDenomination ?? undefined) : undefined,
     priceRange: row.priceRange ?? undefined,
     industries: [],
     professions: [],
-    denominations: [],
+    denominations: row.showDenomination ? denominationsList : [],
     hashtags: [],
     services: [],
     languages: row.languages ?? ['English'],

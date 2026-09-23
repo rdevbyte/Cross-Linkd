@@ -1,34 +1,93 @@
 ---
 import DashboardLayout from '@/layouts/DashboardLayout.astro';
 import { requireUserPage } from '@/lib/guards';
-const user = Astro.locals.user;
-const reviews = [
-  { name: 'Sarah M.', listing: 'Grace & Grain Bakery', rating: 5, body: 'Warm, professional, and clearly faith-driven.', when: '2 weeks ago', responded: true },
-  { name: 'James T.', listing: 'Grace & Grain Bakery', rating: 5, body: 'They prayed with us before starting and the quality was excellent.', when: '1 month ago', responded: false },
-  { name: 'Ruth K.', listing: 'Grace & Grain Bakery', rating: 4, body: 'Very busy (for good reason!). Book ahead.', when: '2 months ago', responded: false },
-];
+import { getDb, hasDatabase } from '@/db/client';
+import { reviews, listings } from '@/db/schema';
+import { and, eq, isNull, desc } from 'drizzle-orm';
+
 const __userGate = requireUserPage(Astro);
 if (__userGate) return __userGate;
+const user = Astro.locals.user!;
 
+let userReviews: Array<{
+  id: string;
+  name: string;
+  listingName: string;
+  rating: number;
+  body: string;
+  when: string;
+  responded: boolean;
+  ownerResponse: string | null;
+}> = [];
+
+if (hasDatabase()) {
+  const db = getDb();
+  if (db) {
+    try {
+      const rows = await db
+        .select({
+          id: reviews.id,
+          rating: reviews.rating,
+          body: reviews.body,
+          createdAt: reviews.createdAt,
+          ownerResponse: reviews.ownerResponse,
+          listingName: listings.name,
+        })
+        .from(reviews)
+        .innerJoin(listings, eq(reviews.listingId, listings.id))
+        .where(and(eq(listings.ownerId, user.id), eq(reviews.status, 'published'), isNull(reviews.deletedAt)))
+        .orderBy(desc(reviews.createdAt));
+
+      userReviews = rows.map((r) => ({
+        id: r.id,
+        name: 'Verified Reviewer',
+        listingName: r.listingName,
+        rating: r.rating,
+        body: r.body ?? '',
+        when: new Date(r.createdAt).toLocaleDateString(),
+        responded: Boolean(r.ownerResponse),
+        ownerResponse: r.ownerResponse,
+      }));
+    } catch (err) {
+      console.error('[dashboard/reviews] query failed:', err);
+    }
+  }
+}
 ---
 <DashboardLayout user={user} active="reviews" seo={{ title: 'Reviews — Dashboard', description: 'Respond to reviews.', path: '/dashboard/reviews', noindex: true }}>
   <h1 class="text-2xl font-extrabold">Reviews & recommendations</h1>
-  <div class="card p-3 text-[13px] mt-3" style="border-left:4px solid var(--accent)" role="note"><strong>Preview data.</strong> This section shows illustrative sample content while the platform is in preview; live data replaces it as activity grows.</div>
-  <p class="mt-1 text-sm" style="color:var(--text-soft)">Respond with grace — one response per review. Flag concerns via <a href="/contact?topic=report" class="underline">Report</a>.</p>
-  <div class="mt-4 space-y-3">
-    {reviews.map((r) => (
-      <div class="card p-5">
-        <div class="flex items-center justify-between"><p class="font-bold">{r.name} <span class="font-normal" style="color:var(--text-mute)">on {r.listing}</span></p><span class="text-sm">★ {r.rating}.0 • {r.when}</span></div>
-        <p class="mt-1 text-sm" style="color:var(--text-soft)">{r.body}</p>
-        {r.responded ? (
-          <p class="mt-2 rounded-xl p-3 text-sm" style="background:var(--surface-2)"><strong>Your response:</strong> Thank you, Sarah! Soli Deo Gloria.</p>
-        ) : (
-          <form method="POST" action="/api/reviews/respond" class="mt-2 flex gap-2" onsubmit="event.preventDefault();alert('Response posted! (demo)')">
-            <input name="response" required class="input" placeholder="Write a gracious response…" aria-label="Response" />
-            <button class="btn btn-primary !py-2 !text-sm" type="submit">Respond</button>
-          </form>
-        )}
+  <p class="mt-1 text-sm" style="color:var(--text-soft)">Customer reviews for your listings. Respond with grace — one response per review.</p>
+
+  {userReviews.length === 0 ? (
+    <div class="card mt-6 p-8 text-center sm:p-12">
+      <div class="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl" style="background:var(--surface-2);color:var(--teal)">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
       </div>
-    ))}
-  </div>
+      <h2 class="mt-4 text-lg font-bold">No reviews received yet</h2>
+      <p class="mt-2 max-w-md mx-auto text-sm leading-relaxed" style="color:var(--text-soft)">
+        When customers review your published listings, their feedback will appear here so you can post a response.
+      </p>
+    </div>
+  ) : (
+    <div class="mt-4 space-y-3">
+      {userReviews.map((r) => (
+        <div class="card p-5">
+          <div class="flex items-center justify-between">
+            <p class="font-bold">{r.name} <span class="font-normal" style="color:var(--text-mute)">on {r.listingName}</span></p>
+            <span class="text-sm">★ {r.rating}.0 • {r.when}</span>
+          </div>
+          <p class="mt-1 text-sm" style="color:var(--text-soft)">{r.body}</p>
+          {r.responded ? (
+            <p class="mt-2 rounded-xl p-3 text-sm" style="background:var(--surface-2)"><strong>Your response:</strong> {r.ownerResponse}</p>
+          ) : (
+            <form method="POST" action="/api/reviews/respond" class="mt-2 flex gap-2">
+              <input type="hidden" name="reviewId" value={r.id} />
+              <input name="response" required class="input" placeholder="Write a response…" aria-label="Response" />
+              <button class="btn btn-primary !py-2 !text-sm" type="submit">Respond</button>
+            </form>
+          )}
+        </div>
+      ))}
+    </div>
+  )}
 </DashboardLayout>

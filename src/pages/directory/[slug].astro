@@ -258,7 +258,12 @@ const isPro = ['professional', 'counselor', 'contractor'].includes(listing.typeS
         <div class="card p-5">
           <h2 class="font-extrabold">Details</h2>
           <dl class="mt-3 space-y-2 text-sm">
-            <div><dt class="font-semibold" style="color:var(--text-mute)">Faith affiliation</dt><dd>{listing.denominations.map((d) => denominationBySlug(d)?.name ?? d).join(', ') || 'Not specified'}</dd></div>
+            {listing.showDenomination !== false && (listing.customDenomination || (listing.denominations && listing.denominations.length > 0)) && (
+              <div>
+                <dt class="font-semibold" style="color:var(--text-mute)">Faith affiliation</dt>
+                <dd>{listing.customDenomination || listing.denominations.map((d) => denominationBySlug(d)?.name ?? d).join(', ')}</dd>
+              </div>
+            )}
             <div><dt class="font-semibold" style="color:var(--text-mute)">Languages</dt><dd>{listing.languages.join(', ')}</dd></div>
             {listing.accessibility.length > 0 && <div><dt class="font-semibold" style="color:var(--text-mute)">Accessibility</dt><dd>{listing.accessibility.join(' • ')}</dd></div>}
             {listing.email && <div><dt class="font-semibold" style="color:var(--text-mute)">Email</dt><dd><a class="underline" href={`mailto:${listing.email}`}>{listing.email}</a></dd></div>}
