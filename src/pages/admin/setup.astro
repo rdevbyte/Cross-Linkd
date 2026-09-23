@@ -1,0 +1,74 @@
+---
+import BaseLayout from '@/layouts/BaseLayout.astro';
+import { sql } from 'drizzle-orm';
+import { getDb, hasDatabase } from '@/db/client';
+import { users } from '@/db/schema';
+import { requireUserPage } from '@/lib/guards';
+
+const gate = requireUserPage(Astro);
+if (gate) return gate;
+const user = Astro.locals.user!;
+
+// The page only renders when setup is actually possible.
+let enabled = false;
+let reason = '';
+if (!process.env.ADMIN_SETUP_KEY) reason = 'ADMIN_SETUP_KEY is not configured on this deployment, so setup is closed.';
+else if (!hasDatabase()) reason = 'Setup requires the production database.';
+else {
+  const db = getDb()!;
+  const admins = await db.select({ id: users.id }).from(users).where(sql`${users.role} = 'super_admin' and ${users.deletedAt} is null`).limit(1);
+  if (admins.length) reason = 'An administrator already exists — this one-time setup is closed.';
+  else enabled = true;
+}
+---
+<BaseLayout seo={{ title: 'Administrator setup — CrossLinkd', description: 'One-time administrator setup.', path: '/admin/setup', noindex: true }}>
+  <div class="mx-auto max-w-lg px-4 py-16">
+    <h1 class="text-2xl font-extrabold">Administrator setup</h1>
+    {enabled ? (
+      <>
+        <p class="mt-2 text-sm" style="color:var(--text-soft)">
+          This one-time flow promotes <strong>{user.email}</strong> to the first administrator.
+          It requires the deployment's <code class="rounded bg-[var(--surface-2)] px-1.5 py-0.5 text-[13px]">ADMIN_SETUP_KEY</code> and closes forever once an admin exists.
+        </p>
+        <form id="setup-form" class="card mt-5 space-y-4 p-5">
+          <label class="block text-sm font-semibold" for="setup-key">Setup key
+            <input id="setup-key" name="key" type="password" required autocomplete="off" class="input mt-1 w-full" placeholder="Value of ADMIN_SETUP_KEY" />
+          </label>
+          <p id="setup-status" class="hidden text-sm font-bold" role="alert"></p>
+          <button class="btn btn-primary w-full" type="submit">Promote my account to administrator</button>
+        </form>
+        <p class="mt-4 text-xs" style="color:var(--text-mute)">
+          Prefer the CLI? <code>npm run admin:promote -- you@example.com</code> does the same thing server-side.
+        </p>
+        <script>
+          const form = document.getElementById('setup-form');
+          const status = document.getElementById('setup-status');
+          form?.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const key = (document.getElementById('setup-key') as HTMLInputElement).value;
+            const btn = form.querySelector('button') as HTMLButtonElement;
+            btn.disabled = true;
+            try {
+              const res = await fetch('/api/admin/setup', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ key }) });
+              const json = await res.json().catch(() => ({ ok: false, error: 'Unexpected response.' }));
+              if (status) {
+                status.textContent = json.ok ? 'Promoted! Sign out and sign back in to activate administrator access.' : json.error ?? 'Setup failed.';
+                status.style.color = json.ok ? 'var(--teal)' : 'var(--accent)';
+                status.classList.remove('hidden');
+              }
+            } catch {
+              if (status) { status.textContent = 'Network error — try again.'; status.classList.remove('hidden'); }
+            } finally {
+              btn.disabled = false;
+            }
+          });
+        </script>
+      </>
+    ) : (
+      <div class="card mt-4 border-l-4 p-5" style="border-left-color:var(--accent)">
+        <p class="text-sm font-bold">Setup unavailable</p>
+        <p class="mt-1 text-sm" style="color:var(--text-soft)">{reason}</p>
+      </div>
+    )}
+  </div>
+</BaseLayout>

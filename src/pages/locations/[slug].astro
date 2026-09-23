@@ -1,0 +1,22 @@
+---
+import BaseLayout from '@/layouts/BaseLayout.astro';
+import ListingCard from '@/components/ListingCard.astro';
+import { getPublicListings } from '@/lib/publicListings';
+import { slugify } from '@/lib/slug';
+
+const { slug } = Astro.params;
+const matches = (await getPublicListings()).filter((l) => !l.isOnlineOnly && slugify(`${l.city}-${l.region}`) === slug);
+if (matches.length === 0) return Astro.redirect('/browse/locations', 302);
+const user = Astro.locals.user;
+const { city, region } = matches[0];
+---
+<BaseLayout user={user} seo={{ title: `Christian Businesses & Churches in ${city}, ${region}`, description: `Discover Christian-owned businesses, churches, ministries, and events in ${city}, ${region}.`, path: `/locations/${slug}` }}>
+  <div class="mx-auto max-w-7xl px-4 py-10">
+    <nav class="text-[13px]" style="color:var(--text-mute)"><a href="/browse/locations" class="hover:underline">Locations</a> / <span style="color:var(--text)">{city}, {region}</span></nav>
+    <h1 class="mt-2 text-3xl font-extrabold">{city}, {region}</h1>
+    <p class="section-sub">{matches.length} listing{matches.length === 1 ? '' : 's'} in this area.</p>
+    <div class="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3" data-animate="grid">
+      {matches.map((l) => <ListingCard listing={l} />)}
+    </div>
+  </div>
+</BaseLayout>

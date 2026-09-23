@@ -1,0 +1,42 @@
+---
+import BaseLayout from '@/layouts/BaseLayout.astro';
+const user = Astro.locals.user;
+const seo = {
+  title: 'Trust Center — CrossLinkd',
+  description: 'Every trust policy in one place: how businesses qualify, what badges mean, how reviews are moderated, and how to report or appeal.',
+  path: '/trust',
+};
+const cards: [string, string, string, string][] = [
+  ['Verification & badges', 'What each badge means, how businesses qualify, and why badges carry dates.', '/verification', 'Read the requirements'],
+  ['Review & moderation policy', 'Who can review, what gets removed, and how decisions are appealed.', '/reviews-policy', 'Read the policy'],
+  ['Submission policy', 'What we accept, what we reject, and what gets a listing removed.', '/submission-policy', 'See the standards'],
+  ['Editorial policy', 'How our guides are written and how to request a correction.', '/editorial-policy', 'How we write'],
+  ['Community guidelines', 'Behavior rules across listings, reviews, and events.', '/guidelines', 'Read guidelines'],
+  ['Appeals', 'A separate reviewer hears every appeal, and decisions are explained.', '/appeals', 'Start an appeal'],
+];
+---
+<BaseLayout user={user} seo={seo}>
+  <div class="mx-auto max-w-3xl px-4 py-12">
+    <h1 class="text-3xl font-extrabold">Trust center</h1>
+    <p class="section-sub">Everything about how we earn your trust, in plain language. No badge implies denominational endorsement — verification is an identity and evidence check, with dates.</p>
+
+    <div class="mt-8 grid gap-3 sm:grid-cols-2">
+      {cards.map(([t, b, href, cta]) => (
+        <div class="card p-5">
+          <p class="font-bold">{t}</p>
+          <p class="mt-1 text-sm" style="color:var(--text-soft)">{b}</p>
+          <a href={href} class="mt-3 inline-block text-sm font-semibold hover:underline" style="color:var(--teal)">{cta} →</a>
+        </div>
+      ))}
+    </div>
+
+    <div class="card mt-8 p-6" style="background:rgba(216,149,34,.08)">
+      <h2 class="font-extrabold">Report something</h2>
+      <p class="mt-1 text-sm" style="color:var(--text-soft)">Impersonation, duplicates, expired badges, or safety concerns — every report is reviewed by a human moderator.</p>
+      <div class="mt-3 flex flex-wrap gap-2">
+        <a href="/contact?topic=report" class="btn btn-primary !py-2 !text-sm">File a report</a>
+        <a href="mailto:hello@crosslinkd.com" class="btn btn-secondary !py-2 !text-sm">hello@crosslinkd.com</a>
+      </div>
+    </div>
+  </div>
+</BaseLayout>

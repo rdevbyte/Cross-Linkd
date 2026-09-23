@@ -1,0 +1,36 @@
+---
+import DashboardLayout from '@/layouts/DashboardLayout.astro';
+import { requireAdminPage } from '@/lib/guards';
+const user = Astro.locals.user;
+const queue = [
+  ['⏳ Pending listings', '14', '/admin/listings'],
+  ['Open claims', '6', '/admin/claims'],
+  ['Verifications', '9', '/admin/verifications'],
+  ['Flagged reviews', '3', '/admin/reviews'],
+  ['Open reports', '5', '/admin/reports'],
+  ['Events to moderate', '4', '/admin/listings'],
+];
+const activity = [
+  'Moderator approved “Psalm 23 Media” verification — 12 min ago',
+  'New claim filed for “Living Waters Worship Collective” — 40 min ago',
+  'Review flagged on “Cornerstone Plumbing Co.” — 2h ago',
+  'Duplicate detected: “Grace & Grain” vs “Grace and Grain Bakery” — 3h ago',
+  'Taxonomy import completed: 212 professions — yesterday',
+];
+const __adminGate = requireAdminPage(Astro);
+if (__adminGate) return __adminGate;
+
+---
+<DashboardLayout user={user} admin active="overview" seo={{ title: 'Admin — CrossLinkd', description: 'Admin dashboard.', path: '/admin', noindex: true }}>
+  {!user && <div class="card mb-4 border-l-4 p-4" style="border-left-color:var(--accent)"><p class="text-sm"><strong>Demo admin view.</strong> <a href="/auth/signin?next=/admin" class="font-bold underline">Sign in</a> as an admin in production (role-gated).</p></div>}
+  <h1 class="text-2xl font-extrabold">Moderation overview</h1>
+  <div class="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+    {queue.map(([label, n, href]) => (
+      <a href={href} class="card card-hover p-4"><p class="text-[13px]" style="color:var(--text-mute)">{label}</p><p class="text-3xl font-extrabold">{n}</p></a>
+    ))}
+  </div>
+  <div class="card mt-4 p-5">
+    <h2 class="font-extrabold">Recent activity</h2>
+    <ul class="mt-2 space-y-1.5 text-sm" style="color:var(--text-soft)">{activity.map((a) => <li>• {a}</li>)}</ul>
+  </div>
+</DashboardLayout>

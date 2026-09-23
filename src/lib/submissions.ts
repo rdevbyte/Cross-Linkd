@@ -1,0 +1,198 @@
+/**
+ * Business submission workflow (database-backed).
+ * Statuses: draft → pending_review → published | rejected | changes_requested
+ * Owners manage only their own rows; publication is admin-only.
+ */
+import { and, eq, ilike, ne, sql } from 'drizzle-orm';
+import { getDb } from '@/db/client';
+import { listings, listingLocations, listingIndustries, listingDenominations, industries, denominations } from '@/db/schema';
+import { inArray } from 'drizzle-orm';
+import type { SampleListing } from '@/data/listings';
+import { slugify } from '@/lib/slug';
+
+export type ListingRow = typeof listings.$inferSelect;
+
+export async function duplicateExists(ownerId: string, name: string, city: string, excludeId?: string): Promise<boolean> {
+  const db = getDb();
+  if (!db) return false;
+  const conds = [
+    eq(listings.ownerId, ownerId),
+    sql`lower(${listings.name}) = ${name.toLowerCase().trim()}`,
+    sql`exists (select 1 from ${listingLocations} loc where loc.listing_id = ${listings.id} and lower(loc.city) = ${city.toLowerCase().trim()})`,
+    sql`${listings.deletedAt} is null`,
+    ne(listings.status, 'archived' as const),
+  ];
+  if (excludeId) conds.push(ne(listings.id, excludeId));
+  const rows = await db.select({ id: listings.id }).from(listings).where(and(...conds)).limit(1);
+  return rows.length > 0;
+}
+
+export async function uniqueSlug(name: string): Promise<string> {
+  const db = getDb();
+  const base = slugify(name).slice(0, 200) || 'listing';
+  if (!db) return `${base}-${Math.random().toString(36).slice(2, 8)}`;
+  const existing = await db.select({ slug: listings.slug }).from(listings).where(ilike(listings.slug, `${base}%`));
+  if (!existing.some((e) => e.slug === base)) return base;
+  for (let i = 0; i < 8; i++) {
+    const candidate = `${base}-${Math.random().toString(36).slice(2, 6)}`;
+    if (!existing.some((e) => e.slug === candidate)) return candidate;
+  }
+  return `${base}-${Date.now().toString(36)}`;
+}
+
+export interface ListingFormValues {
+  name: string; typeSlug: string; tagline?: string; description?: string;
+  website?: string; phone?: string; email?: string;
+  city?: string; region?: string; postalCode?: string;
+  isOnlineOnly?: boolean; priceRange?: string;
+  industries?: string[]; professions?: string[]; denominations?: string[]; hashtags?: string[];
+  languages?: string[]; accessibility?: string[]; statementOfFaith?: string;
+}
+
+/** Creates or updates the listing row plus its primary location and taxonomy links. */
+export async function saveListing(
+  userId: string,
+  values: ListingFormValues,
+  opts: { listingId?: string; action: 'draft' | 'submit' | 'resubmit'; currentStatus?: typeof listings.$inferInsert['status'] },
+): Promise<{ id: string; slug: string; status: string }> {
+  const db = getDb();
+  if (!db) throw new Error('Database is not configured.');
+  const status =
+    opts.action === 'draft' ? (opts.currentStatus ?? 'draft') :
+    opts.action === 'resubmit' ? 'pending_review' : 'pending_review';
+
+  const base: Partial<typeof listings.$inferInsert> = {
+    name: values.name.trim(),
+    typeSlug: values.typeSlug,
+    tagline: values.tagline?.trim() || null,
+    description: values.description?.trim() || null,
+    website: values.website || null,
+    phone: values.phone?.trim() || null,
+    email: values.email?.trim() || null,
+    isOnlineOnly: values.isOnlineOnly ?? false,
+    priceRange: values.priceRange || null,
+    statementOfFaith: values.statementOfFaith?.trim() || null,
+    languages: values.languages?.length ? values.languages : ['English'],
+    updatedAt: new Date(),
+  };
+
+  let listingId = opts.listingId;
+  let slug: string;
+  if (listingId) {
+    const patch: Partial<typeof listings.$inferInsert> =
+      status === 'draft' && opts.currentStatus === 'draft' ? base : { ...base, status };
+    const [row] = await db.update(listings).set(patch).where(eq(listings.id, listingId)).returning({ id: listings.id, slug: listings.slug });
+    if (!row) throw new Error('Listing not found.');
+    slug = row.slug;
+    await db.delete(listingLocations).where(eq(listingLocations.listingId, listingId));
+    await db.delete(listingIndustries).where(eq(listingIndustries.listingId, listingId));
+    await db.delete(listingDenominations).where(eq(listingDenominations.listingId, listingId));
+  } else {
+    slug = await uniqueSlug(values.name);
+    const insert: typeof listings.$inferInsert = {
+      ...(base as typeof listings.$inferInsert),
+      ownerId: userId,
+      slug,
+      status,
+      name: values.name.trim(),
+      typeSlug: values.typeSlug,
+    };
+    const [row] = await db.insert(listings).values(insert).returning({ id: listings.id, slug: listings.slug });
+    listingId = row.id;
+  }
+
+  if (values.city || values.region) {
+    await db.insert(listingLocations).values({
+      listingId: listingId!,
+      label: 'Primary',
+      city: values.city || null,
+      region: values.region || null,
+      postalCode: values.postalCode || null,
+      isPrimary: true,
+    });
+  }
+  // Taxonomy child tables key on seeded UUIDs — resolve slugs, ignore unknowns.
+  const industrySlugs = [...new Set([...(values.industries ?? []), ...(values.professions ?? [])])].slice(0, 12);
+  if (industrySlugs.length) {
+    const known = await db.select({ id: industries.id, slug: industries.slug }).from(industries).where(inArray(industries.slug, industrySlugs));
+    if (known.length) {
+      await db.insert(listingIndustries).values(known.map((k) => ({ listingId: listingId!, industryId: k.id })));
+    }
+  }
+  if (values.denominations?.length) {
+    const known = await db.select({ id: denominations.id, slug: denominations.slug }).from(denominations).where(inArray(denominations.slug, values.denominations.slice(0, 8)));
+    if (known.length) {
+      await db.insert(listingDenominations).values(known.map((k) => ({ listingId: listingId!, denominationId: k.id })));
+    }
+  }
+  return { id: listingId!, slug, status };
+}
+
+/** Owner-visible status list. */
+export const OWNER_STATUSES = ['draft', 'pending_review', 'published', 'changes_requested', 'rejected'] as const;
+export type OwnerStatus = (typeof OWNER_STATUSES)[number];
+
+export const STATUS_LABEL: Record<string, string> = {
+  draft: 'Draft',
+  pending_review: 'Pending Review',
+  published: 'Approved',
+  changes_requested: 'Changes Requested',
+  rejected: 'Rejected',
+  suspended: 'Suspended',
+  archived: 'Archived',
+};
+
+export const STATUS_CHIP: Record<string, string> = {
+  draft: '',
+  pending_review: 'chip-active',
+  published: 'badge-verify',
+  changes_requested: 'chip-active',
+  rejected: 'chip',
+  suspended: 'chip',
+  archived: 'chip',
+};
+
+/** DB listing row (+primary location) → the SampleListing shape the UI renders. */
+export function mapListingRow(
+  row: ListingRow,
+  loc: { city: string | null; region: string | null; postalCode: string | null; latitude: string | null; longitude: string | null } | undefined,
+): SampleListing {
+  let hue = 0;
+  for (const ch of row.slug) hue = (hue * 31 + ch.charCodeAt(0)) % 360;
+  return {
+    id: `db-${row.id}`,
+    slug: row.slug,
+    name: row.name,
+    typeSlug: row.typeSlug,
+    tagline: row.tagline ?? 'Christian-owned business in the CrossLinkd directory.',
+    description: row.description ?? '',
+    city: loc?.city ?? '—',
+    region: loc?.region ?? '—',
+    postalCode: loc?.postalCode ?? undefined,
+    lat: loc?.latitude ? Number(loc.latitude) : undefined,
+    lng: loc?.longitude ? Number(loc.longitude) : undefined,
+    isOnlineOnly: row.isOnlineOnly,
+    phone: row.phone ?? undefined,
+    email: row.email ?? undefined,
+    website: row.website ?? undefined,
+    priceRange: row.priceRange ?? undefined,
+    industries: [],
+    professions: [],
+    denominations: [],
+    hashtags: [],
+    services: [],
+    languages: row.languages ?? ['English'],
+    accessibility: row.accessibility ?? [],
+    badges: [],
+    rating: Number(row.avgRating ?? 0),
+    reviewCount: row.reviewCount,
+    recommendations: row.recommendationCount,
+    views: row.viewCount,
+    verified: false,
+    claimed: row.isClaimed,
+    hours: row.hours ?? undefined,
+    statementOfFaith: row.statementOfFaith ?? undefined,
+    addedDaysAgo: 0,
+    imageHue: hue,
+  };
+}

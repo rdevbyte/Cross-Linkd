@@ -1,0 +1,33 @@
+---
+// CrossLinkd brand mark — merged from the two source logos:
+// the navy C-link + gold square-link chain with a white cross
+// cutout at the interlock, and node dots from the contour concept.
+interface Props { size?: number; showWordmark?: boolean; }
+const { size = 40, showWordmark = true } = Astro.props;
+---
+<a href="/" class="group flex items-center gap-2.5" aria-label="CrossLinkd home">
+  <img
+    src="/brand/mark.png"
+    alt=""
+    width={Math.round(size * 1.38)}
+    height={size}
+    class="logo-mark light-only transition-transform duration-200 group-hover:scale-105"
+    style={`height:${size}px;width:auto`}
+    aria-hidden="true"
+  />
+  <img
+    src="/brand/mark-dark.png"
+    alt=""
+    width={Math.round(size * 1.38)}
+    height={size}
+    class="logo-mark dark-only transition-transform duration-200 group-hover:scale-105"
+    style={`height:${size}px;width:auto`}
+    aria-hidden="true"
+  />
+  {showWordmark && (
+    <span class="leading-tight">
+      <span class="logo-wordmark block text-[16px] font-extrabold tracking-tight sm:text-[17px]" style="color:var(--text)">Cross<span style="color:var(--logo-gold)">Linkd</span></span>
+      <span class="hidden text-[11px] font-medium md:block" style="color:var(--text-mute)">Find a business you can trust</span>
+    </span>
+  )}
+</a>

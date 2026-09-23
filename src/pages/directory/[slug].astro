@@ -1,0 +1,295 @@
+---
+import BaseLayout from '@/layouts/BaseLayout.astro';
+import ListingCard from '@/components/ListingCard.astro';
+import FavoriteButton from '@/components/FavoriteButton';
+import QRShare from '@/components/QRShare';
+import { type SampleListing, type SampleReview } from '@/data/listings';
+import { getPublicListings, findPublicListing } from '@/lib/publicListings';
+import { typeBySlug } from '@/data/listing-types';
+import { denominationBySlug } from '@/data/denominations';
+import { compact, timeAgo, monthYear, fullDate } from '@/lib/format';
+import { localBusinessSchema, breadcrumbSchema } from '@/lib/seo';
+
+const { slug } = Astro.params;
+const listing: SampleListing | undefined = slug ? await findPublicListing(slug) : undefined;
+if (!listing) return Astro.redirect('/search', 302);
+
+const user = Astro.locals.user;
+const type = typeBySlug(listing.typeSlug);
+const siteUrl = Astro.url.origin;
+const pageUrl = `${siteUrl}/directory/${listing.slug}`;
+
+const related = (await getPublicListings()).filter((l) =>
+  l.slug !== listing?.slug && l.industries.some((i) => listing?.industries.includes(i)),
+).slice(0, 3);
+
+const badgeLabels: Record<string, [string, string]> = {
+  claimed: ['✓ Claimed', 'Owner manages this profile'],
+  christian_owned: ['Verified Christian-Owned', 'Ownership identity confirmed by signed attestation plus evidence'],
+  ministry: ['Faith-based Ministry', 'Ministry presence confirmed by our review team'],
+  church: ['Verified Church', 'Gathering details and leadership confirmed'],
+  professional_credential: ['Credential Verified', 'License or credential checked with the issuing authority'],
+};
+
+const reviews: SampleReview[] = listing.reviews ?? [];
+const socialLinks: [string, string][] = listing.social
+  ? (Object.entries(listing.social).filter(([, v]) => Boolean(v)) as [string, string][])
+  : [];
+
+const socialIcons: Record<string, string> = { facebook: 'f', instagram: '◎', youtube: '▶', x: '𝕏', linkedin: 'in' };
+
+const verificationLine = listing.verified
+  ? `${monthYear(listing.lastVerifiedDaysAgo ?? 0)} — ${listing.verificationMethod ?? 'review-team check'}`
+  : null;
+
+const seo = {
+  title: `${listing.name} — ${type.label} in ${listing.city}, ${listing.region} | CrossLinkd`,
+  description: `${listing.name}${listing.phone ? ` (${listing.phone})` : ''} — ${listing.tagline} Verified listing with hours, reviews, and service area.`,
+  path: `/directory/${listing.slug}`,
+  schema: [
+    localBusinessSchema({
+      name: listing.name, description: listing.description, url: pageUrl,
+      phone: listing.phone, email: listing.email, city: listing.city, region: listing.region,
+      rating: listing.rating, reviewCount: listing.reviewCount, priceRange: listing.priceRange || undefined,
+      lat: listing.lat, lng: listing.lng,
+      sameAs: socialLinks.map(([k, v]) => (['facebook', 'instagram', 'youtube', 'x'].includes(k) ? `https://${k === 'x' ? 'twitter' : k}.com/${v}` : `https://linkedin.com/company/${v}`)),
+    }),
+    breadcrumbSchema([
+      { name: 'Home', url: siteUrl },
+      { name: type.plural, url: `${siteUrl}/search?type=${type.slug}` },
+      { name: `Christian-owned in ${listing.city}, ${listing.region}`, url: `${siteUrl}/locations/${listing.city.toLowerCase().replace(/\s+/g, '-')}-${listing.region.toLowerCase()}` },
+      { name: listing.name, url: pageUrl },
+    ]),
+  ],
+};
+
+// Type-specific highlight blocks
+const isChurch = listing.typeSlug === 'church';
+const isPro = ['professional', 'counselor', 'contractor'].includes(listing.typeSlug);
+---
+<BaseLayout seo={seo} user={user}>
+  <div class="mx-auto max-w-7xl px-4 py-6">
+    <nav class="text-[13px]" style="color:var(--text-mute)" aria-label="Breadcrumb">
+      <a href="/" class="hover:underline">Home</a> /
+      <a href={`/search?type=${type.slug}`} class="hover:underline">{type.plural}</a> /
+      <a href={`/locations/${listing.city.toLowerCase().replace(/\s+/g, '-')}-${listing.region.toLowerCase()}`} class="hover:underline">{listing.city}, {listing.region}</a> /
+      <span style="color:var(--text)">{listing.name}</span>
+    </nav>
+
+    <!-- Header -->
+    <div class="card mt-4 overflow-hidden">
+      <div class="relative h-44 sm:h-56" style={`background:hsl(${listing.imageHue},28%,48%)`}>
+        <div class="absolute inset-0" style="background:linear-gradient(to top, rgba(10,11,14,.38), transparent 58%)"></div>
+        <div class="absolute bottom-4 left-4 flex items-end gap-4 sm:left-6">
+          <span class="flex h-20 w-20 items-center justify-center rounded-3xl bg-white text-4xl font-extrabold shadow-card" style="color:#3a3325" aria-hidden="true">{listing.name.charAt(0)}</span>
+          <div class="pb-1 text-white">
+            <p class="text-xs font-bold uppercase tracking-widest opacity-90">{type.label} {listing.featured ? '• ★ Featured' : ''}</p>
+            <h1 class="text-2xl font-extrabold sm:text-3xl">{listing.name}</h1>
+          </div>
+        </div>
+        {listing.foundedYear && (
+          <span class="absolute right-4 top-4 rounded-xl bg-white/85 px-3 py-1 text-xs font-bold" style="color:#3a3325">Est. {listing.foundedYear}</span>
+        )}
+      </div>
+      <div class="flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-6">
+        <div class="space-y-2">
+          <p class="font-medium">{listing.tagline}</p>
+          <p class="text-sm" style="color:var(--text-soft)">
+            ★ <strong>{listing.rating.toFixed(1)}</strong> ({listing.reviewCount} reviews) •
+            {compact(listing.recommendations)} recommendations •
+            {listing.isOnlineOnly ? 'Online — serves nationwide' : `${listing.city}, ${listing.region}`}
+            {listing.priceRange ? ` • ${listing.priceRange}` : ''}
+          </p>
+          <div class="flex flex-wrap gap-1.5">
+            {listing.badges.map((b) => (
+              <span class="badge-verify" style="background:rgba(46,146,131,.14);color:var(--teal)" title={badgeLabels[b]?.[1] ?? b}>{badgeLabels[b]?.[0] ?? b}</span>
+            ))}
+            {verificationLine && (
+              <span class="badge-verify" style="background:var(--surface-2);color:var(--text-soft)" title={`Checked via ${listing.verificationMethod}`}>Verified {verificationLine}</span>
+            )}
+            {!listing.claimed && <a href={`/claim-listing?listing=${listing.slug}`} class="badge-verify hover:underline" style="background:rgba(216,149,34,.16);color:var(--text)">Unclaimed — own this? Claim it →</a>}
+          </div>
+        </div>
+        <div class="flex flex-wrap gap-2">
+          {listing.phone && <a href={`tel:${listing.phone}`} class="btn btn-primary" data-animate="cta">Call now</a>}
+          {listing.email && <a href={`mailto:${listing.email}`} class="btn btn-secondary">Email</a>}
+          {listing.website && <a href={listing.website} target="_blank" rel="noopener" class="btn btn-secondary">Website</a>}
+          <FavoriteButton id={listing.id} label client:load />
+          <QRShare client:load url={pageUrl} name={listing.name} />
+        </div>
+      </div>
+    </div>
+
+    <div class="mt-6 grid gap-6 lg:grid-cols-[1fr_340px]">
+      <!-- Main -->
+      <div class="space-y-6">
+        {listing.photos && listing.photos.length > 0 && (
+          <section aria-label="Photos">
+            <div class="grid grid-cols-3 gap-2">
+              {listing.photos.map((p) => (
+                <figure class="overflow-hidden rounded-2xl">
+                  <div class="relative h-28 sm:h-36" style={`background:hsl(${p.hue},24%,78%)`}>
+                    <figcaption class="absolute bottom-2 left-2 rounded-lg bg-white/85 px-2 py-0.5 text-[11px] font-bold" style="color:#3a3325">{p.caption}</figcaption>
+                  </div>
+                </figure>
+              ))}
+            </div>
+          </section>
+        )}
+
+        <section class="card p-6" aria-label="About">
+          <h2 class="text-lg font-extrabold">About</h2>
+          <p class="mt-2 text-[15px] leading-relaxed" style="color:var(--text-soft)">{listing.description}</p>
+          {listing.statementOfFaith && (
+            <blockquote class="mt-4 rounded-2xl border-l-4 p-4 text-[15px] italic" style="border-color:var(--accent);background:var(--surface-2)">
+              “{listing.statementOfFaith}”
+              <footer class="mt-1 text-xs not-italic" style="color:var(--text-mute)">— Statement of faith, provided by the listing</footer>
+            </blockquote>
+          )}
+          <div class="mt-4 flex flex-wrap gap-1.5">
+            {listing.hashtags.map((t) => <a href={`/search?q=${encodeURIComponent('#' + t)}`} class="chip hover:border-[var(--accent)]">#{t}</a>)}
+          </div>
+        </section>
+
+        <section class="card p-6" aria-label="Services">
+          <h2 class="text-lg font-extrabold">{isChurch ? 'Ministries & gatherings' : isPro ? 'Services & expertise' : 'Products & services'}</h2>
+          <div class="mt-3 flex flex-wrap gap-2">
+            {listing.services.map((s) => <a href={`/search?q=${encodeURIComponent(s)}`} class="chip !px-3.5 !py-1.5 !text-[13px] hover:border-[var(--accent)]">{s}</a>)}
+          </div>
+          {listing.serviceArea && (
+            <p class="mt-4 text-sm" style="color:var(--text-soft)"><strong style="color:var(--text)">Service area:</strong> {listing.serviceArea}</p>
+          )}
+        </section>
+
+        {listing.hours && (
+          <section class="card p-6" aria-label="Hours">
+            <h2 class="text-lg font-extrabold">Hours</h2>
+            <dl class="mt-3 grid max-w-md grid-cols-2 gap-x-6 gap-y-1.5 text-sm">
+              {Object.entries(listing.hours).map(([d, h]) => (
+                <><dt style="color:var(--text-mute)">{d}</dt><dd class="text-right font-medium">{h}</dd></>
+              ))}
+            </dl>
+            {listing.openNow && <p class="mt-3 inline-block rounded-full px-3 py-1 text-xs font-bold" style="background:rgba(46,146,131,.14);color:var(--teal)">● Open now</p>}
+          </section>
+        )}
+
+        <section class="card p-6" aria-label="Contact">
+          <h2 class="text-lg font-extrabold">Contact {listing.name.split(' ')[0].length > 24 ? 'them' : listing.name.split(',')[0]}</h2>
+          <form method="POST" action="/api/contact" class="mt-3 space-y-3">
+            <input type="hidden" name="topic" value="Listing inquiry" />
+            <input type="hidden" name="listing" value={listing.slug} />
+            <div class="grid gap-3 sm:grid-cols-2">
+              <label class="text-sm font-medium">Your name<input name="name" required class="input mt-1" autocomplete="name" /></label>
+              <label class="text-sm font-medium">Email or phone<input name="email" required class="input mt-1" autocomplete="email" /></label>
+            </div>
+            <label class="block text-sm font-medium">Message<textarea name="message" rows="3" required class="input mt-1" placeholder={`Hi — I found you on CrossLinkd and have a question about ${listing.services[0]?.toLowerCase() ?? 'your services'}.`}></textarea></label>
+            <button class="btn btn-primary !py-2.5" type="submit">Send message</button>
+            <p class="text-xs" style="color:var(--text-mute)">Goes to the listing owner. Prefer talking? {listing.phone && <a href={`tel:${listing.phone}`} class="underline">Call {listing.phone}</a>}</p>
+          </form>
+        </section>
+
+        <section class="card p-6" aria-label="Reviews" id="reviews">
+          <div class="flex items-center justify-between">
+            <h2 class="text-lg font-extrabold">Reviews & recommendations</h2>
+            <a href="#write-review" class="btn btn-secondary !py-1.5 !text-sm">Write a review</a>
+          </div>
+          <div class="mt-4 space-y-4">
+            {reviews.map((rev) => (
+              <article class="border-b pb-4 last:border-0" style="border-color:var(--border)">
+                <div class="flex items-center gap-2">
+                  <span class="flex h-9 w-9 items-center justify-center rounded-full text-sm font-bold" style="background:var(--surface-2)">{rev.name.charAt(0)}</span>
+                  <div>
+                    <p class="text-sm font-bold">{rev.name} {rev.verified && <span class="badge-verify ml-1" style="background:rgba(46,146,131,.14);color:var(--teal)">✓ Verified visit</span>}</p>
+                    <p class="text-xs" style="color:var(--text-mute)">★ {rev.rating}.0 • {timeAgo(rev.daysAgo)}</p>
+                  </div>
+                </div>
+                <p class="mt-2 text-sm font-bold">{rev.title}</p>
+                <p class="mt-0.5 text-sm" style="color:var(--text-soft)">{rev.body}</p>
+                {rev.ownerResponse && (
+                  <div class="mt-2.5 rounded-2xl border-l-4 p-3 text-sm" style="border-color:var(--teal);background:var(--surface-2)">
+                    <p class="text-xs font-bold" style="color:var(--teal)">Response from the owner</p>
+                    <p class="mt-1" style="color:var(--text-soft)">{rev.ownerResponse}</p>
+                  </div>
+                )}
+              </article>
+            ))}
+          </div>
+          <form id="write-review" method="POST" action="/api/reviews" class="surface-soft mt-4 rounded-2xl p-4">
+            <h3 class="font-bold">Share your experience</h3>
+            <p class="mt-1 text-[13px]" style="color:var(--text-soft)">Reviews are moderated. Please review your experience — not theology. <a href="/reviews-policy" class="underline">Review policy</a></p>
+            <input type="hidden" name="listingId" value={listing.id} />
+            <div class="mt-3 grid gap-3 sm:grid-cols-2">
+              <label class="text-sm">Rating
+                <select name="rating" class="input mt-1" required><option value="5">★★★★★ 5</option><option value="4">★★★★ 4</option><option value="3">★★★ 3</option><option value="2">★★ 2</option><option value="1">★ 1</option></select>
+              </label>
+              <label class="text-sm">Headline<input name="title" maxlength="160" class="input mt-1" placeholder="Sum it up" /></label>
+            </div>
+            <label class="mt-3 block text-sm">Your review<textarea name="body" rows="3" maxlength="3000" class="input mt-1" placeholder="What should others know?"></textarea></label>
+            <button class="btn btn-primary mt-3 !py-2 !text-sm" type="submit">Submit review</button>
+          </form>
+        </section>
+
+        {related.length > 0 && (
+          <section aria-label="Related listings">
+            <h2 class="text-lg font-extrabold">Related listings</h2>
+            <div class="mt-3 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {related.map((l) => <ListingCard listing={l} />)}
+            </div>
+          </section>
+        )}
+      </div>
+
+      <!-- Sidebar -->
+      <aside class="space-y-4">
+        {!listing.isOnlineOnly && (
+          <div class="card p-5">
+            <h2 class="font-extrabold">Location</h2>
+            <p class="mt-2 text-sm" style="color:var(--text-soft)">{listing.city}, {listing.region}{listing.postalCode ? ` ${listing.postalCode}` : ''}</p>
+          </div>
+        )}
+        <div class="card p-5">
+          <h2 class="font-extrabold">Verification</h2>
+          <ul class="mt-2 space-y-1.5 text-sm" style="color:var(--text-soft)">
+            {listing.badges.length ? listing.badges.map((b) => <li>✓ {badgeLabels[b]?.[1] ?? b}</li>) : <li>Not yet verified — <a href="/verification" class="underline">what this means</a></li>}
+          </ul>
+          {verificationLine && <p class="mt-2 text-xs" style="color:var(--text-mute)">Last checked {fullDate(listing.lastVerifiedDaysAgo ?? 0)} · method: {listing.verificationMethod ?? 'review-team check'}. Badges are re-checked periodically.</p>}
+          <a href="/verification" class="mt-3 inline-block text-sm font-semibold hover:underline" style="color:var(--teal)">What verification means →</a>
+        </div>
+        <div class="card p-5">
+          <h2 class="font-extrabold">Details</h2>
+          <dl class="mt-3 space-y-2 text-sm">
+            <div><dt class="font-semibold" style="color:var(--text-mute)">Faith affiliation</dt><dd>{listing.denominations.map((d) => denominationBySlug(d)?.name ?? d).join(', ') || 'Not specified'}</dd></div>
+            <div><dt class="font-semibold" style="color:var(--text-mute)">Languages</dt><dd>{listing.languages.join(', ')}</dd></div>
+            {listing.accessibility.length > 0 && <div><dt class="font-semibold" style="color:var(--text-mute)">Accessibility</dt><dd>{listing.accessibility.join(' • ')}</dd></div>}
+            {listing.email && <div><dt class="font-semibold" style="color:var(--text-mute)">Email</dt><dd><a class="underline" href={`mailto:${listing.email}`}>{listing.email}</a></dd></div>}
+            {listing.updatedDaysAgo !== undefined && <div><dt class="font-semibold" style="color:var(--text-mute)">Last updated</dt><dd>{fullDate(listing.updatedDaysAgo)}</dd></div>}
+            <div><dt class="font-semibold" style="color:var(--text-mute)">Added to directory</dt><dd>{fullDate(listing.addedDaysAgo)}</dd></div>
+          </dl>
+          {socialLinks.length > 0 && (
+            <>
+              <h3 class="mt-4 text-sm font-bold">Follow</h3>
+              <div class="mt-2 flex flex-wrap gap-2">
+                {socialLinks.map(([k, v]) => (
+                  <a
+                    href={k === 'linkedin' ? `https://linkedin.com/company/${v}` : `https://${k === 'x' ? 'twitter' : k}.com/${v}`}
+                    target="_blank" rel="noopener"
+                    class="flex h-9 items-center gap-1.5 rounded-xl border px-3 text-xs font-bold transition-colors hover:border-[var(--accent)]"
+                    style="border-color:var(--border);color:var(--text-soft)"
+                    aria-label={`${listing.name} on ${k}`}
+                  >
+                    {k === 'x' ? 'X' : k.charAt(0).toUpperCase() + k.slice(1)}
+                  </a>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
+        <div class="card space-y-2 p-5">
+          <button onclick="alert('Thanks! Our moderation team will review this listing.')" class="btn btn-ghost w-full !justify-start !text-sm">Report this listing</button>
+          <button onclick="alert('Thanks! Suggest-an-edit opens after sign-in in production.')" class="btn btn-ghost w-full !justify-start !text-sm">Suggest an edit</button>
+          <a href={`/claim-listing?listing=${listing.slug}`} class="btn btn-ghost w-full !justify-start !text-sm">Claim this listing</a>
+        </div>
+      </aside>
+    </div>
+  </div>
+</BaseLayout>

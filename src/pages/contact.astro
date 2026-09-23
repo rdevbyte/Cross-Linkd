@@ -1,0 +1,43 @@
+---
+import BaseLayout from '@/layouts/BaseLayout.astro';
+const user = Astro.locals.user;
+const sent = Astro.url.searchParams.get('sent') === '1';
+const topic = Astro.url.searchParams.get('topic') ?? '';
+---
+<BaseLayout user={user} seo={{ title: 'Contact — CrossLinkd', description: 'Get in touch with the CrossLinkd team: email, phone, or the contact form. We reply within 1–2 business days.', path: '/contact' }}>
+  <div class="mx-auto max-w-xl px-4 py-12">
+    <h1 class="text-3xl font-extrabold">Contact us</h1>
+    <p class="section-sub">We reply within 1–2 business days.</p>
+
+    <div class="card mt-4 space-y-2 p-5 text-sm" style="color:var(--text-soft)">
+      <p><a href="mailto:hello@crosslinkd.com" class="font-bold underline">hello@crosslinkd.com</a></p>
+      <p><a href="tel:+12145550100" class="font-bold underline">(214) 555-0100</a> — Mon–Fri, 9 AM–5 PM CT</p>
+      <p>CrossLinkd LLC · Dallas, Texas</p>
+      <div class="flex gap-2 pt-1">
+        <a href="https://facebook.com/crosslinkd" target="_blank" rel="noopener" class="chip hover:border-[var(--accent)]">Facebook</a>
+        <a href="https://instagram.com/crosslinkd" target="_blank" rel="noopener" class="chip hover:border-[var(--accent)]">Instagram</a>
+        <a href="https://youtube.com/@crosslinkd" target="_blank" rel="noopener" class="chip hover:border-[var(--accent)]">YouTube</a>
+      </div>
+    </div>
+
+    {sent ? (
+      <div class="card mt-6 p-6" style="border-left:4px solid var(--teal)"><p class="font-bold">Message received!</p><p class="text-sm" style="color:var(--text-soft)">Thanks for reaching out — we’ll be in touch soon.</p></div>
+    ) : (
+      <form method="POST" action="/api/contact" class="card mt-6 space-y-4 p-6">
+        <div class="grid gap-4 sm:grid-cols-2">
+          <label class="text-sm font-medium">Name<input name="name" required class="input mt-1.5" value={user?.displayName ?? ''} /></label>
+          <label class="text-sm font-medium">Email<input name="email" type="email" required class="input mt-1.5" value={user?.email ?? ''} /></label>
+        </div>
+        <label class="block text-sm font-medium">Topic
+          <select name="topic" class="input mt-1.5">
+            {['General question', 'Listing support', 'Verification', 'Report a listing', 'Report a review', 'Appeals', 'Partnership', 'Press'].map((t) => (
+              <option selected={topic.toLowerCase().includes(t.split(' ')[0].toLowerCase())}>{t}</option>
+            ))}
+          </select>
+        </label>
+        <label class="block text-sm font-medium">Message<textarea name="message" required rows="5" class="input mt-1.5"></textarea></label>
+        <button class="btn btn-primary w-full !py-3" type="submit">Send message</button>
+      </form>
+    )}
+  </div>
+</BaseLayout>

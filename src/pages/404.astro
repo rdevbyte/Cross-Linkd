@@ -1,0 +1,10 @@
+---
+import BaseLayout from '@/layouts/BaseLayout.astro';
+import EmptyState from '@/components/EmptyState.astro';
+const user = Astro.locals.user;
+---
+<BaseLayout user={user} seo={{ title: 'Page Not Found — CrossLinkd', description: 'This page could not be found.', path: '/404', noindex: true }}>
+  <div class="mx-auto max-w-xl px-4 py-16">
+    <EmptyState title="Lost? Let’s get you home." body="The page you’re looking for moved or never existed. Try searching the directory instead." actionHref="/search" actionLabel="Search the directory" />
+  </div>
+</BaseLayout>

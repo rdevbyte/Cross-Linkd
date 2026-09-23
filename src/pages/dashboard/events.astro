@@ -1,0 +1,48 @@
+---
+import DashboardLayout from '@/layouts/DashboardLayout.astro';
+import { requireUserPage } from '@/lib/guards';
+import { SAMPLE_EVENTS, eventDate } from '@/data/events';
+const user = Astro.locals.user;
+const mine = SAMPLE_EVENTS.slice(0, 2);
+const created = Astro.url.searchParams.get('created') === '1';
+const __userGate = requireUserPage(Astro);
+if (__userGate) return __userGate;
+
+---
+<DashboardLayout user={user} active="events" seo={{ title: 'Events — Dashboard', description: 'Manage events.', path: '/dashboard/events', noindex: true }}>
+  <h1 class="text-2xl font-extrabold">Events & announcements</h1>
+  <div class="card p-3 text-[13px] mt-3" style="border-left:4px solid var(--accent)" role="note"><strong>Preview data.</strong> This section shows illustrative sample content while the platform is in preview; live data replaces it as activity grows.</div>
+  {created && <p class="card mt-4 border-l-4 p-3 text-sm font-medium" style="border-left-color:var(--teal)">Event created and pending review.</p>}
+  <div class="mt-4 space-y-3">
+    {mine.map((e) => (
+      <div class="card flex flex-wrap items-center justify-between gap-3 p-4">
+        <div><p class="font-bold">{e.title}</p><p class="text-[13px]" style="color:var(--text-mute)">{eventDate(e.startsInDays).toLocaleDateString()} • {e.city} • {e.cost}</p></div>
+        <a href={`/events/${e.slug}`} class="btn btn-secondary !py-1.5 !text-sm">View public page</a>
+      </div>
+    ))}
+  </div>
+  <form method="POST" action="/api/events" class="card mt-4 space-y-4 p-6">
+    <h2 class="font-extrabold">Create an event</h2>
+    <div class="grid gap-4 sm:grid-cols-2">
+      <label class="text-sm font-medium">Event name *<input name="title" required class="input mt-1.5" /></label>
+      <label class="text-sm font-medium">Category
+        <select name="category" class="input mt-1.5">{['Worship', 'Bible Study', 'Conference', 'Concert', 'Retreat', 'Volunteer', 'Networking', 'Youth', 'Outreach'].map((c) => <option>{c}</option>)}</select>
+      </label>
+    </div>
+    <label class="block text-sm font-medium">Description<textarea name="description" rows="3" class="input mt-1.5"></textarea></label>
+    <div class="grid gap-4 sm:grid-cols-4">
+      <label class="text-sm font-medium">Date *<input name="date" type="date" required class="input mt-1.5" /></label>
+      <label class="text-sm font-medium">Time<input name="time" type="time" class="input mt-1.5" /></label>
+      <label class="text-sm font-medium">Format
+        <select name="format" class="input mt-1.5"><option value="in_person">In person</option><option value="online">Online</option><option value="hybrid">Hybrid</option></select>
+      </label>
+      <label class="text-sm font-medium">Cost<input name="cost" class="input mt-1.5" placeholder="Free" /></label>
+    </div>
+    <div class="grid gap-4 sm:grid-cols-3">
+      <label class="text-sm font-medium">Venue<input name="venue" class="input mt-1.5" /></label>
+      <label class="text-sm font-medium">City<input name="city" class="input mt-1.5" /></label>
+      <label class="text-sm font-medium">Registration URL<input name="registrationUrl" type="url" class="input mt-1.5" placeholder="https://…" /></label>
+    </div>
+    <button class="btn btn-primary" type="submit">Publish event</button>
+  </form>
+</DashboardLayout>

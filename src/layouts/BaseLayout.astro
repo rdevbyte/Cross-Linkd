@@ -1,0 +1,55 @@
+---
+import '@/styles/global.css';
+import ThemeHead from '@/components/ThemeHead.astro';
+import VerseBanner from '@/components/VerseBanner.astro';
+import Navbar from '@/components/Navbar.astro';
+import Footer from '@/components/Footer.astro';
+import { buildSeo, type SeoInput } from '@/lib/seo';
+
+interface Props { seo: SeoInput; user?: { displayName: string; role: string } | null; wide?: boolean }
+const { seo, user = null } = Astro.props;
+const s = buildSeo(seo);
+---
+<!doctype html>
+<html lang="en" data-theme="light">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{s.title}</title>
+    <meta name="description" content={s.description} />
+    {s.noindex && <meta name="robots" content="noindex, nofollow" />}
+    <link rel="canonical" href={s.url} />
+    <link rel="icon" type="image/png" href="/favicon.png" />
+    <meta property="og:site_name" content={s.siteName} />
+    <meta property="og:title" content={s.title} />
+    <meta property="og:description" content={s.description} />
+    <meta property="og:url" content={s.url} />
+    <meta property="og:type" content={s.type ?? 'website'} />
+    <meta property="og:image" content={s.image} />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={s.title} />
+    <meta name="twitter:description" content={s.description} />
+    <meta name="twitter:image" content={s.image} />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Google+Sans:ital,opsz,wght@0,17..18,400..700;1,17..18,400..700&family=Roboto:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet" />
+    {(Array.isArray(s.schema) ? s.schema : s.schema ? [s.schema] : []).map((schema) => (
+      <script type="application/ld+json" set:html={JSON.stringify(schema)} />
+    ))}
+    <ThemeHead />
+  </head>
+  <body>
+    <a href="#main" class="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:rounded-lg focus:bg-white focus:px-4 focus:py-2 focus:font-bold">Skip to content</a>
+    <VerseBanner />
+    <Navbar user={user} />
+    <main id="main" class="min-h-[60vh]">
+      <slot />
+    </main>
+    <Footer />
+    <script>
+      import { initPageAnimations, pulseCta } from '@/components/HeroAnimations';
+      initPageAnimations();
+      pulseCta();
+    </script>
+  </body>
+</html>

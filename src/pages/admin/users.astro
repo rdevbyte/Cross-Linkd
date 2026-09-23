@@ -1,0 +1,127 @@
+---
+import DashboardLayout from '@/layouts/DashboardLayout.astro';
+import { asc, isNull, sql } from 'drizzle-orm';
+import { getDb, hasDatabase } from '@/db/client';
+import { users, listings } from '@/db/schema';
+import { requireAdminPage } from '@/lib/guards';
+
+const gate = requireAdminPage(Astro);
+if (gate) return gate;
+const user = Astro.locals.user!;
+const canManageRoles = user.role === 'super_admin';
+
+let rows: Array<{ id: string; email: string; displayName: string | null; role: string; verified: boolean; listingCount: number; joined: Date }> = [];
+if (hasDatabase()) {
+  const db = getDb()!;
+  const found = await db
+    .select({
+      id: users.id,
+      email: users.email,
+      displayName: users.displayName,
+      role: users.role,
+      verifiedAt: users.emailVerifiedAt,
+      joined: users.createdAt,
+      listingCount: sql<number>`(select count(*) from ${listings} l where l.owner_id = ${users.id} and l.deleted_at is null)`,
+    })
+    .from(users)
+    .where(isNull(users.deletedAt))
+    .orderBy(asc(users.createdAt))
+    .limit(500);
+  rows = found.map((r) => ({ ...r, verified: Boolean(r.verifiedAt), listingCount: Number(r.listingCount) }));
+}
+const ROLES = ['member', 'listing_owner', 'org_admin', 'content_editor', 'verification_reviewer', 'moderator', 'super_admin'];
+const flash = Astro.url.searchParams.get('flash') ?? '';
+---
+<DashboardLayout user={user} admin active="users" seo={{ title: 'Admin: Users', description: 'Manage user accounts and roles.', path: '/admin/users', noindex: true }}>
+  <h1 class="text-2xl font-extrabold">Users</h1>
+  <p class="section-sub">
+    {canManageRoles
+      ? 'Role changes take effect when the user next signs in. You cannot change your own role.'
+      : 'Only a super admin can change roles.'}
+  </p>
+
+  {flash && (
+    <div class="card mt-4 border-l-4 p-4" role="status" style="border-left-color:var(--teal)"><p class="text-sm font-bold">{flash}</p></div>
+  )}
+
+  <div id="users-banner" class="card mt-4 hidden border-l-4 p-4" role="alert" style="border-left-color:var(--accent)"><p id="users-banner-text" class="text-sm font-bold"></p></div>
+
+  <div class="card mt-4 overflow-x-auto">
+    {rows.length === 0 ? (
+      <div class="p-8 text-center"><p class="font-bold">No users yet</p><p class="mt-1 text-sm" style="color:var(--text-soft)">Accounts appear here as people register.</p></div>
+    ) : (
+      <table class="w-full min-w-[720px] text-sm">
+        <thead><tr class="text-left text-xs uppercase" style="color:var(--text-mute)">
+          <th class="p-3">User</th><th class="p-3">Email verified</th><th class="p-3">Listings</th><th class="p-3">Joined</th><th class="p-3">Role</th>
+        </tr></thead>
+        <tbody>
+          {rows.map((r) => (
+            <tr class="border-t" style="border-color:var(--border)">
+              <td class="p-3">
+                <p class="font-medium">{r.displayName ?? '—'}</p>
+                <p class="text-xs" style="color:var(--text-mute)">{r.email}</p>
+              </td>
+              <td class="p-3 text-xs">{r.verified ? <span style="color:var(--teal)">✓ Verified</span> : <span style="color:var(--text-mute)">Not verified</span>}</td>
+              <td class="p-3">{r.listingCount}</td>
+              <td class="p-3 text-xs" style="color:var(--text-mute)">{r.joined.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</td>
+              <td class="p-3">
+                {canManageRoles && r.id !== user.id ? (
+                  <div class="flex items-center gap-1.5" data-user={r.id} data-role={r.role}>
+                    <label class="sr-only" for={`role-${r.id}`}>Role for {r.email}</label>
+                    <select id={`role-${r.id}`} class="input !w-auto !py-1 !text-xs" data-roleselect={r.role}>
+                      {ROLES.map((role) => <option value={role} selected={r.role === role}>{role}</option>)}
+                    </select>
+                    <button type="button" class="btn btn-secondary !px-2.5 !py-1 !text-xs" data-saverole={r.id}>Save</button>
+                  </div>
+                ) : (
+                  <span class="chip !text-[11px]">{r.role}{r.id === user.id ? ' (you)' : ''}</span>
+                )}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    )}
+  </div>
+
+  <script>
+    function show(ok: boolean, msg: string) {
+      const b = document.getElementById('users-banner');
+      const t = document.getElementById('users-banner-text');
+      if (!b || !t) return;
+      b.style.borderLeftColor = ok ? 'var(--teal)' : 'var(--accent)';
+      t.textContent = msg;
+      b.classList.remove('hidden');
+      b.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+    document.querySelectorAll<HTMLButtonElement>('[data-saverole]').forEach((btn) => {
+      btn.addEventListener('click', async () => {
+        const id = btn.dataset.saverole ?? '';
+        const wrap = btn.closest('[data-user]') as HTMLElement | null;
+        const select = wrap?.querySelector('select') as HTMLSelectElement | null;
+        if (!id || !select) return;
+        const original = wrap?.dataset.role ?? '';
+        const role = select.value;
+        if (role === original || !confirm(`Change role to "${role}"? The change applies on their next sign-in.`)) {
+          if (select) select.value = original;
+          return;
+        }
+        btn.disabled = true;
+        try {
+          const res = await fetch(`/api/admin/users/${id}/role`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ role }),
+          });
+          const json = await res.json().catch(() => ({ ok: false, error: 'Unexpected response.' }));
+          if (res.ok && json.ok) location.reload();
+          else show(false, json.error ?? 'Role change failed.');
+        } catch {
+          show(false, 'Network error — try again.');
+        } finally {
+          btn.disabled = false;
+        }
+      });
+    });
+  </script>
+</DashboardLayout>

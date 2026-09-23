@@ -1,0 +1,86 @@
+---
+import BaseLayout from '@/layouts/BaseLayout.astro';
+const user = Astro.locals.user;
+const seo = {
+  title: 'How It Works — CrossLinkd',
+  description: 'How our directory works: how businesses are submitted, how humans review them, how verification badges work, and how to claim or update a listing.',
+  path: '/how-it-works',
+  schema: {
+    '@context': 'https://schema.org',
+    '@type': 'FAQPage',
+    mainEntity: [
+      ['Are listings self-submitted?', 'Most are submitted by owners, free. Our team also adds businesses we find through public records and community recommendations. Nothing is published until a person reviews it.'],
+      ['Is every listing manually reviewed?', 'Yes. A person checks contact details, public information, and licenses where applicable before any listing goes live.'],
+      ['What does verification cost?', 'Nothing. Verification is free and separate from paid placement. Paying never skips or speeds past review.'],
+      ['How do I update my listing?', 'Claim it, sign in to your dashboard, and edit anytime. Changes to name, ownership, or credentials go through a quick re-check.'],
+    ].map(([q, a]) => ({
+      '@type': 'Question', name: q, acceptedAnswer: { '@type': 'Answer', text: a },
+    })),
+  },
+};
+---
+<BaseLayout user={user} seo={seo}>
+  <div class="mx-auto max-w-3xl px-4 py-12">
+    <h1 class="text-3xl font-extrabold">How CrossLinkd works</h1>
+    <p class="section-sub">Short version: businesses are submitted or found, a person reviews every one, and verification badges carry dates.</p>
+
+    <div class="mt-8 space-y-4">
+      <div class="card p-6">
+        <h2 class="text-lg font-extrabold">For people searching</h2>
+        <ol class="mt-3 list-decimal space-y-2 pl-5 text-[15px]" style="color:var(--text-soft)">
+          <li>Search by service, business name, category, hashtag, or location (city, state, or ZIP).</li>
+          <li>Filter by verification status, rating, language, accessibility, and more.</li>
+          <li>Open a profile: hours, service area, credential checks, and review history are all on the page — with the date of the last verification.</li>
+          <li>Call, email, or use the contact form. Then leave a review so the next person knows what to expect.</li>
+        </ol>
+      </div>
+
+      <div class="card p-6">
+        <h2 class="text-lg font-extrabold">For business owners</h2>
+        <ol class="mt-3 list-decimal space-y-2 pl-5 text-[15px]" style="color:var(--text-soft)">
+          <li><strong style="color:var(--text)">Submit</strong> — add your listing free. It takes about 10 minutes.</li>
+          <li><strong style="color:var(--text)">Review</strong> — a person checks your details, usually within one business day. If something is missing, we tell you exactly what.</li>
+          <li><strong style="color:var(--text)">Live</strong> — your profile appears in search, your category, and your city page.</li>
+          <li><strong style="color:var(--text)">Get verified</strong> — optional, free, and explained on the <a href="/verification" class="text-[var(--teal)] underline">verification page</a>. Badges show their dates.</li>
+          <li><strong style="color:var(--text)">Keep it current</strong> — claim the listing and edit anytime from your dashboard. Stale listings are flagged and eventually retired.</li>
+        </ol>
+      </div>
+
+      <div class="card p-6">
+        <h2 class="text-lg font-extrabold">Where listings come from</h2>
+        <div class="mt-3 grid gap-3 sm:grid-cols-2">
+          {[
+            ['Self-submitted', 'An owner adds the business and confirms the details. Most listings start here.'],
+            ['Found by our team', 'We add well-known local businesses from public information, then invite the owner to claim and manage the profile.'],
+            ['Church-recommended', 'A congregation recommends a member business. We still verify ownership and details like any other listing.'],
+            ['Document-verified', 'Licenses, registrations, and identity documents checked during review — the strongest level of confirmation.'],
+          ].map(([t, b]) => (
+            <div class="surface-soft rounded-2xl p-4">
+              <p class="text-sm font-bold">{t}</p>
+              <p class="mt-1 text-sm" style="color:var(--text-soft)">{b}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div class="card p-6">
+        <h2 class="text-lg font-extrabold">What we remove</h2>
+        <p class="mt-2 text-[15px]" style="color:var(--text-soft)">
+          Duplicate listings. Businesses that cannot confirm their details. Listings with lapsed licenses. Anything that breaks our
+          <a href="/submission-policy" class="underline">submission policy</a>. We would rather have 300 listings you can trust than 30,000 you cannot.
+        </p>
+      </div>
+
+      <div class="card flex flex-col items-start justify-between gap-4 p-6 sm:flex-row sm:items-center" style="background:var(--accent-soft)">
+        <div>
+          <h2 class="text-lg font-extrabold">Ready to list?</h2>
+          <p class="mt-1 text-sm" style="color:var(--text-soft)">Free forever for the basic listing. No card required.</p>
+        </div>
+        <div class="flex gap-2">
+          <a href="/add-listing" class="btn btn-primary">List Your Business</a>
+          <a href="/verification" class="btn btn-secondary">How businesses qualify</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</BaseLayout>

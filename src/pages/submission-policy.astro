@@ -1,0 +1,63 @@
+---
+import BaseLayout from '@/layouts/BaseLayout.astro';
+const user = Astro.locals.user;
+const seo = {
+  title: 'Business Submission Policy | CrossLinkd',
+  description: 'What we accept, what we reject, and what gets a listing removed: the complete submission and quality policy for the CrossLinkd directory.',
+  path: '/submission-policy',
+};
+---
+<BaseLayout user={user} seo={seo}>
+  <div class="mx-auto max-w-3xl px-4 py-12">
+    <h1 class="text-3xl font-extrabold">Business submission policy</h1>
+    <p class="section-sub">What we accept, what we reject, and what gets a listing removed. Written in plain language; enforced by humans.</p>
+
+    <div class="prose-custom mt-8 space-y-6 text-[15px] leading-relaxed" style="color:var(--text-soft)">
+      <div>
+        <h2 class="text-xl font-extrabold" style="color:var(--text)">What we accept</h2>
+        <ul class="mt-2 list-disc space-y-1.5 pl-5">
+          <li>Businesses where current ownership identifies as Christian and can attest to it when requesting the Christian-owned badge.</li>
+          <li>Churches, ministries, nonprofits, and Christian schools with verifiable leadership and public activity.</li>
+          <li>Individual professionals (counselors, attorneys, tradespeople) who operate under their own name and credentials.</li>
+          <li>Online businesses, if ownership and contact details check out.</li>
+        </ul>
+      </div>
+      <div>
+        <h2 class="text-xl font-extrabold" style="color:var(--text)">What we reject</h2>
+        <ul class="mt-2 list-disc space-y-1.5 pl-5">
+          <li>Duplicate listings for the same business (submit one; we will link additional locations).</li>
+          <li>Incomplete submissions: no working phone, no service area or address, template filler text.</li>
+          <li>Businesses whose Christian identity claim is clearly a marketing costume with no substance behind it — we will ask what it means in practice.</li>
+          <li>Anything illegal, or that violates our <a href="/guidelines" class="underline">community guidelines</a>.</li>
+        </ul>
+      </div>
+      <div>
+        <h2 class="text-xl font-extrabold" style="color:var(--text)">Quality standards for published listings</h2>
+        <ul class="mt-2 list-disc space-y-1.5 pl-5">
+          <li>Accurate name, category, hours, and contact details — checked at review and re-checked periodically.</li>
+          <li>Descriptions describe the business, not a search-engine keyword list.</li>
+          <li>Reviews follow the <a href="/reviews-policy" class="underline">review &amp; moderation policy</a>; owners may not review their own business.</li>
+        </ul>
+      </div>
+      <div>
+        <h2 class="text-xl font-extrabold" style="color:var(--text)">What gets a listing removed</h2>
+        <ul class="mt-2 list-disc space-y-1.5 pl-5">
+          <li>Ownership change without re-attestation (badges come off; listing may stay unbadged).</li>
+          <li>Lapsed professional licenses.</li>
+          <li>Repeated inability to confirm the business is real and reachable.</li>
+          <li>Fraud, misrepresentation, or patterns in reviews that suggest deception.</li>
+        </ul>
+        <p class="mt-2">Owners are always told why, and can respond through the <a href="/appeals" class="underline">appeals process</a>.</p>
+      </div>
+      <div>
+        <h2 class="text-xl font-extrabold" style="color:var(--text)">Timing</h2>
+        <p class="mt-2">We review submissions within one business day. If we decline, we say exactly why — most issues are fixable and resubmission is welcome.</p>
+      </div>
+    </div>
+
+    <div class="card mt-8 p-6">
+      <a href="/add-listing" class="btn btn-primary">List Your Business</a>
+      <p class="mt-2 text-xs" style="color:var(--text-mute)">Free to list · verification always free</p>
+    </div>
+  </div>
+</BaseLayout>

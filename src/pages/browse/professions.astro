@@ -1,0 +1,24 @@
+---
+import BaseLayout from '@/layouts/BaseLayout.astro';
+import { allProfessions, industryBySlug } from '@/data/industries';
+import { getPublicListings } from '@/lib/publicListings';
+
+const corpus = await getPublicListings();
+const user = Astro.locals.user;
+const profs = allProfessions();
+const countFor = (slug: string) => corpus.filter((l) => l.professions.includes(slug)).length;
+---
+<BaseLayout user={user} seo={{ title: 'Browse Professions — CrossLinkd', description: 'Find Christian professionals: counselors, attorneys, realtors, photographers, contractors, and more.', path: '/browse/professions' }}>
+  <div class="mx-auto max-w-7xl px-4 py-10">
+    <h1 class="text-3xl font-extrabold">Browse professions</h1>
+    <p class="section-sub">Licensed fields display credentials where applicable. Regulated professions can show verified license information.</p>
+    <div class="mt-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-3" data-animate="grid">
+      {profs.map((p) => (
+        <a href={`/professions/${p.slug}`} class="card card-hover p-4">
+          <p class="font-bold">{p.name} {p.requiresLicense && <span class="badge-verify ml-1" style="background:rgba(46,146,131,.14);color:var(--teal)">License required</span>}</p>
+          <p class="mt-1 text-[13px]" style="color:var(--text-mute)">{industryBySlug(p.industrySlug)?.name} • {countFor(p.slug)} listing(s)</p>
+        </a>
+      ))}
+    </div>
+  </div>
+</BaseLayout>

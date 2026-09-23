@@ -1,0 +1,60 @@
+---
+import BaseLayout from '@/layouts/BaseLayout.astro';
+import { getPublicListings } from '@/lib/publicListings';
+const user = Astro.locals.user;
+const preselected = Astro.url.searchParams.get('listing') ?? '';
+const success = Astro.url.searchParams.get('success') === '1';
+const corpus = await getPublicListings();
+const unclaimed = corpus.filter((l) => !l.claimed);
+---
+<BaseLayout user={user} seo={{ title: 'Claim a Listing — CrossLinkd', description: 'Claim ownership of your business, church, or ministry profile and get verified.', path: '/claim-listing' }}>
+  <div class="mx-auto max-w-3xl px-4 py-10">
+    <h1 class="text-3xl font-extrabold">Claim your listing</h1>
+    <p class="section-sub">Prove you represent the listing, take control of its content, and unlock verification badges, analytics, and review responses.</p>
+
+    <div class="mt-6 grid gap-3 sm:grid-cols-3">
+      {[['1. Find it', 'Select your profile below.'], ['2. Prove it', 'Work email, domain, documents, or a quick call.'], ['3. Own it', 'Edit, verify, respond, and grow.']].map(([i, t, b]) => (
+        <div class="card p-4"><span class="text-xl">{i}</span><p class="mt-1 text-sm font-bold">{t}</p><p class="text-[13px]" style="color:var(--text-soft)">{b}</p></div>
+      ))}
+    </div>
+
+    {success ? (
+      <div class="card mt-6 border-l-4 p-6" style="border-left-color:var(--teal)">
+        <h2 class="text-lg font-extrabold">Claim received!</h2>
+        <p class="mt-1 text-sm" style="color:var(--text-soft)">We’ll email you within 1–2 business days. {user ? '' : 'Create an account with the same email to speed things up.'}</p>
+      </div>
+    ) : (
+      <form method="POST" action="/api/claims" class="card mt-6 space-y-4 p-6 sm:p-8">
+        <label class="block text-sm font-medium">Which listing is yours? *
+          <select name="listingId" class="input mt-1.5" required>
+            <option value="">Select a listing…</option>
+            {corpus.map((l) => <option value={l.id} selected={l.slug === preselected}>{l.name} — {l.city}, {l.region}{l.claimed ? ' (already claimed — request transfer)' : ''}</option>)}
+          </select>
+        </label>
+        <div class="grid gap-4 sm:grid-cols-2">
+          <label class="text-sm font-medium">Your name *<input name="claimantName" required class="input mt-1.5" value={user?.displayName ?? ''} /></label>
+          <label class="text-sm font-medium">Work email *<input name="claimantEmail" type="email" required class="input mt-1.5" value={user?.email ?? ''} placeholder="you@organization.org" /></label>
+        </div>
+        <label class="block text-sm font-medium">Your relationship to this listing *
+          <select name="relationship" class="input mt-1.5" required>
+            <option value="">Select…</option><option>Owner</option><option>Pastor / Ministry leader</option><option>Employee</option><option>Authorized representative</option><option>Other</option>
+          </select>
+        </label>
+        <label class="block text-sm font-medium">Evidence of your affiliation *
+          <textarea name="evidence" required minlength="10" rows="4" class="input mt-1.5" placeholder="e.g. My work email matches the website domain; I can add a verification file; my name appears on the staff page at this URL…"></textarea>
+        </label>
+        <button class="btn btn-primary w-full !py-3" type="submit" data-animate="cta">Submit claim</button>
+        <p class="text-center text-[13px]" style="color:var(--text-mute)">False claims are removed and may result in account suspension.</p>
+      </form>
+    )}
+
+    {unclaimed.length > 0 && (
+      <section class="mt-8">
+        <h2 class="font-extrabold">Unclaimed profiles waiting for their owners</h2>
+        <div class="mt-3 flex flex-wrap gap-2">
+          {unclaimed.map((l) => <a href={`/claim-listing?listing=${l.slug}`} class="chip hover:border-[var(--accent)]">{l.name}</a>)}
+        </div>
+      </section>
+    )}
+  </div>
+</BaseLayout>

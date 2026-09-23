@@ -1,0 +1,187 @@
+---
+import DashboardLayout from '@/layouts/DashboardLayout.astro';
+import { and, eq, desc, isNull } from 'drizzle-orm';
+import { getDb, hasDatabase } from '@/db/client';
+import { listings, listingLocations, users } from '@/db/schema';
+import { STATUS_LABEL } from '@/lib/submissions';
+import { requireAdminPage } from '@/lib/guards';
+
+const gate = requireAdminPage(Astro);
+if (gate) return gate;
+const user = Astro.locals.user!;
+
+const statusParam = Astro.url.searchParams.get('status') ?? 'pending_review';
+const TABS = [
+  ['pending_review', 'Pending review'],
+  ['changes_requested', 'Changes requested'],
+  ['rejected', 'Rejected'],
+  ['published', 'Approved'],
+  ['draft', 'Drafts'],
+  ['archived', 'Archived'],
+] as const;
+const activeStatus = TABS.some(([v]) => v === statusParam) ? statusParam : 'pending_review';
+
+let rows: Array<{
+  id: string; slug: string; name: string; typeSlug: string; status: string;
+  ownerEmail: string | null; ownerName: string | null;
+  city: string | null; region: string | null;
+  description: string | null; email: string | null; phone: string | null; website: string | null;
+  reviewNote: string | null; updatedAt: Date; publishedAt: Date | null;
+}> = [];
+let counts: Record<string, number> = {};
+if (hasDatabase()) {
+  const db = getDb()!;
+  const base = db
+    .select({ listing: listings, loc: listingLocations, ownerEmail: users.email, ownerName: users.displayName })
+    .from(listings)
+    .leftJoin(listingLocations, and(eq(listingLocations.listingId, listings.id), eq(listingLocations.isPrimary, true)))
+    .leftJoin(users, eq(users.id, listings.ownerId));
+  const all = await base.where(and(isNull(listings.deletedAt), eq(listings.status, activeStatus as 'pending_review'))).orderBy(desc(listings.updatedAt)).limit(200);
+  const archived = await db.select({ listing: listings, loc: listingLocations, ownerEmail: users.email, ownerName: users.displayName })
+    .from(listings)
+    .leftJoin(listingLocations, and(eq(listingLocations.listingId, listings.id), eq(listingLocations.isPrimary, true)))
+    .leftJoin(users, eq(users.id, listings.ownerId))
+    .where(and(eq(listings.status, 'archived'), eq(listings.deletedAt, listings.deletedAt)))
+    .orderBy(desc(listings.updatedAt)).limit(200);
+  rows = (activeStatus === 'archived' ? archived : all).map(({ listing: l, loc, ownerEmail, ownerName }) => ({
+    id: l.id, slug: l.slug, name: l.name, typeSlug: l.typeSlug, status: l.status,
+    ownerEmail, ownerName,
+    city: loc?.city ?? null, region: loc?.region ?? null,
+    description: l.description, email: l.email, phone: l.phone, website: l.website,
+    reviewNote: l.reviewNote ?? null, updatedAt: l.updatedAt, publishedAt: l.publishedAt,
+  }));
+  for (const [v] of TABS) {
+    const c = await db.select({ id: listings.id }).from(listings).where(eq(listings.status, v as 'pending_review'));
+    counts[v] = c.length;
+  }
+}
+
+const tabUrl = (s: string) => `/admin/listings?status=${s}`;
+---
+<DashboardLayout user={user} admin active="listings" seo={{ title: 'Admin: Listings', description: 'Review business submissions.', path: '/admin/listings', noindex: true }}>
+  <div class="flex flex-wrap items-center justify-between gap-3">
+    <h1 class="text-2xl font-extrabold">Listings</h1>
+    <a href="/api/admin/export?table=listings" class="btn btn-secondary !py-2 !text-sm">Export CSV</a>
+  </div>
+
+  <nav class="mt-4 flex flex-wrap gap-1.5" aria-label="Listing queues">
+    {TABS.map(([v, label]) => (
+      <a href={tabUrl(v)} class={`chip ${activeStatus === v ? 'chip-active font-bold' : ''}`} aria-current={activeStatus === v ? 'page' : undefined}>
+        {label} <span class="sdd-gcount !text-[10px]">{counts[v] ?? '·'}</span>
+      </a>
+    ))}
+  </nav>
+
+  <div class="card mt-4 overflow-x-auto">
+    {rows.length === 0 ? (
+      <div class="p-8 text-center">
+        <p class="font-bold">Nothing here</p>
+        <p class="mt-1 text-sm" style="color:var(--text-soft)">No listings with status “{STATUS_LABEL[activeStatus] ?? activeStatus}” right now.</p>
+      </div>
+    ) : (
+      <table class="w-full min-w-[760px] text-sm">
+        <thead><tr class="text-left text-xs uppercase" style="color:var(--text-mute)">
+          <th class="p-3">Business</th><th class="p-3">Owner</th><th class="p-3">Location</th><th class="p-3">Updated</th><th class="p-3 text-right">Actions</th>
+        </tr></thead>
+        <tbody>
+          {rows.map((r) => (
+            <tr class="border-t align-top" style="border-color:var(--border)">
+              <td class="p-3">
+                <p class="font-medium">{r.name}</p>
+                <p class="text-xs" style="color:var(--text-mute)">{r.typeSlug}</p>
+                {r.reviewNote && <p class="mt-1 max-w-sm text-xs" style="color:var(--text-mute)">Last note: {r.reviewNote}</p>}
+                <details class="mt-1">
+                  <summary class="cursor-pointer text-xs font-semibold" style="color:var(--teal)">Details</summary>
+                  <div class="mt-1 max-w-md text-xs" style="color:var(--text-soft)">
+                    <p>{r.description ?? 'No description'}</p>
+                    <p class="mt-1">{r.email ?? '—'} · {r.phone ?? '—'} · {r.website ?? '—'}</p>
+                  </div>
+                </details>
+              </td>
+              <td class="p-3 text-xs">{r.ownerEmail ?? '—'}<br /><span style="color:var(--text-mute)">{r.ownerName ?? ''}</span></td>
+              <td class="p-3">{r.city || '—'}{r.region ? `, ${r.region}` : ''}</td>
+              <td class="p-3 text-xs" style="color:var(--text-mute)">{r.updatedAt.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</td>
+              <td class="p-3">
+                <div class="flex flex-wrap justify-end gap-1.5" data-mod data-id={r.id} data-name={r.name}>
+                  {activeStatus !== 'published' && activeStatus !== 'archived' && <button type="button" class="btn btn-primary !px-2.5 !py-1 !text-xs" data-mact="approve">Approve</button>}
+                  {activeStatus === 'published' && <a href={`/directory/${r.slug}`} class="btn btn-ghost !px-2.5 !py-1 !text-xs">View</a>}
+                  {activeStatus !== 'published' && activeStatus !== 'archived' && <button type="button" class="btn btn-secondary !px-2.5 !py-1 !text-xs" data-mact="request_changes">Request changes</button>}
+                  {activeStatus !== 'archived' && <button type="button" class="btn btn-ghost !px-2.5 !py-1 !text-xs" data-mact="reject" style="color:var(--accent)">Reject</button>}
+                  <button type="button" class="btn btn-ghost !px-2.5 !py-1 !text-xs" data-mact="delete" style="color:var(--accent)">Delete</button>
+                </div>
+                <div class="mt-1.5 hidden" data-notebox data-id={r.id}>
+                  <textarea class="input w-full !text-xs" rows="2" maxlength="2000" placeholder="Note to the owner (required for reject / request changes)" aria-label={`Review note for ${r.name}`}></textarea>
+                </div>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    )}
+  </div>
+
+  <script>
+    const banner = () => document.getElementById('mod-banner');
+    const bannerText = () => document.getElementById('mod-banner-text');
+    function show(ok: boolean, msg: string) {
+      const b = banner(); const t = bannerText();
+      if (!b || !t) return;
+      b.style.borderLeftColor = ok ? 'var(--teal)' : 'var(--accent)';
+      t.textContent = msg;
+      b.classList.remove('hidden');
+      b.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+
+    let pendingAction: string | null = null;
+    let pendingId: string | null = null;
+
+    document.querySelectorAll<HTMLButtonElement>('[data-mact]').forEach((btn) => {
+      btn.addEventListener('click', async () => {
+        const wrap = btn.closest('[data-mod]') as HTMLElement | null;
+        if (!wrap) return;
+        const id = wrap.dataset.id ?? '';
+        const name = wrap.dataset.name ?? '';
+        const act = btn.dataset.mact ?? '';
+        const notebox = document.querySelector(`[data-notebox][data-id="${id}"]`) as HTMLElement | null;
+        const needsNote = act === 'reject' || act === 'request_changes';
+
+        if (needsNote && pendingAction !== act + id) {
+          notebox?.classList.remove('hidden');
+          (notebox?.querySelector('textarea') as HTMLTextAreaElement | null)?.focus();
+          pendingAction = act + id;
+          show(true, `Add a note for “${name}”, then press ${act === 'reject' ? 'Reject' : 'Request changes'} again to confirm.`);
+          return;
+        }
+        if (act === 'delete' && !confirm(`Delete “${name}”? It will be removed from the directory.`)) return;
+
+        const note = (notebox?.querySelector('textarea') as HTMLTextAreaElement | null)?.value ?? '';
+        btn.disabled = true;
+        try {
+          const res = await fetch(`/api/admin/listings/${id}/moderate`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: act, note: note.trim() || undefined }),
+          });
+          const json = await res.json().catch(() => ({ ok: false, error: 'Unexpected response.' }));
+          if (res.ok && json.ok) {
+            sessionStorage.setItem('cl:modflash', act === 'approve' ? `“${name}” approved and published.` : `“${name}” — ${act.replace('_', ' ')} saved.`);
+            location.reload();
+          } else {
+            show(false, json.error ?? 'Action failed.');
+            btn.disabled = false;
+          }
+        } catch {
+          show(false, 'Network error — try again.');
+          btn.disabled = false;
+        }
+      });
+    });
+
+    const flash = sessionStorage.getItem('cl:modflash');
+    if (flash) { sessionStorage.removeItem('cl:modflash'); show(true, flash); }
+  </script>
+
+  <div id="mod-banner" class="card mt-4 hidden border-l-4 p-4" role="status" style="border-left-color:var(--teal)">
+    <p id="mod-banner-text" class="text-sm font-bold"></p>
+  </div>
+</DashboardLayout>

@@ -1,0 +1,20 @@
+---
+import BaseLayout from '@/layouts/BaseLayout.astro';
+const user = Astro.locals.user;
+---
+<BaseLayout user={user} seo={{ title: 'Community Guidelines — CrossLinkd', description: 'How we keep CrossLinkd respectful, honest, and welcoming across traditions.', path: '/guidelines' }}>
+  <div class="mx-auto max-w-3xl px-4 py-12">
+    <h1 class="text-3xl font-extrabold">Community Guidelines</h1>
+    <div class="mt-6 space-y-4 text-[15px] leading-relaxed" style="color:var(--text-soft)">
+      <p>“Let your speech always be gracious.” — Col. 4:6. Across every tradition, we ask everyone to:</p>
+      <ul class="list-disc space-y-2 pl-5">
+        <li><strong style="color:var(--text)">Speak of others’ traditions with respect</strong> — describe your own convictions without disparaging others’.</li>
+        <li><strong style="color:var(--text)">Review experiences, not theology</strong> — rate service, professionalism, and responsiveness.</li>
+        <li><strong style="color:var(--text)">Be honest</strong> — no fake reviews, no incentivized ratings, no impersonation.</li>
+        <li><strong style="color:var(--text)">Protect privacy & safety</strong> — no doxxing, no accusations of serious misconduct without evidence and process.</li>
+        <li><strong style="color:var(--text)">Keep youth spaces safe</strong> — extra care in youth-organization listings and reviews.</li>
+      </ul>
+      <p>Violations lead to content removal, warnings, or account suspension — always with a right of <a href="/appeals" class="underline">appeal</a>.</p>
+    </div>
+  </div>
+</BaseLayout>

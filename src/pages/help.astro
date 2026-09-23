@@ -1,0 +1,23 @@
+---
+import BaseLayout from '@/layouts/BaseLayout.astro';
+const user = Astro.locals.user;
+const faqs = [
+  ['How do I add my business or ministry?', 'Open “List Your Business,” fill in your details, and submit. Most listings go live after a moderation review within 24 hours. Basic listings are free.'],
+  ['How do hashtags work?', 'Type # while searching to get suggestions like #Baptist or #ChristianOwned. Selected tags become filter chips you can remove anytime. Try “bakery #Baptist”.'],
+  ['What does “verified” mean?', 'Each badge has published requirements — see the Trust page. Verification confirms identity and claims evidence; it never implies denominational endorsement.'],
+  ['How do I claim an existing listing?', 'Open the profile and click “Claim this listing,” or visit the claim page. You’ll provide evidence of affiliation and hear back in 1–2 business days.'],
+  ['Does CrossLinkd charge for anything?', 'No. Listings, claiming, and verification are free right now, and you will never be asked for payment details to list. If we ever add paid features, they will be clearly explained first — and verification will stay free.'],
+  ['How do I report a listing or review?', 'Use the Report button on any profile, or contact us. Appeals are handled by a separate reviewer — see the Appeals page.'],
+];
+---
+<BaseLayout user={user} seo={{ title: 'Help Center — CrossLinkd', description: 'Answers about adding listings, claiming profiles, verification, hashtags, and more.', path: '/help' }}>
+  <div class="mx-auto max-w-3xl px-4 py-12">
+    <h1 class="text-3xl font-extrabold">Help center</h1>
+    <p class="section-sub">Quick answers. Still stuck? <a href="/contact" class="underline">Contact us</a>.</p>
+    <div class="mt-6 space-y-3">
+      {faqs.map(([q, a]) => (
+        <details class="card p-5"><summary class="cursor-pointer font-bold">{q}</summary><p class="mt-2 text-sm" style="color:var(--text-soft)">{a}</p></details>
+      ))}
+    </div>
+  </div>
+</BaseLayout>

@@ -1,0 +1,21 @@
+---
+import BaseLayout from '@/layouts/BaseLayout.astro';
+const error = Astro.url.searchParams.get('error');
+---
+<BaseLayout seo={{ title: 'Create Account — CrossLinkd', description: 'Join CrossLinkd to save favorites, follow ministries, and manage listings.', path: '/auth/signup', noindex: true }}>
+  <div class="mx-auto max-w-md px-4 py-14">
+    <div class="card p-8">
+      <h1 class="text-2xl font-extrabold">Join the directory</h1>
+      <p class="mt-1 text-sm" style="color:var(--text-soft)">Free forever for seekers. Listing plans start free too.</p>
+      {error && <p class="mt-4 rounded-xl bg-red-500/10 p-3 text-sm font-medium text-red-600" role="alert">{error}</p>}
+      <form method="POST" action="/api/auth/signup" class="mt-5 space-y-4">
+        <label class="block text-sm font-medium">Display name<input name="displayName" required minlength="2" class="input mt-1.5" placeholder="Grace Thompson" autocomplete="name" /></label>
+        <label class="block text-sm font-medium">Email<input name="email" type="email" required class="input mt-1.5" placeholder="you@example.com" autocomplete="email" /></label>
+        <label class="block text-sm font-medium">Password <span class="font-normal" style="color:var(--text-mute)">(8+ characters)</span><input name="password" type="password" required minlength="8" class="input mt-1.5" autocomplete="new-password" /></label>
+        <label class="flex items-start gap-2 text-[13px]" style="color:var(--text-soft)"><input type="checkbox" required class="mt-1 h-4 w-4 accent-[var(--accent)]" /> I agree to the <a href="/terms" class="underline">Terms</a>, <a href="/privacy" class="underline">Privacy Policy</a>, and <a href="/guidelines" class="underline">Community Guidelines</a>.</label>
+        <button class="btn btn-primary w-full !py-3" type="submit">Create account</button>
+      </form>
+      <p class="mt-4 text-center text-sm" style="color:var(--text-soft)">Already have an account? <a href="/auth/signin" class="font-bold underline">Sign in</a></p>
+    </div>
+  </div>
+</BaseLayout>

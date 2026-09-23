@@ -1,0 +1,58 @@
+---
+import DashboardLayout from '@/layouts/DashboardLayout.astro';
+import { requireUserPage } from '@/lib/guards';
+import { SAMPLE_LISTINGS } from '@/data/listings';
+import { includeSamples } from '@/lib/sampleGate';
+const user = Astro.locals.user;
+const mine = includeSamples() ? SAMPLE_LISTINGS.slice(0, 2) : [];
+const stats = [
+  ['Profile views (30d)', '4,812', '+18%'],
+  ['Search impressions', '21,340', '+9%'],
+  ['Clicks & inquiries', '386', '+22%'],
+  ['Avg. rating', '4.9', '+0.1'],
+];
+const __userGate = requireUserPage(Astro);
+if (__userGate) return __userGate;
+
+---
+<DashboardLayout user={user} active="overview" seo={{ title: 'Dashboard — CrossLinkd', description: 'Manage your listings.', path: '/dashboard', noindex: true }}>
+
+  {Astro.url.searchParams.get('notice') === 'verify-email' && (
+    <div class="card border-l-4 p-4" style="border-left-color:var(--accent)" role="status">
+      <p class="text-sm font-bold">Verify your email</p>
+      <p class="mt-0.5 text-sm" style="color:var(--text-soft)">We sent a verification link to {user?.email}. Confirming your address builds trust with the review team.</p>
+    </div>
+  )}
+  {!user && (
+    <div class="card mb-4 border-l-4 p-4" style="border-left-color:var(--accent)">
+      <p class="text-sm">You’re previewing a <strong>demo dashboard</strong>. <a href="/auth/signin?next=/dashboard" class="font-bold underline">Sign in</a> to manage real listings.</p>
+    </div>
+  )}
+  <div class="flex flex-wrap items-center justify-between gap-3">
+    <div><h1 class="text-2xl font-extrabold">Welcome{user ? `, ${user.displayName.split(' ')[0]}` : ''}</h1><p class="text-sm" style="color:var(--text-soft)">Here’s how your listings are doing.</p></div>
+    <a href="/add-listing" class="btn btn-primary">+ New listing</a>
+  </div>
+  <div class="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+    {stats.map(([label, value, delta]) => (
+      <div class="card p-4"><p class="text-[13px]" style="color:var(--text-mute)">{label}</p><p class="mt-1 text-2xl font-extrabold">{value}</p><p class="text-xs font-bold" style="color:var(--teal)">{delta} vs prior period</p></div>
+    ))}
+  </div>
+  <h2 class="mt-6 font-extrabold">Your listings</h2>
+  <div class="mt-3 space-y-3">
+    {mine.map((l) => (
+      <div class="card flex flex-wrap items-center justify-between gap-3 p-4">
+        <div><p class="font-bold">{l.name}</p><p class="text-[13px]" style="color:var(--text-mute)">★ {l.rating} • {l.reviewCount} reviews • {l.claimed ? '✓ Claimed' : 'Unclaimed'}</p></div>
+        <div class="flex gap-2">
+          <a href={`/directory/${l.slug}`} class="btn btn-ghost !py-1.5 !text-sm">View</a>
+          <a href={`/dashboard/listings?id=${l.id}`} class="btn btn-secondary !py-1.5 !text-sm">Edit</a>
+          <a href="/dashboard/analytics" class="btn btn-secondary !py-1.5 !text-sm">Analytics</a>
+        </div>
+      </div>
+    ))}
+  </div>
+  <div class="card mt-4 p-5" style="background:rgba(46,146,131,.08)">
+    <p class="font-bold">Publish an announcement</p>
+    <p class="text-sm" style="color:var(--text-soft)">Share hours changes, new services, or upcoming events with your followers.</p>
+    <a href="/dashboard/events" class="btn btn-secondary mt-3 !py-2 !text-sm">Create announcement or event</a>
+  </div>
+</DashboardLayout>

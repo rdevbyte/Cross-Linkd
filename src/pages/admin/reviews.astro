@@ -1,0 +1,35 @@
+---
+import DashboardLayout from '@/layouts/DashboardLayout.astro';
+import { requireAdminPage } from '@/lib/guards';
+const user = Astro.locals.user;
+const rows = [
+  ['Cornerstone Plumbing Co.', 'Mark D.', '★☆☆☆☆ “They quoted me high…”', 'Flagged: possible competitor', 'flagged'],
+  ['New Life Fellowship', 'Anonymous', '★★★★★ “Great sermon on…”', 'Theological dispute in thread', 'flagged'],
+  ['Emmaus Photography', 'Lisa R.', '★★★★★ “Elena was wonderful…”', 'Clean — awaiting publish', 'pending'],
+];
+const __adminGate = requireAdminPage(Astro);
+if (__adminGate) return __adminGate;
+
+---
+<DashboardLayout user={user} admin active="reviews" seo={{ title: 'Admin: Reviews', description: 'Moderate reviews.', path: '/admin/reviews', noindex: true }}>
+  <h1 class="text-2xl font-extrabold">Review moderation</h1>
+  <div class="card p-3 text-[13px] mt-3" style="border-left:4px solid var(--accent)" role="note"><strong>Preview data.</strong> This section shows illustrative sample content while the platform is in preview; live data replaces it as activity grows.</div>
+  <p class="mt-1 text-sm" style="color:var(--text-soft)">Policy: <a href="/reviews-policy" class="underline">Review Policy</a>. Never publish anonymous accusations of serious misconduct without process.</p>
+  <div class="mt-4 space-y-3">
+    {rows.map(([listing, author, excerpt, note, state]) => (
+      <div class="card p-4">
+        <div class="flex flex-wrap items-center justify-between gap-2">
+          <p class="font-bold">{listing} <span class="font-normal" style="color:var(--text-mute)">— {author}</span></p>
+          <span class="chip !text-[11px]">{state === 'flagged' ? 'Flagged' : 'Pending'}</span>
+        </div>
+        <p class="mt-1 text-sm">{excerpt}</p>
+        <p class="mt-1 text-[13px]" style="color:var(--text-mute)">{note}</p>
+        <div class="mt-3 flex gap-2">
+          <button class="btn btn-primary !py-1.5 !text-sm" type="button" onclick="alert('Review published. (demo)')">Publish</button>
+          <button class="btn btn-secondary !py-1.5 !text-sm" type="button" onclick="alert('Sent to appeals queue. (demo)')">To appeals</button>
+          <button class="btn btn-ghost !py-1.5 !text-sm" type="button" onclick="alert('Review removed with notice. (demo)')">Remove</button>
+        </div>
+      </div>
+    ))}
+  </div>
+</DashboardLayout>

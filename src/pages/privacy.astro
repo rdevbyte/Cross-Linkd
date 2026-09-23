@@ -1,0 +1,18 @@
+---
+import BaseLayout from '@/layouts/BaseLayout.astro';
+const user = Astro.locals.user;
+---
+<BaseLayout user={user} seo={{ title: 'Privacy Policy — CrossLinkd', description: 'How CrossLinkd collects, uses, and protects your data.', path: '/privacy' }}>
+  <div class="mx-auto max-w-3xl px-4 py-12">
+    <h1 class="text-3xl font-extrabold">Privacy Policy</h1>
+    <p class="mt-1 text-sm" style="color:var(--text-mute)">Last updated: September 2026</p>
+    <div class="mt-6 space-y-4 text-[15px] leading-relaxed" style="color:var(--text-soft)">
+      <p><strong style="color:var(--text)">What we collect:</strong> account details, listing content you submit, reviews, verification evidence, and basic analytics (page views, search terms in aggregate). Location is used only when you opt into “near me.”</p>
+      <p><strong style="color:var(--text)">What we never do:</strong> sell your personal data, share verification documents publicly, or use your faith affiliation for third-party advertising.</p>
+      <p><strong style="color:var(--text)">Your controls:</strong> export or delete your data anytime from account settings; manage notifications and saved searches; request listing takedowns you own.</p>
+      <p><strong style="color:var(--text)">Security:</strong> encrypted connections, hashed passwords, role-based access, audit logs for sensitive actions, and least-privilege database access with pooling on Vercel serverless.</p>
+      <p><strong style="color:var(--text)">Cookies:</strong> strictly-necessary session cookies, theme preference, and (optional) privacy-respecting analytics.</p>
+      <p>Contact our privacy team via the <a href="/contact" class="underline">contact page</a>.</p>
+    </div>
+  </div>
+</BaseLayout>

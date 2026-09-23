@@ -1,0 +1,54 @@
+---
+import BaseLayout from '@/layouts/BaseLayout.astro';
+import { eventBySlug, eventDate } from '@/data/events';
+import { includeSamples } from '@/lib/sampleGate';
+import { eventSchema } from '@/lib/seo';
+
+const { slug } = Astro.params;
+const event = slug && includeSamples() ? eventBySlug(slug) : undefined;
+if (!event) return Astro.redirect('/events', 302);
+const user = Astro.locals.user;
+const date = eventDate(event.startsInDays);
+const pageUrl = `${Astro.url.origin}/events/${event.slug}`;
+const ics = `BEGIN:VCALENDAR
+VERSION:2.0
+BEGIN:VEVENT
+UID:${event.id}@crosslinkd
+DTSTART:${date.toISOString().replace(/[-:]/g, '').split('.')[0]}Z
+SUMMARY:${event.title}
+LOCATION:${event.venue ?? 'Online'} ${event.city}
+DESCRIPTION:${event.description.slice(0, 200)}
+END:VEVENT
+END:VCALENDAR`;
+const icsHref = `data:text/calendar;charset=utf-8,${encodeURIComponent(ics)}`;
+---
+<BaseLayout user={user} seo={{
+  title: `${event.title} — ${event.city} | CrossLinkd`,
+  description: event.description.slice(0, 160),
+  path: `/events/${event.slug}`,
+  schema: eventSchema({ name: event.title, description: event.description, url: pageUrl, start: date.toISOString(), city: event.city }),
+}}>
+  <div class="mx-auto max-w-4xl px-4 py-10">
+    <nav class="text-[13px]" style="color:var(--text-mute)"><a href="/events" class="hover:underline">Events</a> / <span style="color:var(--text)">{event.title}</span></nav>
+    <div class="card mt-4 overflow-hidden">
+      <div class="h-40" style={`background:hsl(${event.hue},26%,78%)`}></div>
+      <div class="p-6 sm:p-8">
+        <p class="text-sm font-bold uppercase tracking-wide" style="color:var(--teal)">
+          {date.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', hour: 'numeric', minute: '2-digit' })}
+        </p>
+        <h1 class="mt-2 text-3xl font-extrabold">{event.title}</h1>
+        <p class="mt-3 leading-relaxed" style="color:var(--text-soft)">{event.description}</p>
+        <dl class="mt-6 grid gap-3 sm:grid-cols-2">
+          {[['Location', event.format === 'online' ? 'Online event' : `${event.venue} — ${event.city}${event.region ? `, ${event.region}` : ''}`], ['Cost', event.cost], ['Age group', event.ageGroup], ['Category', event.category], ['Organizer', event.organizer], ['Format', { in_person: 'In person', online: 'Online', hybrid: 'Hybrid (in person + online)' }[event.format]]].map(([t, v]) => (
+            <div class="surface-soft rounded-2xl p-3.5"><dt class="text-[13px] font-bold">{t}</dt><dd class="mt-0.5 text-sm" style="color:var(--text-soft)">{v}</dd></div>
+          ))}
+        </dl>
+        <div class="mt-6 flex flex-wrap gap-2">
+          <a href={icsHref} download={`${event.slug}.ics`} class="btn btn-primary" data-animate="cta">Add to calendar</a>
+          {event.organizerSlug && <a href={`/directory/${event.organizerSlug}`} class="btn btn-secondary">View organizer</a>}
+          <button onclick="navigator.clipboard?.writeText(window.location.href);alert('Event link copied!')" class="btn btn-secondary">↗ Share</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</BaseLayout>

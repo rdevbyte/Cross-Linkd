@@ -1,0 +1,323 @@
+---
+import BaseLayout from '@/layouts/BaseLayout.astro';
+import ListingCard from '@/components/ListingCard.astro';
+import SearchBar from '@/components/SearchBar';
+import EmptyState from '@/components/EmptyState.astro';
+import { searchListings } from '@/lib/search';
+import { getDbListings } from '@/lib/publicListings';
+import { LISTING_TYPES } from '@/data/listing-types';
+import { DENOMINATIONS, TRADITIONS } from '@/data/denominations';
+import { INDUSTRIES } from '@/data/industries';
+import StructuredSelect from '@/components/StructuredSelect.astro';
+
+const user = Astro.locals.user;
+const params = Astro.url.searchParams;
+const getAll = (k: string) => params.getAll(k).filter(Boolean);
+
+// ---- Structured "Listing type" dropdown (ltype) ----
+// Values: type:<listingType> | industry:<industry> | cat:<sub-industry>
+const ltype = params.get('ltype') ?? '';
+const ltypeSep = ltype.indexOf(':');
+const ltypeKind = ltypeSep > -1 ? ltype.slice(0, ltypeSep) : '';
+const ltypeVal = ltypeSep > -1 ? ltype.slice(ltypeSep + 1) : '';
+
+// Alphabetical data for the two structured dropdowns.
+const byName = (a: { name?: string; label?: string }, b: { name?: string; label?: string }) =>
+  String(a?.name ?? a?.label ?? '').localeCompare(String(b?.name ?? b?.label ?? ''));
+const typeOptions = [...LISTING_TYPES].sort(byName);
+const industryGroups = [...INDUSTRIES]
+  .sort(byName)
+  .map((i) => ({ slug: i.slug, name: i.name, categories: [...i.categories].sort(byName) }));
+const denomGroups = [...TRADITIONS]
+  .sort(byName)
+  .map((t) => ({ name: t.name, items: DENOMINATIONS.filter((d) => d.tradition === t.slug).sort(byName) }))
+  .filter((g) => g.items.length > 0);
+
+// Structured dropdown data (both filters share the same component + behavior).
+const ltypeGroups = [
+  { label: 'Listing types', items: typeOptions.map((t) => ({ value: `type:${t.slug}`, label: t.label })) },
+  ...industryGroups.map((g) => ({
+    label: g.name,
+    items: [
+      { value: `industry:${g.slug}`, label: `All in ${g.name}` },
+      ...g.categories.map((c) => ({ value: `cat:${c.slug}`, label: c.name })),
+    ],
+  })),
+];
+const denomData = denomGroups.map((g) => ({ label: g.name, items: g.items.map((d) => ({ value: d.slug, label: d.name })) }));
+
+// Human label for the active ltype selection (shown in the results header).
+const ltypeLabel =
+  ltypeKind === 'type' ? typeOptions.find((t) => t.slug === ltypeVal)?.label
+  : ltypeKind === 'industry' ? industryGroups.find((g) => g.slug === ltypeVal)?.name
+  : ltypeKind === 'cat' ? INDUSTRIES.flatMap((i) => i.categories).find((c) => c.slug === ltypeVal)?.name
+  : undefined;
+
+const filters = {
+  q: params.get('q') ?? '',
+  type: ltypeKind === 'type' ? [...getAll('type'), ltypeVal] : getAll('type'),
+  denomination: getAll('denomination'),
+  industry: ltypeKind === 'industry' ? [...getAll('industry'), ltypeVal] : getAll('industry'),
+  category: ltypeKind === 'cat' ? [ltypeVal] : [],
+  profession: getAll('profession'),
+  city: params.get('city') ?? undefined,
+  near: params.get('near') ?? undefined,
+  region: params.get('region') ?? undefined,
+  lat: params.get('lat') ? Number(params.get('lat')) : undefined,
+  lng: params.get('lng') ? Number(params.get('lng')) : undefined,
+  radiusMi: params.get('radiusMi') ? Number(params.get('radiusMi')) : 25,
+  verifiedOnly: params.get('verifiedOnly') === '1',
+  openNow: params.get('openNow') === '1',
+  onlineOnly: params.get('onlineOnly') === '1',
+  minRating: params.get('minRating') ? Number(params.get('minRating')) : 0,
+  price: getAll('price'),
+  languages: getAll('languages'),
+  sort: (params.get('sort') as 'relevance' | 'distance' | 'rating' | 'newest' | 'recommended' | 'popular') || 'relevance',
+  page: params.get('page') ? Number(params.get('page')) : 1,
+  perPage: 12,
+};
+const selectedDenom = filters.denomination[0] ?? '';
+const selectedDenomLabel = denomData.flatMap((g) => g.items).find((d) => d.value === selectedDenom)?.label ?? '';
+const dbListings = await getDbListings();
+const result = searchListings(filters, dbListings);
+const pageUrl = (p: number) => {
+  const sp = new URLSearchParams(params);
+  sp.set('page', String(p));
+  return `/search?${sp.toString()}`;
+};
+const sortOptions: [string, string][] = [
+  ['relevance', 'Relevance'], ['distance', 'Distance'], ['rating', 'Rating'],
+  ['newest', 'Newest'], ['recommended', 'Recommended'], ['popular', 'Popular'],
+];
+
+const seo = {
+  title: filters.q ? `Results for “${filters.q}” — CrossLinkd` : 'Search — CrossLinkd',
+  description: 'Search Christian businesses, churches, ministries, professionals, and events by keyword, hashtag, denomination, industry, and location.',
+  path: `/search`,
+};
+---
+<BaseLayout seo={seo} user={user}>
+  <div class="mx-auto max-w-7xl px-4 py-8">
+    <div class="max-w-3xl">
+      <h1 class="text-2xl font-extrabold sm:text-3xl">Search the directory</h1>
+      <p class="mt-1 text-sm" style="color:var(--text-soft)">Try <code class="rounded bg-[var(--surface-2)] px-1.5 py-0.5 text-[13px]">bakery #Baptist</code>, <code class="rounded bg-[var(--surface-2)] px-1.5 py-0.5 text-[13px]">counselor near me</code>, or <code class="rounded bg-[var(--surface-2)] px-1.5 py-0.5 text-[13px]">churches with wheelchair access</code></p>
+      <div class="mt-4"><SearchBar client:load initialQuery={filters.q} size="compact" /></div>
+      {result.appliedTags.length > 0 && (
+        <div class="mt-2 flex flex-wrap gap-1.5" aria-label="Applied hashtag filters">
+          {result.appliedTags.map((t) => <span class="chip chip-active">#{t}</span>)}
+        </div>
+      )}
+    </div>
+
+    <div class="mt-6 grid gap-6 lg:grid-cols-[260px_1fr]">
+      <!-- Filters -->
+      <aside class="card h-fit p-4 lg:sticky lg:top-20" aria-label="Search filters">
+        <form method="GET" action="/search" class="space-y-4">
+          <input type="hidden" name="q" value={filters.q} />
+          <input type="hidden" name="sort" value={filters.sort} />
+          <StructuredSelect
+            name="ltype"
+            label="Listing type"
+            helper="Search or browse — grouped by industry and sub-industry, A–Z"
+            placeholder="All listing types"
+            searchPlaceholder="Search industries…"
+            groups={ltypeGroups}
+            selected={ltype}
+            selectedLabel={ltypeLabel ?? ''}
+          />
+          <StructuredSelect
+            name="denomination"
+            label="Denomination"
+            helper="Search or browse — grouped by tradition, A–Z"
+            placeholder="Any tradition"
+            searchPlaceholder="Search traditions…"
+            groups={denomData}
+            selected={selectedDenom}
+            selectedLabel={selectedDenomLabel}
+          />
+          <div class="grid grid-cols-2 gap-2">
+            <div>
+              <h2 class="text-sm font-bold">City</h2>
+              <input name="city" value={filters.city ?? ''} placeholder="Dallas" class="input mt-2" />
+            </div>
+            <div>
+              <h2 class="text-sm font-bold">Radius</h2>
+              <select name="radiusMi" class="input mt-2" aria-label="Search radius">
+                {[10, 25, 50, 100].map((r) => <option value={r} selected={filters.radiusMi === r}>{r} mi</option>)}
+              </select>
+            </div>
+          </div>
+          <div class="space-y-1.5 border-t pt-3" style="border-color:var(--border)">
+            <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="verifiedOnly" value="1" checked={filters.verifiedOnly} class="h-4 w-4 accent-[var(--accent)]" /> Verified only</label>
+            <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="openNow" value="1" checked={filters.openNow} class="h-4 w-4 accent-[var(--accent)]" /> Open now</label>
+            <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="onlineOnly" value="1" checked={filters.onlineOnly} class="h-4 w-4 accent-[var(--accent)]" /> Online services</label>
+          </div>
+          <div>
+            <h2 class="text-sm font-bold">Min rating</h2>
+            <select name="minRating" class="input mt-2" aria-label="Minimum rating">
+              {[0, 3, 4, 4.5].map((r) => <option value={r} selected={filters.minRating === r}>{r === 0 ? 'Any' : `${r}+ stars`}</option>)}
+            </select>
+          </div>
+          <div class="flex gap-2">
+            <button class="btn btn-primary flex-1 !py-2 !text-sm" type="submit">Apply</button>
+            <a href="/search" class="btn btn-secondary !py-2 !text-sm">Reset</a>
+          </div>
+        </form>
+        <button id="near-me" class="btn btn-ghost mt-2 w-full !text-sm" type="button">Near me</button>
+      </aside>
+
+      <!-- Results -->
+      <div>
+        <div class="flex flex-wrap items-center justify-between gap-3">
+          <p class="text-sm" style="color:var(--text-soft)" role="status">
+            <strong style="color:var(--text)">{result.total}</strong> result{result.total === 1 ? '' : 's'}
+            {filters.q && <> for <strong style="color:var(--text)">“{filters.q}”</strong></>}
+            {ltypeLabel && <> in <strong style="color:var(--text)">{ltypeLabel}</strong></>}
+            {filters.near && <> near <strong style="color:var(--text)">{filters.near}</strong></>}
+          </p>
+          <div class="flex items-center gap-2">
+            <button id="layout-toggle" type="button" class="btn btn-secondary inline-flex items-center gap-1.5 !px-3 !py-1.5 !text-sm" aria-pressed="false" aria-label="List view. Switch to grid view">
+              <svg id="icon-list" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path d="M3 4.5h14v1.8H3V4.5Zm0 4.6h14v1.8H3V9.1Zm0 4.6h14v1.8H3v-1.8Z" /></svg>
+              <svg id="icon-grid" class="hidden h-4 w-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path d="M3 3h6.2v6.2H3V3Zm7.8 0H17v6.2h-6.2V3ZM3 10.8h6.2V17H3v-6.2Zm7.8 0H17V17h-6.2v-6.2Z" /></svg>
+              <span id="layout-toggle-label">List view</span>
+            </button>
+            <p id="layout-status" class="sr-only" role="status"></p>
+            <label class="text-sm" style="color:var(--text-mute)">Sort
+              <select id="sort" class="input ml-1 !w-auto !py-1.5" aria-label="Sort results">
+                {sortOptions.map(([v, l]) => <option value={v} selected={filters.sort === v}>{l}</option>)}
+              </select>
+            </label>
+          </div>
+        </div>
+
+        {result.hits.length === 0 ? (
+          <div class="mt-6">
+            <EmptyState title="No results found" body="Try fewer filters, a different spelling, or a nearby city. You can also suggest a listing we’re missing.">
+              <div class="mt-4 flex flex-wrap justify-center gap-2">
+                {result.suggestions.map((s) => (
+                  <a href={`/search?q=${encodeURIComponent(s)}`} class="chip hover:border-[var(--accent)]">{s}</a>
+                ))}
+              </div>
+              <div class="mt-5"><a href="/add-listing" class="btn btn-primary">Suggest a listing</a></div>
+            </EmptyState>
+          </div>
+        ) : (
+          <div id="results-grid" class="layout-container listings-grid mt-4">
+            {result.hits.map((h) => <ListingCard listing={h} distanceMiles={h.distanceMiles} />)}
+          </div>
+        )}
+        <script is:inline>
+          try { if (localStorage.getItem('cl:listLayout') === 'grid') document.getElementById('results-grid')?.classList.add('as-grid'); } catch (e) {}
+        </script>
+
+        {result.totalPages > 1 && (
+          <nav class="mt-8 flex items-center justify-center gap-2" aria-label="Pagination">
+            {result.page > 1 && <a href={pageUrl(result.page - 1)} class="btn btn-secondary !px-4">← Prev</a>}
+            <span class="text-sm" style="color:var(--text-soft)">Page {result.page} of {result.totalPages}</span>
+            {result.page < result.totalPages && <a href={pageUrl(result.page + 1)} class="btn btn-secondary !px-4">Next →</a>}
+          </nav>
+        )}
+      </div>
+    </div>
+  </div>
+
+  <script define:vars={{ sortBase: `/search?${new URLSearchParams([...params].filter(([k]) => k !== 'sort' && k !== 'page')).toString()}` }}>
+    const sort = document.getElementById('sort');
+    sort?.addEventListener('change', (e) => {
+      const v = e.target.value;
+      const join = sortBase.includes('?') && !sortBase.endsWith('?') ? '&' : '';
+      window.location.href = `${sortBase}${join}sort=${v}`;
+    });
+    document.getElementById('near-me')?.addEventListener('click', () => {
+      if (!navigator.geolocation) return alert('Geolocation is not supported by your browser.');
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          const sp = new URLSearchParams(window.location.search);
+          sp.set('lat', pos.coords.latitude.toFixed(4));
+          sp.set('lng', pos.coords.longitude.toFixed(4));
+          sp.set('sort', 'distance');
+          window.location.href = `/search?${sp.toString()}`;
+        },
+        () => alert('Location unavailable — try entering a city instead.'),
+      );
+    });
+  </script>
+
+  <script>
+    // List/Grid layout toggle — anime.js v4 AutoLayout (FLIP) with staggered cards.
+    import { createLayout, utils, stagger } from 'animejs';
+
+    const initLayoutToggle = () => {
+      const [$root] = utils.$('.layout-container');
+      const [$button] = utils.$('#layout-toggle');
+      if (!$root || !$button) return;
+      const [$iconList] = utils.$('#icon-list');
+      const [$iconGrid] = utils.$('#icon-grid');
+      const [$label] = utils.$('#layout-toggle-label');
+      const [$status] = utils.$('#layout-status');
+      const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+      const STORAGE_KEY = 'cl:listLayout';
+
+      const isGrid = () => $root.classList.contains('as-grid');
+      const setLayout = (grid: boolean) => $root.classList.toggle('as-grid', grid);
+      const persist = () => {
+        try { window.localStorage.setItem(STORAGE_KEY, isGrid() ? 'grid' : 'list'); } catch (e) { /* storage unavailable */ }
+      };
+      // Button reflects the ACTIVE view: label + icon name it, aria-pressed marks grid mode.
+      const syncControls = () => {
+        const grid = isGrid();
+        const current = grid ? 'Grid' : 'List';
+        const other = grid ? 'list' : 'grid';
+        if ($iconGrid) $iconGrid.classList.toggle('hidden', !grid);
+        if ($iconList) $iconList.classList.toggle('hidden', grid);
+        if ($label) $label.textContent = `${current} view`;
+        $button.setAttribute('aria-pressed', String(grid));
+        $button.setAttribute('aria-label', `${current} view. Switch to ${other} view`);
+      };
+
+      // Anime.js FLIP layout animation; the class always toggles first so the
+      // layout still switches even if the animation engine is unavailable.
+      let layout = null;
+      try {
+        // children:'article' is critical — the default '*' selector also matches every
+        // descendant (SVG art, chips, links…), stretching the stagger to ~16s.
+        layout = createLayout($root, { ease: 'outExpo', children: 'article' });
+      } catch (e) {
+        layout = null;
+      }
+      const applyToggle = () => {
+        const grid = !isGrid();
+        if (reducedMotion.matches || !layout) {
+          setLayout(grid);
+          return;
+        }
+        try {
+          layout.update(
+            () => {
+              setLayout(grid);
+            },
+            {
+              delay: stagger(50, {
+                from: grid ? 'first' : 'last',
+              }),
+            },
+          );
+        } catch (e) {
+          setLayout(grid);
+        }
+      };
+
+      $button.addEventListener('click', () => {
+        applyToggle();
+        syncControls();
+        persist();
+        if ($status) $status.textContent = `${isGrid() ? 'Grid' : 'List'} view shown`;
+      });
+
+      syncControls();
+    };
+
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initLayoutToggle);
+    else initLayoutToggle();
+  </script>
+</BaseLayout>

@@ -1,0 +1,34 @@
+---
+import DashboardLayout from '@/layouts/DashboardLayout.astro';
+import { requireUserPage } from '@/lib/guards';
+const user = Astro.locals.user;
+const reviews = [
+  { name: 'Sarah M.', listing: 'Grace & Grain Bakery', rating: 5, body: 'Warm, professional, and clearly faith-driven.', when: '2 weeks ago', responded: true },
+  { name: 'James T.', listing: 'Grace & Grain Bakery', rating: 5, body: 'They prayed with us before starting and the quality was excellent.', when: '1 month ago', responded: false },
+  { name: 'Ruth K.', listing: 'Grace & Grain Bakery', rating: 4, body: 'Very busy (for good reason!). Book ahead.', when: '2 months ago', responded: false },
+];
+const __userGate = requireUserPage(Astro);
+if (__userGate) return __userGate;
+
+---
+<DashboardLayout user={user} active="reviews" seo={{ title: 'Reviews — Dashboard', description: 'Respond to reviews.', path: '/dashboard/reviews', noindex: true }}>
+  <h1 class="text-2xl font-extrabold">Reviews & recommendations</h1>
+  <div class="card p-3 text-[13px] mt-3" style="border-left:4px solid var(--accent)" role="note"><strong>Preview data.</strong> This section shows illustrative sample content while the platform is in preview; live data replaces it as activity grows.</div>
+  <p class="mt-1 text-sm" style="color:var(--text-soft)">Respond with grace — one response per review. Flag concerns via <a href="/contact?topic=report" class="underline">Report</a>.</p>
+  <div class="mt-4 space-y-3">
+    {reviews.map((r) => (
+      <div class="card p-5">
+        <div class="flex items-center justify-between"><p class="font-bold">{r.name} <span class="font-normal" style="color:var(--text-mute)">on {r.listing}</span></p><span class="text-sm">★ {r.rating}.0 • {r.when}</span></div>
+        <p class="mt-1 text-sm" style="color:var(--text-soft)">{r.body}</p>
+        {r.responded ? (
+          <p class="mt-2 rounded-xl p-3 text-sm" style="background:var(--surface-2)"><strong>Your response:</strong> Thank you, Sarah! Soli Deo Gloria.</p>
+        ) : (
+          <form method="POST" action="/api/reviews/respond" class="mt-2 flex gap-2" onsubmit="event.preventDefault();alert('Response posted! (demo)')">
+            <input name="response" required class="input" placeholder="Write a gracious response…" aria-label="Response" />
+            <button class="btn btn-primary !py-2 !text-sm" type="submit">Respond</button>
+          </form>
+        )}
+      </div>
+    ))}
+  </div>
+</DashboardLayout>

@@ -1,0 +1,34 @@
+---
+import BaseLayout from '@/layouts/BaseLayout.astro';
+import { TRADITIONS, DENOMINATIONS, denominationsByTradition } from '@/data/denominations';
+import { getPublicListings } from '@/lib/publicListings';
+
+const corpus = await getPublicListings();
+const user = Astro.locals.user;
+const countFor = (slug: string) => corpus.filter((l) => l.denominations.includes(slug)).length;
+---
+<BaseLayout user={user} seo={{ title: 'Browse Denominations & Traditions — CrossLinkd', description: 'Explore churches, ministries, and believers across every Christian tradition — descriptive, never ranked.', path: '/browse/denominations' }}>
+  <div class="mx-auto max-w-7xl px-4 py-10">
+    <h1 class="text-3xl font-extrabold">Denominations & traditions</h1>
+    <p class="section-sub max-w-3xl">We describe traditions neutrally and never rank them. Classifications may overlap and vary by region. Discovery here never implies denominational endorsement.</p>
+    <div class="mt-8 space-y-8">
+      {TRADITIONS.map((t) => (
+        <section id={t.slug} class="card scroll-mt-24 p-6" data-animate="reveal">
+          <h2 class="text-xl font-extrabold">{t.name}</h2>
+          <p class="mt-1 text-sm" style="color:var(--text-soft)">{t.description}</p>
+          <div class="mt-4 flex flex-wrap gap-2">
+            {denominationsByTradition(t.slug).map((d) => (
+              <a href={`/denominations/${d.slug}`} class="chip !px-3.5 !py-1.5 !text-[13px] hover:border-[var(--accent)]">
+                {d.name} <span style="color:var(--text-mute)">({countFor(d.slug)})</span>
+              </a>
+            ))}
+            {denominationsByTradition(t.slug).length === 0 && (
+              <span class="text-sm" style="color:var(--text-mute)">Denominations in this tradition are being curated — <a class="underline" href="/contact">suggest one</a>.</span>
+            )}
+          </div>
+        </section>
+      ))}
+    </div>
+    <p class="mt-6 text-[13px]" style="color:var(--text-mute)">Showing {DENOMINATIONS.length} denominations across {TRADITIONS.length} traditions.</p>
+  </div>
+</BaseLayout>

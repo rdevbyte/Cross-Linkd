@@ -1,0 +1,30 @@
+---
+import DashboardLayout from '@/layouts/DashboardLayout.astro';
+import { requireAdminPage } from '@/lib/guards';
+const user = Astro.locals.user;
+const rows = [
+  ['Living Waters Worship Collective', 'David K. — Worship pastor', 'Email matches domain; staff page link provided', '2h ago'],
+  ['Psalm 23 Media', 'Jonah P. — Owner', 'Business registration attached', '1d ago'],
+  ['City on a Hill Podcast', 'Rachel S. — Producer', 'Podcast host dashboard screenshot', '2d ago'],
+];
+const __adminGate = requireAdminPage(Astro);
+if (__adminGate) return __adminGate;
+
+---
+<DashboardLayout user={user} admin active="claims" seo={{ title: 'Admin: Claims', description: 'Review claims.', path: '/admin/claims', noindex: true }}>
+  <h1 class="text-2xl font-extrabold">Listing claims</h1>
+  <div class="card p-3 text-[13px] mt-3" style="border-left:4px solid var(--accent)" role="note"><strong>Preview data.</strong> This section shows illustrative sample content while the platform is in preview; live data replaces it as activity grows.</div>
+  <div class="mt-4 space-y-3">
+    {rows.map(([name, who, evidence, when]) => (
+      <div class="card p-4">
+        <p class="font-bold">{name}</p>
+        <p class="mt-1 text-sm" style="color:var(--text-soft)">{who} • {when}</p>
+        <p class="mt-1 text-sm">Evidence: {evidence}</p>
+        <div class="mt-3 flex gap-2">
+          <button class="btn btn-primary !py-1.5 !text-sm" type="button" onclick="alert('Claim approved — ownership transferred! (demo)')">Approve & transfer</button>
+          <button class="btn btn-ghost !py-1.5 !text-sm" type="button" onclick="alert('Claim rejected with reason. (demo)')">Reject</button>
+        </div>
+      </div>
+    ))}
+  </div>
+</DashboardLayout>

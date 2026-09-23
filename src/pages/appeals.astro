@@ -1,0 +1,17 @@
+---
+import BaseLayout from '@/layouts/BaseLayout.astro';
+const user = Astro.locals.user;
+---
+<BaseLayout user={user} seo={{ title: 'Appeals — CrossLinkd', description: 'How to appeal a moderation decision.', path: '/appeals' }}>
+  <div class="mx-auto max-w-3xl px-4 py-12">
+    <h1 class="text-3xl font-extrabold">Content appeals</h1>
+    <div class="mt-6 space-y-4 text-[15px] leading-relaxed" style="color:var(--text-soft)">
+      <p>Every moderation decision can be appealed to a reviewer who was not involved in the original decision.</p>
+      <ol class="list-decimal space-y-2 pl-5">
+        <li>Submit an appeal within 30 days via the <a href="/contact?topic=appeals" class="underline">contact form</a> with your reference ID.</li>
+        <li>A separate reviewer re-examines the content, evidence, and policy within 5 business days.</li>
+        <li>You receive a written decision: upheld, reversed, or modified. Serious cases may be escalated to a super administrator.</li>
+      </ol>
+    </div>
+  </div>
+</BaseLayout>

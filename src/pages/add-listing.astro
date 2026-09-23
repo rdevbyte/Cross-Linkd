@@ -1,0 +1,78 @@
+---
+import BaseLayout from '@/layouts/BaseLayout.astro';
+import { LISTING_TYPES } from '@/data/listing-types';
+import { INDUSTRIES } from '@/data/industries';
+import { DENOMINATIONS } from '@/data/denominations';
+const user = Astro.locals.user;
+const error = Astro.url.searchParams.get('error');
+const success = Astro.url.searchParams.get('success') === '1';
+---
+<BaseLayout user={user} seo={{ title: 'List Your Business — Free Directory Listing | CrossLinkd', description: 'Create a free listing for your Christian-owned business, church, ministry, or professional practice. Hand-reviewed and live in about a day. Free to list.', path: '/add-listing' }}>
+  <div class="mx-auto max-w-3xl px-4 py-10">
+    <h1 class="text-3xl font-extrabold">List your business</h1>
+    <p class="section-sub">Free to list. A person reviews every submission — most go live in under a business day. <a href="/submission-policy" class="underline">Submission policy</a> · <a href="/verification" class="underline">how verification works</a></p>
+
+    {success ? (
+      <div class="card mt-6 border-l-4 p-6" style="border-left-color:var(--teal)">
+        <h2 class="text-lg font-extrabold">Listing submitted!</h2>
+        <p class="mt-1 text-sm" style="color:var(--text-soft)">Our moderation team will review it shortly. {user ? 'Track its status in your dashboard.' : 'Create an account to manage it.'}</p>
+        <div class="mt-4 flex gap-2"><a href="/dashboard/listings" class="btn btn-primary">Go to dashboard</a><a href="/search" class="btn btn-secondary">Browse directory</a></div>
+      </div>
+    ) : (
+      <form method="POST" action="/api/listings" class="card mt-6 space-y-5 p-6 sm:p-8">
+        {error && <p class="rounded-xl bg-red-500/10 p-3 text-sm font-medium text-red-600" role="alert">{error}</p>}
+        {!user && <p class="rounded-xl p-3 text-sm" style="background:rgba(216,149,34,.12)">You’re submitting as a guest. <a href="/auth/signup" class="font-bold underline">Create a free account</a> to manage this listing later.</p>}
+
+        <div class="grid gap-4 sm:grid-cols-2">
+          <label class="text-sm font-medium">Listing name *
+            <input name="name" required minlength="2" maxlength="240" class="input mt-1.5" placeholder="Grace & Grain Bakery" />
+          </label>
+          <label class="text-sm font-medium">Listing type *
+            <select name="typeSlug" class="input mt-1.5" required>
+              {LISTING_TYPES.map((t) => <option value={t.slug}>{t.label}</option>)}
+            </select>
+          </label>
+        </div>
+        <label class="block text-sm font-medium">Tagline
+          <input name="tagline" maxlength="280" class="input mt-1.5" placeholder="One sentence that makes people smile" />
+        </label>
+        <label class="block text-sm font-medium">Description
+          <textarea name="description" rows="4" maxlength="8000" class="input mt-1.5" placeholder="What you do, who you serve, and what makes you distinct…"></textarea>
+        </label>
+        <div class="grid gap-4 sm:grid-cols-3">
+          <label class="text-sm font-medium">Industry
+            <select name="industries" class="input mt-1.5"><option value="">Select…</option>{INDUSTRIES.map((i) => <option value={i.slug}>{i.name}</option>)}</select>
+          </label>
+          <label class="text-sm font-medium">Denomination / affiliation
+            <select name="denominations" class="input mt-1.5"><option value="">Select…</option>{DENOMINATIONS.map((d) => <option value={d.slug}>{d.name}</option>)}</select>
+          </label>
+          <label class="text-sm font-medium">Price range
+            <select name="priceRange" class="input mt-1.5"><option value="">—</option><option>$</option><option>$$</option><option>$$$</option><option>$$$$</option></select>
+          </label>
+        </div>
+        <div class="grid gap-4 sm:grid-cols-3">
+          <label class="text-sm font-medium">City<input name="city" maxlength="120" class="input mt-1.5" placeholder="Dallas" /></label>
+          <label class="text-sm font-medium">State / region<input name="region" maxlength="120" class="input mt-1.5" placeholder="TX" /></label>
+          <label class="text-sm font-medium">ZIP<input name="postalCode" maxlength="24" class="input mt-1.5" placeholder="75201" /></label>
+        </div>
+        <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="isOnlineOnly" value="1" class="h-4 w-4 accent-[var(--accent)]" /> This is an online-only listing</label>
+        <div class="grid gap-4 sm:grid-cols-3">
+          <label class="text-sm font-medium">Website<input name="website" type="url" class="input mt-1.5" placeholder="https://…" /></label>
+          <label class="text-sm font-medium">Phone<input name="phone" class="input mt-1.5" placeholder="(555) 123-4567" /></label>
+          <label class="text-sm font-medium">Contact email<input name="email" type="email" class="input mt-1.5" placeholder="hello@example.com" /></label>
+        </div>
+        <label class="block text-sm font-medium">Hashtags <span style="color:var(--text-mute)">(comma-separated, e.g. Baptist, FamilyOwned)</span>
+          <input name="hashtags" class="input mt-1.5" placeholder="Baptist, FamilyOwned, Dallas" />
+        </label>
+        <label class="block text-sm font-medium">Statement of faith <span style="color:var(--text-mute)">(optional, shown on your profile)</span>
+          <textarea name="statementOfFaith" rows="3" maxlength="8000" class="input mt-1.5" placeholder="What your organization believes…"></textarea>
+        </label>
+        <label class="flex items-start gap-2 text-[13px]" style="color:var(--text-soft)">
+          <input type="checkbox" required class="mt-1 h-4 w-4 accent-[var(--accent)]" />
+          I affirm this submission is accurate, I have the right to list it, and I agree to the <a href="/terms" class="underline">Terms</a> and <a href="/guidelines" class="underline">Community Guidelines</a>. I understand directory inclusion is not denominational endorsement.
+        </label>
+        <button class="btn btn-primary w-full !py-3" type="submit" data-animate="cta">Submit listing for review</button>
+      </form>
+    )}
+  </div>
+</BaseLayout>

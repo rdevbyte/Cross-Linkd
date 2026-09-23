@@ -1,0 +1,37 @@
+---
+import BaseLayout from '@/layouts/BaseLayout.astro';
+const user = Astro.locals.user;
+const seo = {
+  title: 'Editorial Policy | CrossLinkd',
+  description: 'How CrossLinkd writes its guides: sourcing rules, the no-unsupported-claims rule, how articles connect to listings, and how to request a correction.',
+  path: '/editorial-policy',
+};
+---
+<BaseLayout user={user} seo={seo}>
+  <div class="mx-auto max-w-3xl px-4 py-12">
+    <h1 class="text-3xl font-extrabold">Editorial policy</h1>
+    <p class="section-sub">The rules our writers follow for every guide in the <a href="/articles" class="underline">resource center</a>.</p>
+
+    <div class="prose-custom mt-8 space-y-6 text-[15px] leading-relaxed" style="color:var(--text-soft)">
+      <div>
+        <h2 class="text-xl font-extrabold" style="color:var(--text)">Our rules</h2>
+        <ul class="mt-2 list-disc space-y-1.5 pl-5">
+          <li>Articles must help someone find or evaluate a Christian-owned business. We do not publish filler for search engines.</li>
+          <li>No unsupported claims about companies. If we say a plumber is fast or an accountant is thorough, it comes from their published record and verified reviews — and we link to the listing so you can judge.</li>
+          <li>We distinguish clearly between a founder's faith, current ownership, daily operation, and charitable work. (See <a href="/verification" class="underline">what the labels mean</a>.)</li>
+          <li>Short sentences. Plain words. No hype.</li>
+          <li>Every article connects to live listings, a category page, or a city page — and is updated or dated when things change.</li>
+          <li>Businesses cannot pay for editorial coverage. Featured placement and articles are separate, and we mark sponsored content (if we ever run any) clearly at the top.</li>
+        </ul>
+      </div>
+      <div>
+        <h2 class="text-xl font-extrabold" style="color:var(--text)">Owner interviews</h2>
+        <p class="mt-2">Interviews are with verified, claimed listings only. Owners see quotes before publication for accuracy (not approval of angle), and we note when a profile is an interview, not an investigation.</p>
+      </div>
+      <div>
+        <h2 class="text-xl font-extrabold" style="color:var(--text)">Corrections</h2>
+        <p class="mt-2">Something wrong in a guide? Email <a href="mailto:hello@crosslinkd.com" class="underline">hello@crosslinkd.com</a>. Real errors get corrected with a dated note; judgment calls get a fair second look.</p>
+      </div>
+    </div>
+  </div>
+</BaseLayout>

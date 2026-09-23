@@ -1,0 +1,59 @@
+---
+import BaseLayout from '@/layouts/BaseLayout.astro';
+import { getPublicListings } from '@/lib/publicListings';
+import { FOCUS_STATES, FOCUS_CITIES } from '@/data/locations';
+
+const corpus = await getPublicListings();
+const user = Astro.locals.user;
+const listingsIn = (city: string) => corpus.filter((l) => l.city === city && !l.isOnlineOnly).length;
+const seo = {
+  title: 'Browse by State — Where CrossLinkd Operates | CrossLinkd',
+  description: 'CrossLinkd currently serves Texas, Tennessee, Georgia, Arizona, and Colorado. See the cities we cover and the reviewed listings in each.',
+  path: '/browse/locations',
+};
+---
+<BaseLayout user={user} seo={seo}>
+  <div class="mx-auto max-w-5xl px-4 py-10">
+    <h1 class="text-3xl font-extrabold">Browse by state</h1>
+    <p class="section-sub">We operate in five states today. A city page is only built once it has enough reviewed listings to be genuinely useful — no empty pages, no SEO filler.</p>
+
+    {FOCUS_STATES.map((state) => {
+      const cities = FOCUS_CITIES.filter((c) => c.region === state.abbr);
+      const stateCount = corpus.filter((l) => l.region === state.abbr && !l.isOnlineOnly).length;
+      return (
+        <section class="mt-8" aria-label={state.name}>
+          <div class="flex items-baseline justify-between">
+            <h2 class="text-xl font-extrabold">
+              <a href={`/states/${state.slug}`} class="hover:underline">{state.name}</a>
+            </h2>
+            <span class="chip">{stateCount} listings</span>
+          </div>
+          <div class="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3" data-animate="grid">
+            {cities.map((c) => (
+              <a href={`/locations/${c.slug}`} class="card card-hover p-4">
+                <div class="flex items-baseline justify-between gap-2">
+                  <p class="font-bold">{c.city}, {c.region}</p>
+                  <span class="chip !py-0.5 !text-[11px] font-bold">{listingsIn(c.city)}</span>
+                </div>
+                <p class="mt-1 text-[13px]" style="color:var(--text-soft)">{c.blurb}</p>
+              </a>
+            ))}
+            <a href={`/search?near=${encodeURIComponent(state.name)}`} class="card card-hover p-4">
+              <p class="font-bold">All of {state.name}</p>
+              <p class="mt-1 text-[13px]" style="color:var(--text-soft)">Search everything we have reviewed statewide.</p>
+            </a>
+          </div>
+        </section>
+      );
+    })}
+
+    <div class="card mt-10 p-6">
+      <h2 class="font-extrabold">Not in these states yet?</h2>
+      <p class="mt-1 text-sm" style="color:var(--text-soft)">
+        Online-only businesses serve customers nationwide — <a href="/search?onlineOnly=1" class="underline">browse them here</a>. If you own a
+        Christian-owned business elsewhere, you can still <a href="/add-listing" class="underline">submit a free listing</a>; we will publish it
+        as soon as your area has enough reviewed businesses to be useful.
+      </p>
+    </div>
+  </div>
+</BaseLayout>

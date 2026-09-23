@@ -1,0 +1,38 @@
+---
+import DashboardLayout from '@/layouts/DashboardLayout.astro';
+import { requireAdminPage } from '@/lib/guards';
+import { INDUSTRIES } from '@/data/industries';
+import { DENOMINATIONS, TRADITIONS } from '@/data/denominations';
+import { HASHTAG_CATALOG } from '@/data/hashtags';
+const user = Astro.locals.user;
+const profCount = INDUSTRIES.reduce((n, i) => n + i.categories.reduce((m, c) => m + c.professions.length, 0), 0);
+const __adminGate = requireAdminPage(Astro);
+if (__adminGate) return __adminGate;
+
+---
+<DashboardLayout user={user} admin active="taxonomy" seo={{ title: 'Admin: Taxonomy', description: 'Manage taxonomy.', path: '/admin/taxonomy', noindex: true }}>
+  <div class="flex flex-wrap items-center justify-between gap-2">
+    <h1 class="text-2xl font-extrabold">Taxonomy</h1>
+  <div class="card p-3 text-[13px] mt-3" style="border-left:4px solid var(--accent)" role="note"><strong>Preview data.</strong> This section shows illustrative sample content while the platform is in preview; live data replaces it as activity grows.</div>
+    <div class="flex gap-2">
+      <a href="/api/admin/export?table=taxonomy" class="btn btn-secondary !py-2 !text-sm">Export JSON</a>
+      <button class="btn btn-secondary !py-2 !text-sm" type="button" onclick="alert('Import dialog opens in production. (demo)')">Import</button>
+    </div>
+  </div>
+  <div class="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+    {[['Industries', INDUSTRIES.length], ['Professions', profCount], ['Denominations', `${DENOMINATIONS.length} / ${TRADITIONS.length} traditions`], ['Hashtags', HASHTAG_CATALOG.length]].map(([l, n]) => (
+      <div class="card p-4"><p class="text-[13px]" style="color:var(--text-mute)">{l}</p><p class="text-2xl font-extrabold">{n}</p></div>
+    ))}
+  </div>
+  <form method="POST" action="/api/admin/taxonomy" class="card mt-4 space-y-4 p-6" onsubmit="event.preventDefault();alert('Taxonomy entry saved! (demo)')">
+    <h2 class="font-extrabold">Add taxonomy entry</h2>
+    <div class="grid gap-4 sm:grid-cols-3">
+      <label class="text-sm font-medium">Kind
+        <select class="input mt-1.5" name="kind"><option>Industry</option><option>Category</option><option>Profession</option><option>Denomination</option><option>Hashtag</option></select>
+      </label>
+      <label class="text-sm font-medium">Name<input name="name" required class="input mt-1.5" placeholder="e.g. Solar Installer" /></label>
+      <label class="text-sm font-medium">Parent slug<input name="parent" class="input mt-1.5" placeholder="e.g. construction-skilled-trades" /></label>
+    </div>
+    <button class="btn btn-primary !py-2 !text-sm" type="submit">Save entry</button>
+  </form>
+</DashboardLayout>
