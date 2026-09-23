@@ -1,7 +1,7 @@
 /**
  * Database client — pooled Postgres for Vercel serverless.
  * Uses the postgres.js driver (ESM-safe, works with Neon/Supabase/any PG).
- * Returns `null` when DATABASE_URL is unset so the site can run
+ * Returns `null` when no database URL is set so the site can run
  * on bundled sample data (preview / demo mode).
  */
 import postgres from 'postgres';
@@ -12,23 +12,34 @@ type Db = PostgresJsDatabase<typeof schema>;
 
 let cached: Db | null | undefined;
 
+export function getDatabaseUrl(): string | undefined {
+  return (
+    process.env.DATABASE_URL?.trim() ||
+    process.env.POSTGRES_URL?.trim() ||
+    process.env.POSTGRES_PRISMA_URL?.trim() ||
+    process.env.NEON_DATABASE_URL?.trim() ||
+    process.env.DIRECT_URL?.trim()
+  );
+}
+
 export function hasDatabase(): boolean {
-  return Boolean(process.env.DATABASE_URL);
+  return Boolean(getDatabaseUrl());
 }
 
 export function getDb(): Db | null {
   if (cached !== undefined) return cached;
-  const url = process.env.DATABASE_URL;
+  const url = getDatabaseUrl();
   if (!url) {
     cached = null;
     return cached;
   }
   try {
     // Serverless-friendly: few connections, short idle timeout.
-    // IMPORTANT: use the provider's *pooled* URL for DATABASE_URL.
+    // IMPORTANT: use the provider's pooled URL for high concurrent traffic.
     const client = postgres(url, { max: 4, idle_timeout: 20, connect_timeout: 10 });
     cached = drizzle(client, { schema });
-  } catch {
+  } catch (err) {
+    console.error('[getDb] connection init failed:', err);
     cached = null;
   }
   return cached;

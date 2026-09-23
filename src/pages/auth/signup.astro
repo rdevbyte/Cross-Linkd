@@ -9,7 +9,7 @@ const error = Astro.url.searchParams.get('error');
       <p class="mt-1 text-sm" style="color:var(--text-soft)">Create a free account to save favorites, review businesses, and manage listings.</p>
       {error && <p class="mt-4 rounded-xl bg-red-500/10 p-3 text-sm font-medium text-red-600" role="alert">{error}</p>}
       <form method="POST" action="/api/auth/signup" class="mt-5 space-y-4">
-        <label class="block text-sm font-medium">Display name<input name="displayName" required minlength="2" class="input mt-1.5" placeholder="Grace Thompson" autocomplete="name" /></label>
+        <label class="block text-sm font-medium">Display name<input name="displayName" required minlength="2" class="input mt-1.5" placeholder="Your Name" autocomplete="name" /></label>
         <label class="block text-sm font-medium">Email<input name="email" type="email" required class="input mt-1.5" placeholder="you@example.com" autocomplete="email" /></label>
         <label class="block text-sm font-medium">Password <span class="font-normal" style="color:var(--text-mute)">(8+ characters)</span><input name="password" type="password" required minlength="8" class="input mt-1.5" autocomplete="new-password" /></label>
         
