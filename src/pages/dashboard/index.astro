@@ -1,19 +1,100 @@
 ---
 import DashboardLayout from '@/layouts/DashboardLayout.astro';
 import { requireUserPage } from '@/lib/guards';
-import { SAMPLE_LISTINGS } from '@/data/listings';
-import { includeSamples } from '@/lib/sampleGate';
-const user = Astro.locals.user;
-const mine = includeSamples() ? SAMPLE_LISTINGS.slice(0, 2) : [];
-const stats = [
-  ['Profile views (30d)', '4,812', '+18%'],
-  ['Search impressions', '21,340', '+9%'],
-  ['Clicks & inquiries', '386', '+22%'],
-  ['Avg. rating', '4.9', '+0.1'],
-];
+import { getDb, hasDatabase } from '@/db/client';
+import { listings, listingLocations } from '@/db/schema';
+import { and, eq, isNull, desc } from 'drizzle-orm';
+import { STATUS_LABEL } from '@/lib/submissions';
+
 const __userGate = requireUserPage(Astro);
 if (__userGate) return __userGate;
+const user = Astro.locals.user!;
 
+let userListings: Array<{
+  id: string;
+  slug: string;
+  name: string;
+  typeSlug: string;
+  status: string;
+  city: string | null;
+  region: string | null;
+  rating: number;
+  reviewCount: number;
+  views: number;
+}> = [];
+
+let publishedCount = 0;
+let totalViews = 0;
+let totalReviews = 0;
+let avgRatingDisplay = 'None yet';
+
+if (hasDatabase()) {
+  const db = getDb();
+  if (db) {
+    try {
+      const rows = await db
+        .select({
+          listing: listings,
+          loc: listingLocations,
+        })
+        .from(listings)
+        .leftJoin(
+          listingLocations,
+          and(eq(listingLocations.listingId, listings.id), eq(listingLocations.isPrimary, true)),
+        )
+        .where(and(eq(listings.ownerId, user.id), isNull(listings.deletedAt)))
+        .orderBy(desc(listings.updatedAt));
+
+      userListings = rows.map(({ listing: l, loc }) => ({
+        id: l.id,
+        slug: l.slug,
+        name: l.name,
+        typeSlug: l.typeSlug,
+        status: l.status,
+        city: loc?.city ?? null,
+        region: loc?.region ?? null,
+        rating: Number(l.avgRating) || 0,
+        reviewCount: l.reviewCount ?? 0,
+        views: l.viewCount ?? 0,
+      }));
+
+      const published = userListings.filter((l) => l.status === 'published');
+      publishedCount = published.length;
+      totalViews = published.reduce((acc, l) => acc + l.views, 0);
+      totalReviews = published.reduce((acc, l) => acc + l.reviewCount, 0);
+
+      if (totalReviews > 0) {
+        const sumRating = published.reduce((acc, l) => acc + l.rating * l.reviewCount, 0);
+        avgRatingDisplay = (sumRating / totalReviews).toFixed(1);
+      }
+    } catch (err) {
+      console.error('[dashboard/index] query failed:', err);
+    }
+  }
+}
+
+const stats = [
+  {
+    label: 'Published listings',
+    value: publishedCount.toString(),
+    sub: `${userListings.length} total submission${userListings.length === 1 ? '' : 's'}`,
+  },
+  {
+    label: 'Profile views (30d)',
+    value: totalViews.toLocaleString(),
+    sub: totalViews > 0 ? 'Across published listings' : 'No views recorded yet',
+  },
+  {
+    label: 'Reviews received',
+    value: totalReviews.toLocaleString(),
+    sub: totalReviews > 0 ? 'Approved community reviews' : 'No reviews yet',
+  },
+  {
+    label: 'Average rating',
+    value: avgRatingDisplay,
+    sub: totalReviews > 0 ? `From ${totalReviews} customer review${totalReviews === 1 ? '' : 's'}` : 'Requires published reviews',
+  },
+];
 ---
 <DashboardLayout user={user} active="overview" seo={{ title: 'Dashboard — CrossLinkd', description: 'Manage your listings.', path: '/dashboard', noindex: true }}>
 
@@ -23,35 +104,64 @@ if (__userGate) return __userGate;
       <p class="mt-0.5 text-sm" style="color:var(--text-soft)">We sent a verification link to {user?.email}. Confirming your address builds trust with the review team.</p>
     </div>
   )}
-  {!user && (
-    <div class="card mb-4 border-l-4 p-4" style="border-left-color:var(--accent)">
-      <p class="text-sm">You’re previewing a <strong>demo dashboard</strong>. <a href="/auth/signin?next=/dashboard" class="font-bold underline">Sign in</a> to manage real listings.</p>
-    </div>
-  )}
+
   <div class="flex flex-wrap items-center justify-between gap-3">
-    <div><h1 class="text-2xl font-extrabold">Welcome{user ? `, ${user.displayName.split(' ')[0]}` : ''}</h1><p class="text-sm" style="color:var(--text-soft)">Here’s how your listings are doing.</p></div>
-    <a href="/add-listing" class="btn btn-primary">+ New listing</a>
+    <div>
+      <h1 class="text-2xl font-extrabold">Welcome{user ? `, ${user.displayName.split(' ')[0]}` : ''}</h1>
+      <p class="text-sm" style="color:var(--text-soft)">Here’s how your listings are doing.</p>
+    </div>
+    <a href="/dashboard/listings" class="btn btn-primary">+ New listing</a>
   </div>
+
   <div class="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-    {stats.map(([label, value, delta]) => (
-      <div class="card p-4"><p class="text-[13px]" style="color:var(--text-mute)">{label}</p><p class="mt-1 text-2xl font-extrabold">{value}</p><p class="text-xs font-bold" style="color:var(--teal)">{delta} vs prior period</p></div>
-    ))}
-  </div>
-  <h2 class="mt-6 font-extrabold">Your listings</h2>
-  <div class="mt-3 space-y-3">
-    {mine.map((l) => (
-      <div class="card flex flex-wrap items-center justify-between gap-3 p-4">
-        <div><p class="font-bold">{l.name}</p><p class="text-[13px]" style="color:var(--text-mute)">★ {l.rating} • {l.reviewCount} reviews • {l.claimed ? '✓ Claimed' : 'Unclaimed'}</p></div>
-        <div class="flex gap-2">
-          <a href={`/directory/${l.slug}`} class="btn btn-ghost !py-1.5 !text-sm">View</a>
-          <a href={`/dashboard/listings?id=${l.id}`} class="btn btn-secondary !py-1.5 !text-sm">Edit</a>
-          <a href="/dashboard/analytics" class="btn btn-secondary !py-1.5 !text-sm">Analytics</a>
-        </div>
+    {stats.map((s) => (
+      <div class="card p-4">
+        <p class="text-[13px]" style="color:var(--text-mute)">{s.label}</p>
+        <p class="mt-1 text-2xl font-extrabold">{s.value}</p>
+        <p class="text-xs font-medium" style="color:var(--text-soft)">{s.sub}</p>
       </div>
     ))}
   </div>
-  <div class="card mt-4 p-5" style="background:rgba(46,146,131,.08)">
-    <p class="font-bold">Publish an announcement</p>
+
+  <h2 class="mt-8 text-lg font-extrabold">Your listings</h2>
+  {userListings.length === 0 ? (
+    <div class="card mt-3 p-8 text-center">
+      <div class="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl" style="background:var(--surface-2);color:var(--teal)">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <rect width="20" height="14" x="2" y="7" rx="2" ry="2"/>
+          <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/>
+        </svg>
+      </div>
+      <p class="mt-3 font-bold">No businesses listed yet</p>
+      <p class="mt-1 text-sm" style="color:var(--text-soft)">You haven’t submitted any listings yet. Submit your first business to have it reviewed and published in the directory.</p>
+      <a href="/dashboard/listings" class="btn btn-primary mt-4 !py-2 !text-sm">Submit your first business</a>
+    </div>
+  ) : (
+    <div class="mt-3 space-y-3">
+      {userListings.map((l) => (
+        <div class="card flex flex-wrap items-center justify-between gap-3 p-4">
+          <div>
+            <p class="font-bold">
+              {l.name}
+              <span class="chip ml-2 !py-0.5 !text-[11px] font-bold" style={l.status === 'published' ? 'color:var(--teal)' : 'color:var(--accent)'}>
+                {STATUS_LABEL[l.status] ?? l.status}
+              </span>
+            </p>
+            <p class="text-[13px]" style="color:var(--text-mute)">
+              {l.city ? `${l.city}, ${l.region} • ` : ''}★ {l.rating > 0 ? l.rating.toFixed(1) : 'No rating'} • {l.reviewCount} reviews • {l.views} views
+            </p>
+          </div>
+          <div class="flex gap-2">
+            {l.status === 'published' && <a href={`/directory/${l.slug}`} class="btn btn-ghost !py-1.5 !text-sm">View</a>}
+            <a href="/dashboard/listings" class="btn btn-secondary !py-1.5 !text-sm">Manage</a>
+          </div>
+        </div>
+      ))}
+    </div>
+  )}
+
+  <div class="card mt-6 p-5" style="background:rgba(46,146,131,.08)">
+    <p class="font-bold">Publish an announcement or event</p>
     <p class="text-sm" style="color:var(--text-soft)">Share hours changes, new services, or upcoming events with your followers.</p>
     <a href="/dashboard/events" class="btn btn-secondary mt-3 !py-2 !text-sm">Create announcement or event</a>
   </div>

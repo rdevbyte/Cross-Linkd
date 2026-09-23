@@ -1,39 +1,78 @@
 ---
 import DashboardLayout from '@/layouts/DashboardLayout.astro';
 import { requireUserPage } from '@/lib/guards';
-const user = Astro.locals.user;
-const bars = [42, 68, 55, 80, 62, 95, 74, 88, 58, 70, 92, 100];
-const terms = [['christian bakery dallas', 842], ['wedding cakes near me', 617], ['bakery #baptist', 402], ['gluten free bakery', 288], ['church event catering', 191]];
+import { getDb, hasDatabase } from '@/db/client';
+import { listings } from '@/db/schema';
+import { and, eq, isNull } from 'drizzle-orm';
+
 const __userGate = requireUserPage(Astro);
 if (__userGate) return __userGate;
+const user = Astro.locals.user!;
 
+let publishedCount = 0;
+let totalViews = 0;
+let totalReviews = 0;
+let totalRecommendations = 0;
+
+if (hasDatabase()) {
+  const db = getDb();
+  if (db) {
+    try {
+      const rows = await db
+        .select()
+        .from(listings)
+        .where(and(eq(listings.ownerId, user.id), eq(listings.status, 'published'), isNull(listings.deletedAt)));
+
+      publishedCount = rows.length;
+      totalViews = rows.reduce((acc, r) => acc + (r.viewCount ?? 0), 0);
+      totalReviews = rows.reduce((acc, r) => acc + (r.reviewCount ?? 0), 0);
+      totalRecommendations = rows.reduce((acc, r) => acc + (r.recommendationCount ?? 0), 0);
+    } catch (err) {
+      console.error('[dashboard/analytics] query error:', err);
+    }
+  }
+}
+const hasActivity = totalViews > 0 || totalReviews > 0 || totalRecommendations > 0;
 ---
 <DashboardLayout user={user} active="analytics" seo={{ title: 'Analytics — Dashboard', description: 'Listing analytics.', path: '/dashboard/analytics', noindex: true }}>
-  <div class="flex items-center justify-between"><h1 class="text-2xl font-extrabold">Analytics</h1>
-  <div class="card p-3 text-[13px] mt-3" style="border-left:4px solid var(--accent)" role="note"><strong>Preview data.</strong> This section shows illustrative sample content while the platform is in preview; live data replaces it as activity grows.</div><a href="/api/listings/export" class="btn btn-secondary !py-2 !text-sm">Export data (CSV)</a></div>
-  <div class="card mt-4 p-6">
-    <h2 class="font-extrabold">Profile views — last 12 weeks</h2>
-    <div class="mt-4 flex h-40 items-end gap-1.5" role="img" aria-label="Bar chart of weekly profile views, trending upward">
-      {bars.map((b) => <div class="flex-1 rounded-t-lg" style={`height:${b}%;background:var(--accent)`}></div>)}
+  <div class="flex flex-wrap items-center justify-between gap-3">
+    <div>
+      <h1 class="text-2xl font-extrabold">Analytics</h1>
+      <p class="text-sm" style="color:var(--text-soft)">Performance metrics across your published listings.</p>
     </div>
+    {publishedCount > 0 && <a href="/api/listings/export" class="btn btn-secondary !py-2 !text-sm">Export data (CSV)</a>}
   </div>
-  <div class="mt-4 grid gap-4 md:grid-cols-2">
-    <div class="card p-6">
-      <h2 class="font-extrabold">Top search terms</h2>
-      <ul class="mt-3 space-y-2 text-sm">
-        {terms.map(([t, n]) => (
-          <li class="flex items-center justify-between gap-3"><span class="truncate">{t}</span><span class="font-bold">{n}</span></li>
-        ))}
-      </ul>
+
+  {!hasActivity ? (
+    <div class="card mt-6 p-8 text-center sm:p-12">
+      <div class="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl" style="background:var(--surface-2);color:var(--teal)">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg>
+      </div>
+      <h2 class="mt-4 text-lg font-bold">No analytics recorded yet</h2>
+      <p class="mt-2 max-w-md mx-auto text-sm leading-relaxed" style="color:var(--text-soft)">
+        Metrics like profile views, search visits, and recommendations will update here once your listings are published and visitors interact with them.
+      </p>
+      {publishedCount === 0 && (
+        <a href="/dashboard/listings" class="btn btn-primary mt-5 !py-2 !text-sm">Submit a listing to get started</a>
+      )}
     </div>
-    <div class="card p-6">
-      <h2 class="font-extrabold">Funnel (30d)</h2>
-      <ul class="mt-3 space-y-2 text-sm">
-        {[['Search impressions', '21,340'], ['Profile views', '4,812'], ['Website clicks', '941'], ['Calls & inquiries', '386'], ['New reviews', '18']].map(([l, v]) => (
-          <li class="flex items-center justify-between"><span style="color:var(--text-soft)">{l}</span><span class="font-bold">{v}</span></li>
-        ))}
-      </ul>
-      <p class="mt-3 text-[13px]" style="color:var(--text-mute)">Heatmaps and competitor benchmarks are in development.</p>
+  ) : (
+    <div class="mt-6 grid gap-4 md:grid-cols-3">
+      <div class="card p-6">
+        <p class="text-xs uppercase font-bold tracking-wide" style="color:var(--text-mute)">Profile Views</p>
+        <p class="mt-2 text-3xl font-extrabold">{totalViews.toLocaleString()}</p>
+        <p class="mt-1 text-xs" style="color:var(--text-soft)">Visits to your directory profiles</p>
+      </div>
+      <div class="card p-6">
+        <p class="text-xs uppercase font-bold tracking-wide" style="color:var(--text-mute)">Customer Reviews</p>
+        <p class="mt-2 text-3xl font-extrabold">{totalReviews.toLocaleString()}</p>
+        <p class="mt-1 text-xs" style="color:var(--text-soft)">Submitted and approved reviews</p>
+      </div>
+      <div class="card p-6">
+        <p class="text-xs uppercase font-bold tracking-wide" style="color:var(--text-mute)">Recommendations</p>
+        <p class="mt-2 text-3xl font-extrabold">{totalRecommendations.toLocaleString()}</p>
+        <p class="mt-1 text-xs" style="color:var(--text-soft)">Direct member endorsements</p>
+      </div>
     </div>
-  </div>
+  )}
 </DashboardLayout>
