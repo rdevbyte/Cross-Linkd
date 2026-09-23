@@ -46,6 +46,9 @@ export interface SampleListing {
   showAddress?: boolean;
   showDenomination?: boolean;
   customDenomination?: string;
+  industrySlug?: string;
+  categorySlug?: string;
+  customCategory?: string;
   priceRange?: string;
   industries: string[];
   professions: string[];

@@ -7,6 +7,7 @@ import { type SampleListing, type SampleReview } from '@/data/listings';
 import { getPublicListings, findPublicListing } from '@/lib/publicListings';
 import { typeBySlug } from '@/data/listing-types';
 import { denominationBySlug } from '@/data/denominations';
+import { industryBySlug, categoryBySlug } from '@/data/industries';
 import { compact, timeAgo, monthYear, fullDate } from '@/lib/format';
 import { localBusinessSchema, breadcrumbSchema } from '@/lib/seo';
 
@@ -66,6 +67,10 @@ const seo = {
 // Type-specific highlight blocks
 const isChurch = listing.typeSlug === 'church';
 const isPro = ['professional', 'counselor', 'contractor'].includes(listing.typeSlug);
+
+const categoryMatch = listing.categorySlug ? categoryBySlug(listing.categorySlug) : undefined;
+const industryMatch = listing.industrySlug ? industryBySlug(listing.industrySlug) : categoryMatch?.industry;
+const displayCategory = listing.customCategory || categoryMatch?.category?.name;
 ---
 <BaseLayout seo={seo} user={user}>
   <div class="mx-auto max-w-7xl px-4 py-6">
@@ -94,6 +99,13 @@ const isPro = ['professional', 'counselor', 'contractor'].includes(listing.typeS
       <div class="flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-6">
         <div class="space-y-2">
           <p class="font-medium">{listing.tagline}</p>
+          {(displayCategory || industryMatch) && (
+            <div class="flex items-center gap-2 pt-0.5">
+              <span class="chip !text-[12px] font-semibold" style="background:rgba(46,146,131,.12);color:var(--teal)">
+                {industryMatch?.name ? `${industryMatch.name} › ` : ''}{displayCategory ?? industryMatch?.name}
+              </span>
+            </div>
+          )}
           <p class="text-sm" style="color:var(--text-soft)">
             ★ <strong>{listing.rating.toFixed(1)}</strong> ({listing.reviewCount} reviews) •
             {compact(listing.recommendations)} recommendations •
@@ -261,7 +273,23 @@ const isPro = ['professional', 'counselor', 'contractor'].includes(listing.typeS
             {listing.showDenomination !== false && (listing.customDenomination || (listing.denominations && listing.denominations.length > 0)) && (
               <div>
                 <dt class="font-semibold" style="color:var(--text-mute)">Faith affiliation</dt>
-                <dd>{listing.customDenomination || listing.denominations.map((d) => denominationBySlug(d)?.name ?? d).join(', ')}</dd>
+                <dd>
+                  {(() => {
+                    const names = (listing.denominations ?? [])
+                      .filter((d) => d !== 'other')
+                      .map((d) => denominationBySlug(d)?.name ?? d);
+                    if (listing.customDenomination) {
+                      names.push(listing.customDenomination);
+                    }
+                    return names.join(', ') || 'Christian-owned';
+                  })()}
+                </dd>
+              </div>
+            )}
+            {(displayCategory || industryMatch) && (
+              <div>
+                <dt class="font-semibold" style="color:var(--text-mute)">Category</dt>
+                <dd>{industryMatch?.name ? `${industryMatch.name} › ` : ''}{displayCategory ?? industryMatch?.name}</dd>
               </div>
             )}
             <div><dt class="font-semibold" style="color:var(--text-mute)">Languages</dt><dd>{listing.languages.join(', ')}</dd></div>

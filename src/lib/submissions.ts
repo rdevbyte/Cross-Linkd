@@ -11,7 +11,8 @@ import { slugify } from '@/lib/slug';
 
 export type ListingRow = typeof listings.$inferSelect;
 
-export async function duplicateExists(ownerId: string, name: string, city: string, excludeId?: string): Promise<boolean> {
+export async function duplicateExists(ownerId: string, name: string, city?: string | null, excludeId?: string): Promise<boolean> {
+  if (!city || !name) return false;
   const db = getDb();
   if (!db) return false;
   const conds = [
@@ -53,6 +54,9 @@ export interface ListingFormValues {
   showAddress?: boolean;
   showDenomination?: boolean;
   customDenomination?: string;
+  industrySlug?: string;
+  categorySlug?: string;
+  customCategory?: string;
   city?: string;
   region?: string;
   postalCode?: string;
@@ -69,7 +73,7 @@ export interface ListingFormValues {
 
 /** Creates or updates the listing row plus its primary location and taxonomy links. */
 export async function saveListing(
-  userId: string,
+  userId: string | null | undefined,
   values: ListingFormValues,
   opts: {
     listingId?: string;
@@ -80,8 +84,12 @@ export async function saveListing(
   const db = getDb();
   if (!db) throw new Error('Database is not configured.');
 
-  // Unless explicitly saved as a draft, all created/edited listings are published immediately
-  const status = opts.action === 'draft' ? (opts.currentStatus ?? 'draft') : 'published';
+  // Unless explicitly saved as a draft or submitted for review, all created/edited listings are published immediately
+  const status = opts.action === 'draft' ? (opts.currentStatus ?? 'draft')
+    : ((opts.action === 'submit' || opts.action === 'resubmit') ? 'pending_review' : 'published');
+
+  // Limit denominations to a maximum of 2 selections
+  const cleanDenominations = (values.denominations ?? []).slice(0, 2);
 
   const base: Partial<typeof listings.$inferInsert> = {
     name: values.name.trim(),
@@ -97,6 +105,10 @@ export async function saveListing(
     showAddress: values.showAddress ?? false,
     showDenomination: values.showDenomination ?? true,
     customDenomination: values.customDenomination?.trim() || null,
+    industrySlug: values.industrySlug?.trim() || null,
+    categorySlug: values.categorySlug?.trim() || null,
+    customCategory: values.customCategory?.trim() || null,
+    denominationsList: cleanDenominations,
     isOnlineOnly: values.isOnlineOnly ?? false,
     priceRange: values.priceRange || null,
     statementOfFaith: values.statementOfFaith?.trim() || null,
@@ -125,7 +137,7 @@ export async function saveListing(
     slug = await uniqueSlug(values.name);
     const insert: typeof listings.$inferInsert = {
       ...(base as typeof listings.$inferInsert),
-      ownerId: userId,
+      ownerId: userId || null,
       slug,
       status,
       name: values.name.trim(),
@@ -147,7 +159,15 @@ export async function saveListing(
   }
 
   // Taxonomy child tables key on seeded UUIDs — resolve slugs, ignore unknowns.
-  const industrySlugs = [...new Set([...(values.industries ?? []), ...(values.professions ?? [])])].slice(0, 12);
+  const industrySlugs = [
+    ...new Set([
+      ...(values.industrySlug ? [values.industrySlug] : []),
+      ...(values.categorySlug ? [values.categorySlug] : []),
+      ...(values.industries ?? []),
+      ...(values.professions ?? []),
+    ]),
+  ].slice(0, 12);
+
   if (industrySlugs.length) {
     const known = await db.select({ id: industries.id, slug: industries.slug }).from(industries).where(inArray(industries.slug, industrySlugs));
     if (known.length) {
@@ -155,8 +175,8 @@ export async function saveListing(
     }
   }
 
-  if (values.denominations?.length) {
-    const known = await db.select({ id: denominations.id, slug: denominations.slug }).from(denominations).where(inArray(denominations.slug, values.denominations.slice(0, 8)));
+  if (cleanDenominations.length) {
+    const known = await db.select({ id: denominations.id, slug: denominations.slug }).from(denominations).where(inArray(denominations.slug, cleanDenominations));
     if (known.length) {
       await db.insert(listingDenominations).values(known.map((k) => ({ listingId: listingId!, denominationId: k.id })));
     }
@@ -170,9 +190,9 @@ export const OWNER_STATUSES = ['published', 'draft', 'archived'] as const;
 export type OwnerStatus = (typeof OWNER_STATUSES)[number];
 
 export const STATUS_LABEL: Record<string, string> = {
-  published: 'Published',
+  published: 'Approved',
   draft: 'Draft',
-  pending_review: 'Published',
+  pending_review: 'Pending Review',
   suspended: 'Suspended',
   archived: 'Archived',
   rejected: 'Rejected',
@@ -198,6 +218,10 @@ export function mapListingRow(
   let hue = 0;
   for (const ch of row.slug) hue = (hue * 31 + ch.charCodeAt(0)) % 360;
 
+  const denoms = (row.denominationsList && row.denominationsList.length > 0)
+    ? row.denominationsList
+    : denominationsList;
+
   return {
     id: `db-${row.id}`,
     slug: row.slug,
@@ -222,10 +246,13 @@ export function mapListingRow(
     showAddress: row.showAddress,
     showDenomination: row.showDenomination,
     customDenomination: row.showDenomination ? (row.customDenomination ?? undefined) : undefined,
+    industrySlug: row.industrySlug ?? undefined,
+    categorySlug: row.categorySlug ?? undefined,
+    customCategory: row.customCategory ?? undefined,
     priceRange: row.priceRange ?? undefined,
-    industries: [],
-    professions: [],
-    denominations: row.showDenomination ? denominationsList : [],
+    industries: row.industrySlug ? [row.industrySlug] : [],
+    professions: row.categorySlug ? [row.categorySlug] : [],
+    denominations: row.showDenomination ? denoms.slice(0, 2) : [],
     hashtags: [],
     services: [],
     languages: row.languages ?? ['English'],

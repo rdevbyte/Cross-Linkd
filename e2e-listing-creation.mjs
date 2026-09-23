@@ -46,13 +46,18 @@ try {
   check('guest: no submit for review text', (await page.locator('text=Submit for review').count()) === 0);
   check('guest: button says Publish business listing', (await page.locator('button[type="submit"]:has-text("Publish")').count()) > 0);
 
-  // Check denomination select on /add-listing
-  const denomSelect = page.locator('select[name="denominations"]');
-  check('add-listing: denomination select exists', (await denomSelect.count()) > 0);
-  const optionsText = await denomSelect.innerText();
-  check('add-listing: has Non-Denominational option', optionsText.includes('Non-Denominational'));
-  check('add-listing: has Other option', optionsText.includes('Other'));
+  // Check multi-denomination UI on /add-listing
+  const denomButtons = page.locator('.denom-toggle-btn');
+  check('add-listing: denomination buttons exist', (await denomButtons.count()) > 0);
+  check('add-listing: helper text advises max 2', (await page.locator('text=Select up to two denominations that best represent this organization.').count()) > 0);
+  check('add-listing: counter badge starts at 0 of 2', (await page.locator('#denom-counter:has-text("0 of 2 selected")').count()) > 0);
+  check('add-listing: has Non-Denominational option', (await page.locator('.denom-toggle-btn[data-slug="non-denominational"]').count()) > 0);
+  check('add-listing: has Other option', (await page.locator('.denom-toggle-btn[data-slug="other"]').count()) > 0);
   check('add-listing: custom denomination input exists', (await page.locator('input[name="customDenomination"]').count()) > 0);
+
+  // Check category accordion on /add-listing
+  check('add-listing: category accordion exists', (await page.locator('#category-accordion-wrapper').count()) > 0);
+  check('add-listing: category search input exists', (await page.locator('#category-search-input').count()) > 0);
 
   // Check privacy controls on /add-listing
   const showEmailBox = page.locator('input[name="showEmail"]');
@@ -77,7 +82,7 @@ try {
   check('authed: account email explanation shown', (await page.locator(`text=${user.email}`).count()) > 0);
 
   // ----------------------------------------------------
-  // 3. Create listing with PRIVATE contact info & Custom Denomination
+  // 3. Create listing with Hierarchical Category & Custom Denomination
   // ----------------------------------------------------
   const biz1Name = `Harvest & Hearth ${stamp}`;
   await page.fill('input[name="name"]', biz1Name);
@@ -89,10 +94,19 @@ try {
   await page.fill('input[name="postalCode"]', '78701');
   await page.fill('input[name="phone"]', '(512) 555-9876');
   await page.fill('input[name="website"]', 'https://harvesthandhearth.test');
-  // keep email pre-filled (user.email)
-  // select "other" denomination and fill custom
-  await page.selectOption('select[name="denominations"]', 'other');
+
+  // Select category via accordion: Food & Beverage -> Bakery
+  await page.click('.industry-item[data-industry-slug="food-beverage"] .industry-header-btn');
+  await page.waitForTimeout(200);
+  await page.click('.subcat-option-btn[data-category-slug="bakeries"]');
+  check('category selected banner visible', !(await page.locator('#category-selected-card').getAttribute('class')).includes('hidden'));
+  check('category selected text shows Food & Beverage › Bakery', (await page.locator('#category-selected-text').innerText()).includes('Bakery'));
+
+  // Multi-denomination: select "other" denomination and fill custom
+  await page.click('.denom-toggle-btn[data-slug="other"]');
+  check('custom denomination input becomes visible on selecting other', !(await page.locator('#custom-denom-wrap').getAttribute('class')).includes('hidden'));
   await page.fill('input[name="customDenomination"]', 'Calvary Chapel Fellowship');
+
   // confirm privacy checkboxes are UNCHECKED (default private)
   check('contact details default private on submit', !(await showEmailBox.isChecked()) && !(await showPhoneBox.isChecked()) && !(await showWebsiteBox.isChecked()));
   await page.check('form input[type="checkbox"][required]');
@@ -117,6 +131,8 @@ try {
   check('DB: show_phone is false', row.show_phone === false);
   check('DB: show_website is false', row.show_website === false);
   check('DB: show_address is false', row.show_address === false);
+  check('DB: industry_slug saved', row.industry_slug === 'food-beverage');
+  check('DB: category_slug saved', row.category_slug === 'bakeries');
   check('DB: custom_denomination saved', row.custom_denomination === 'Calvary Chapel Fellowship');
 
   // ----------------------------------------------------
@@ -135,7 +151,8 @@ try {
   check('private website not in page source', !bodyHtml.includes('https://harvesthandhearth.test'));
   check('private postal code not in page source', !bodyHtml.includes('78701'));
 
-  // Custom denomination is displayed
+  // Category and Denomination are displayed
+  check('public page: displays industry and category badge', (await page.locator('text=Food & Beverage › Bakery').count()) > 0);
   check('public page: faith affiliation displays custom denomination', (await page.locator('dd:has-text("Calvary Chapel Fellowship")').count()) > 0);
 
   // Verify listing appears in public search immediately
@@ -146,7 +163,7 @@ try {
   // 5. Dashboard /dashboard/listings: Edit listing & make contact public
   // ----------------------------------------------------
   await page.goto(`${BASE}/dashboard/listings`, { waitUntil: 'networkidle' });
-  check('dashboard: listing table shows Published status', (await page.locator(`tr:has-text("${biz1Name}") .chip:has-text("Published")`).count()) > 0);
+  check('dashboard: listing table shows status', (await page.locator(`tr:has-text("${biz1Name}") .chip`).first().innerText()).match(/Published|Approved/) !== null);
   check('dashboard: View live link present', (await page.locator(`tr:has-text("${biz1Name}") a:has-text("View live")`).count()) > 0);
 
   // Click Edit
@@ -155,6 +172,7 @@ try {
   check('edit: form opens with listing name', (await page.inputValue('#listing-form input[name="name"]')) === biz1Name);
   check('edit: button says Save changes', (await page.locator('#form-submit-btn:has-text("Save changes")').count()) > 0);
   check('edit: custom denomination loaded in form', (await page.inputValue('#listing-form input[name="customDenomination"]')) === 'Calvary Chapel Fellowship');
+  check('edit: category restored in form', (await page.locator('#dash-category-selected-text').innerText()).includes('Bakery'));
 
   // Toggle contact info to PUBLIC:
   await page.check('#listing-form input[name="showPhone"]');

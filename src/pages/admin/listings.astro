@@ -10,7 +10,7 @@ const gate = requireAdminPage(Astro);
 if (gate) return gate;
 const user = Astro.locals.user!;
 
-const statusParam = Astro.url.searchParams.get('status') ?? 'published';
+const statusParam = Astro.url.searchParams.get('status') ?? 'pending_review';
 const TABS = [
   ['published', 'Published'],
   ['draft', 'Drafts'],

@@ -6,6 +6,7 @@ import { listings, listingLocations, listingDenominations, denominations } from 
 import { STATUS_LABEL, STATUS_CHIP } from '@/lib/submissions';
 import { requireUserPage } from '@/lib/guards';
 import { DENOMINATIONS } from '@/data/denominations';
+import { INDUSTRIES } from '@/data/industries';
 
 const gate = requireUserPage(Astro);
 if (gate) return gate;
@@ -42,37 +43,46 @@ if (dbReady) {
     }
   }
 
-  rows = mine.map(({ listing: l, loc }) => ({
-    id: l.id,
-    slug: l.slug,
-    name: l.name,
-    typeSlug: l.typeSlug,
-    status: l.status,
-    city: loc?.city ?? null,
-    region: loc?.region ?? null,
-    updatedAt: l.updatedAt,
-    data: {
+  rows = mine.map(({ listing: l, loc }) => {
+    const listDenoms = (Array.isArray(l.denominationsList) && l.denominationsList.length > 0)
+      ? (l.denominationsList as string[])
+      : (denomsByListing.get(l.id) ?? []);
+    return {
+      id: l.id,
+      slug: l.slug,
       name: l.name,
       typeSlug: l.typeSlug,
-      tagline: l.tagline ?? '',
-      description: l.description ?? '',
-      website: l.website ?? '',
-      phone: l.phone ?? '',
-      email: l.email ?? '',
-      showEmail: l.showEmail,
-      showPhone: l.showPhone,
-      showWebsite: l.showWebsite,
-      showAddress: l.showAddress,
-      showDenomination: l.showDenomination,
-      customDenomination: l.customDenomination ?? '',
-      denominations: denomsByListing.get(l.id)?.[0] ?? '',
-      city: loc?.city ?? '',
-      region: loc?.region ?? '',
-      postalCode: loc?.postalCode ?? '',
-      isOnlineOnly: l.isOnlineOnly,
-      priceRange: l.priceRange ?? '',
-    },
-  }));
+      status: l.status,
+      reviewNote: l.reviewNote,
+      city: loc?.city ?? null,
+      region: loc?.region ?? null,
+      updatedAt: l.updatedAt,
+      data: {
+        name: l.name,
+        typeSlug: l.typeSlug,
+        industrySlug: l.industrySlug ?? '',
+        categorySlug: l.categorySlug ?? '',
+        customCategory: l.customCategory ?? '',
+        tagline: l.tagline ?? '',
+        description: l.description ?? '',
+        website: l.website ?? '',
+        phone: l.phone ?? '',
+        email: l.email ?? '',
+        showEmail: l.showEmail,
+        showPhone: l.showPhone,
+        showWebsite: l.showWebsite,
+        showAddress: l.showAddress,
+        showDenomination: l.showDenomination,
+        customDenomination: l.customDenomination ?? '',
+        denominations: listDenoms,
+        city: loc?.city ?? '',
+        region: loc?.region ?? '',
+        postalCode: loc?.postalCode ?? '',
+        isOnlineOnly: l.isOnlineOnly,
+        priceRange: l.priceRange ?? '',
+      },
+    };
+  });
 }
 
 const notice = Astro.url.searchParams.get('notice') ?? '';
@@ -84,8 +94,25 @@ const notices: Record<string, { title: string; body: string; tone: string }> = {
 };
 const banner = notices[notice];
 
-const sortedDenominations = [...DENOMINATIONS]
-  .filter((d) => d.slug !== 'non-denominational')
+const popularDenominations = [
+  { slug: 'non-denominational', name: 'Non-Denominational' },
+  { slug: 'baptist', name: 'Baptist' },
+  { slug: 'lutheran', name: 'Lutheran' },
+  { slug: 'reformed-presbyterian', name: 'Presbyterian & Reformed' },
+  { slug: 'methodist-wesleyan', name: 'Methodist & Wesleyan' },
+  { slug: 'pentecostal-charismatic', name: 'Pentecostal & Charismatic' },
+  { slug: 'anglican-episcopal', name: 'Anglican & Episcopal' },
+  { slug: 'catholic', name: 'Catholic' },
+  { slug: 'eastern-orthodox', name: 'Eastern Orthodox' },
+  { slug: 'evangelical', name: 'Evangelical Free' },
+  { slug: 'anabaptist', name: 'Anabaptist & Mennonite' },
+  { slug: 'restorationist', name: 'Churches of Christ' },
+  { slug: 'interdenominational', name: 'Interdenominational' },
+  { slug: 'other', name: 'Other (specify custom denomination)' },
+];
+
+const allOtherDenominations = [...DENOMINATIONS]
+  .filter((d) => !popularDenominations.some((p) => p.slug === d.slug))
   .sort((a, b) => a.name.localeCompare(b.name));
 ---
 <DashboardLayout user={user} active="listings" seo={{ title: 'My listings — CrossLinkd', description: 'Manage your business listings.', path: '/dashboard/listings', noindex: true }}>
@@ -145,23 +172,142 @@ const sortedDenominations = [...DENOMINATIONS]
         <textarea name="description" rows="4" minlength="30" maxlength="8000" class="input mt-1 w-full" placeholder="Describe what your business offers, who you serve, and what makes your business distinct"></textarea>
       </label>
 
-      <!-- Section 2: Faith & Denomination -->
+      <!-- Section 2: Expandable Hierarchical Industry & Category Selector -->
       <div class="rounded-2xl p-4 border" style="border-color:var(--border);background:var(--surface-2)">
-        <h3 class="text-sm font-bold">Faith affiliation &amp; denomination</h3>
-        <p class="text-xs" style="color:var(--text-mute)">Optional. Lets members discover faith-aligned services.</p>
+        <div class="flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <h3 class="text-sm font-bold">Industry &amp; business category *</h3>
+            <p class="text-xs" style="color:var(--text-mute)">Choose a broad industry, then select the specific category for your business.</p>
+          </div>
+          <span id="dash-category-badge" class="chip !text-[11px] font-bold">Category required</span>
+        </div>
 
-        <div class="mt-3 grid gap-3 sm:grid-cols-2">
-          <label class="block text-sm font-semibold">Denomination / affiliation
-            <select name="denominations" id="dash-denom-select" class="input mt-1 w-full">
-              <option value="">Select denomination / affiliation (optional)…</option>
-              <option value="non-denominational">Non-Denominational</option>
-              {sortedDenominations.map((d) => <option value={d.slug}>{d.name}</option>)}
-              <option value="other">Other (specify custom denomination)</option>
-            </select>
+        <input type="hidden" name="industrySlug" id="dash-input-industry-slug" value="" />
+        <input type="hidden" name="categorySlug" id="dash-input-category-slug" value="" />
+
+        <!-- Selected Category Display Banner -->
+        <div id="dash-category-selected-card" class="hidden mt-3 p-3 rounded-xl border border-[var(--teal)] bg-[rgba(46,146,131,0.08)]">
+          <div class="flex items-center justify-between">
+            <div>
+              <span class="text-xs uppercase font-bold tracking-wide" style="color:var(--teal)">Selected Category</span>
+              <p class="font-bold text-sm mt-0.5" id="dash-category-selected-text"></p>
+            </div>
+            <button type="button" class="btn btn-secondary !py-1 !px-3 !text-xs font-semibold" id="dash-change-category-btn">Change category</button>
+          </div>
+        </div>
+
+        <!-- Custom Category Input when 'Other' category is chosen -->
+        <div id="dash-custom-category-wrap" class="hidden mt-3 rounded-xl p-3 border border-[var(--border)] bg-[var(--surface)]">
+          <label class="block text-xs font-semibold">Custom category name *
+            <input name="customCategory" id="dash-input-custom-category" class="input mt-1 w-full" placeholder="e.g. Specialty Gluten-Free Bakery, Stained Glass Restoration, etc." maxlength="180" />
           </label>
+        </div>
 
-          <label class="block text-sm font-semibold">Custom denomination
-            <input name="customDenomination" id="dash-custom-denom" class="input mt-1 w-full" placeholder="e.g. Calvary Chapel, Vineyard, etc." maxlength="180" />
+        <!-- Accordion Selection Container -->
+        <div id="dash-category-accordion-wrapper" class="mt-3">
+          <div class="relative mb-2">
+            <input
+              type="search"
+              id="dash-category-search-input"
+              class="input w-full !pl-8 text-xs"
+              placeholder="Search categories (e.g. Bakery, Plumbing, Roofing, Dental)..."
+              autocomplete="off"
+            />
+            <svg class="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-[var(--text-mute)]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+          </div>
+
+          <div class="space-y-1.5 max-h-[300px] overflow-y-auto pr-1 rounded-xl" id="dash-industry-accordion-list">
+            {INDUSTRIES.map((ind) => (
+              <div class="dash-industry-item rounded-xl border border-[var(--border)] bg-[var(--surface)] overflow-hidden" data-industry-slug={ind.slug}>
+                <button
+                  type="button"
+                  class="dash-industry-header-btn w-full flex items-center justify-between p-2.5 text-left font-bold text-xs hover:bg-[var(--surface-2)] transition-colors focus:outline-none"
+                  aria-expanded="false"
+                  aria-controls={`dash-ind-cats-${ind.slug}`}
+                >
+                  <span class="flex items-center gap-1.5">
+                    <span class="dash-industry-name">{ind.name}</span>
+                    <span class="text-[10px] font-normal" style="color:var(--text-mute)">({ind.categories.length})</span>
+                  </span>
+                  <svg class="w-3.5 h-3.5 transition-transform duration-200 chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="6 9 12 15 18 9"/></svg>
+                </button>
+
+                <div id={`dash-ind-cats-${ind.slug}`} class="dash-industry-body hidden p-2.5 border-t border-[var(--border)] bg-[var(--surface-2)]" role="region">
+                  <div class="grid gap-1.5 sm:grid-cols-2">
+                    {ind.categories.map((cat) => (
+                      <button
+                        type="button"
+                        class="dash-subcat-option-btn p-1.5 rounded-lg text-left text-xs font-medium border border-[var(--border)] bg-[var(--surface)] hover:border-[var(--accent)] hover:bg-[var(--surface-2)] transition-all flex items-center justify-between"
+                        data-industry-slug={ind.slug}
+                        data-industry-name={ind.name}
+                        data-category-slug={cat.slug}
+                        data-category-name={cat.name}
+                      >
+                        <span class="dash-subcat-name">{cat.name}</span>
+                        <span class="select-indicator text-xs font-bold opacity-0 transition-opacity" style="color:var(--teal)">✓</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <!-- Section 3: Faith & Multi-Denomination Selector (Max 2) -->
+      <div class="rounded-2xl p-4 border" style="border-color:var(--border);background:var(--surface-2)">
+        <div class="flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <h3 class="text-sm font-bold">Faith affiliation &amp; denomination</h3>
+            <p class="text-xs" style="color:var(--text-mute)">Select up to two denominations that best represent this organization.</p>
+          </div>
+          <span id="dash-denom-counter" class="chip !text-[11px]">0 of 2 selected</span>
+        </div>
+
+        <!-- Active Selection Chips Display -->
+        <div id="dash-denom-chips-container" class="mt-2.5 flex flex-wrap items-center gap-1.5 min-h-[36px] p-2 rounded-xl border border-dashed border-[var(--border)] bg-[var(--surface)]">
+          <span id="dash-denom-empty-hint" class="text-xs" style="color:var(--text-mute)">No denominations selected yet. Choose up to two below.</span>
+        </div>
+
+        <div id="dash-denom-hidden-inputs"></div>
+
+        <div class="mt-2.5">
+          <div class="flex flex-wrap gap-1" id="dash-popular-denoms">
+            {popularDenominations.map((d) => (
+              <button
+                type="button"
+                class="dash-denom-toggle-btn chip !py-1 !px-2.5 !text-xs font-medium cursor-pointer transition-colors"
+                data-slug={d.slug}
+                data-name={d.name}
+              >
+                {d.name}
+              </button>
+            ))}
+          </div>
+
+          <div class="mt-2.5">
+            <label class="block text-xs font-semibold mb-1" style="color:var(--text-mute)">More historical &amp; regional denominations:
+              <select id="dash-more-denoms-select" class="input mt-1 w-full text-xs">
+                <option value="">Choose additional denomination…</option>
+                {allOtherDenominations.map((d) => (
+                  <option value={d.slug}>{d.name}</option>
+                ))}
+              </select>
+            </label>
+          </div>
+        </div>
+
+        <!-- Custom Denomination Input when 'Other' is chosen -->
+        <div id="dash-custom-denom-wrap" class="hidden mt-3 rounded-xl p-3 border border-[var(--border)] bg-[var(--surface)]">
+          <label class="block text-xs font-semibold">Custom denomination or movement name *
+            <input
+              name="customDenomination"
+              id="dash-custom-denom-input"
+              class="input mt-1 w-full"
+              placeholder="e.g. Calvary Chapel, Vineyard Movement, Independent Baptist..."
+              maxlength="180"
+            />
           </label>
         </div>
 
@@ -171,7 +317,7 @@ const sortedDenominations = [...DENOMINATIONS]
         </label>
       </div>
 
-      <!-- Section 3: Location -->
+      <!-- Section 4: Location -->
       <div class="grid gap-4 sm:grid-cols-3">
         <label class="block text-sm font-semibold">City *
           <input name="city" maxlength="120" class="input mt-1 w-full" placeholder="Enter city" />
@@ -194,7 +340,7 @@ const sortedDenominations = [...DENOMINATIONS]
         Online only — serves nationwide (no physical storefront)
       </label>
 
-      <!-- Section 4: Contact & Privacy Controls -->
+      <!-- Section 5: Contact & Privacy Controls -->
       <div class="rounded-2xl p-4 border" style="border-color:var(--border)">
         <h3 class="text-sm font-bold">Contact information &amp; privacy controls</h3>
         <p class="text-xs" style="color:var(--text-mute)">Private contact details are kept secure for account purposes and never exposed publicly.</p>
@@ -251,7 +397,7 @@ const sortedDenominations = [...DENOMINATIONS]
       </div>
 
       <div class="flex flex-wrap gap-2 pt-2">
-        <button type="button" data-intent="publish" class="btn btn-primary" id="form-submit-btn">Publish listing</button>
+        <button type="button" data-intent="submit" class="btn btn-primary" id="form-submit-btn">Publish listing</button>
         <button type="button" data-intent="draft" class="btn btn-secondary">Save draft</button>
         <button type="button" id="form-cancel-btn" class="btn btn-ghost hidden">Cancel edit</button>
         <span id="form-status" class="self-center text-sm" style="color:var(--text-mute)" role="status"></span>
@@ -260,29 +406,34 @@ const sortedDenominations = [...DENOMINATIONS]
   </details>
 
   <!-- Listings table -->
-  <div class="card mt-5 overflow-x-auto">
-    {rows.length === 0 ? (
-      <div class="p-8 text-center">
-        <p class="font-bold">No listings yet</p>
-        <p class="mt-1 text-sm" style="color:var(--text-soft)">Create your first business listing above — it goes live immediately.</p>
-      </div>
-    ) : (
-      <table class="w-full min-w-[680px] text-sm">
-        <thead>
-          <tr class="text-left text-xs uppercase" style="color:var(--text-mute)">
-            <th class="p-3">Business</th>
-            <th class="p-3">Location</th>
-            <th class="p-3">Status</th>
-            <th class="p-3">Updated</th>
-            <th class="p-3 text-right">Actions</th>
+  <div class="card mt-5 overflow-x-auto" id="listings-table-card">
+    <table class="w-full min-w-[680px] text-sm">
+      <thead>
+        <tr class="text-left text-xs uppercase" style="color:var(--text-mute)">
+          <th class="p-3">Business</th>
+          <th class="p-3">Location</th>
+          <th class="p-3">Status</th>
+          <th class="p-3">Updated</th>
+          <th class="p-3 text-right">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {rows.length === 0 ? (
+          <tr id="empty-table-row">
+            <td colspan="5" class="p-8 text-center">
+              <p class="font-bold">No listings yet</p>
+              <p class="mt-1 text-sm" style="color:var(--text-soft)">Create your first business listing above — it goes live immediately.</p>
+            </td>
           </tr>
-        </thead>
-        <tbody>
-          {rows.map((r) => (
+        ) : (
+          rows.map((r) => (
             <tr class="border-t align-top" style="border-color:var(--border)" data-row-id={r.id}>
               <td class="p-3">
                 <p class="font-medium">{r.name}</p>
                 <p class="text-xs" style="color:var(--text-mute)">{r.typeSlug}</p>
+                {r.reviewNote && (
+                  <p class="mt-1 text-xs text-amber-600 font-medium">Reviewer note: {r.reviewNote}</p>
+                )}
               </td>
               <td class="p-3">{r.city || '—'}{r.region ? `, ${r.region}` : ''}</td>
               <td class="p-3">
@@ -296,6 +447,12 @@ const sortedDenominations = [...DENOMINATIONS]
               <td class="p-3">
                 <div class="flex flex-wrap justify-end gap-1.5" data-actions data-listing={JSON.stringify(r.data)} data-id={r.id} data-name={r.name} data-status={r.status}>
                   <button type="button" class="btn btn-ghost !px-2.5 !py-1 !text-xs" data-act="edit">Edit</button>
+                  {r.status === 'draft' && (
+                    <button type="button" class="btn btn-primary !px-2.5 !py-1 !text-xs" data-act="submit">Submit</button>
+                  )}
+                  {r.status === 'changes_requested' && (
+                    <button type="button" class="btn btn-primary !px-2.5 !py-1 !text-xs" data-act="resubmit">Resubmit</button>
+                  )}
                   {r.status === 'published' && (
                     <a href={`/directory/${r.slug}`} class="btn btn-secondary !px-2.5 !py-1 !text-xs" target="_blank">View live</a>
                   )}
@@ -303,10 +460,10 @@ const sortedDenominations = [...DENOMINATIONS]
                 </div>
               </td>
             </tr>
-          ))}
-        </tbody>
-      </table>
-    )}
+          ))
+        )}
+      </tbody>
+    </table>
   </div>
 
   <script>
@@ -318,6 +475,199 @@ const sortedDenominations = [...DENOMINATIONS]
     const formSubmitBtn = document.getElementById('form-submit-btn') as HTMLButtonElement | null;
     const formCancelBtn = document.getElementById('form-cancel-btn') as HTMLButtonElement | null;
     const formCard = document.getElementById('listing-form-card') as HTMLDetailsElement | null;
+
+    // -------------------------------------------------------------------------
+    // Accordion Category State
+    // -------------------------------------------------------------------------
+    const accordionWrapper = document.getElementById('dash-category-accordion-wrapper');
+    const searchInput = document.getElementById('dash-category-search-input') as HTMLInputElement | null;
+    const selectedCard = document.getElementById('dash-category-selected-card');
+    const selectedText = document.getElementById('dash-category-selected-text');
+    const changeBtn = document.getElementById('dash-change-category-btn');
+    const inputIndustrySlug = document.getElementById('dash-input-industry-slug') as HTMLInputElement | null;
+    const inputCategorySlug = document.getElementById('dash-input-category-slug') as HTMLInputElement | null;
+    const customCategoryWrap = document.getElementById('dash-custom-category-wrap');
+    const inputCustomCategory = document.getElementById('dash-input-custom-category') as HTMLInputElement | null;
+    const categoryBadge = document.getElementById('dash-category-badge');
+
+    // Industry Accordion Toggles
+    document.querySelectorAll<HTMLButtonElement>('.dash-industry-header-btn').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const isExpanded = btn.getAttribute('aria-expanded') === 'true';
+        const bodyId = btn.getAttribute('aria-controls');
+        const body = bodyId ? document.getElementById(bodyId) : null;
+        const chevron = btn.querySelector('.chevron');
+
+        btn.setAttribute('aria-expanded', String(!isExpanded));
+        if (body) body.classList.toggle('hidden', isExpanded);
+        if (chevron) chevron.classList.toggle('rotate-180', !isExpanded);
+      });
+    });
+
+    function setCategorySelection(indSlug: string, indName: string, catSlug: string, catName: string) {
+      if (inputIndustrySlug) inputIndustrySlug.value = indSlug;
+      if (inputCategorySlug) inputCategorySlug.value = catSlug;
+
+      if (selectedText) selectedText.textContent = `${indName} › ${catName}`;
+      selectedCard?.classList.remove('hidden');
+      accordionWrapper?.classList.add('hidden');
+
+      const isOther = catSlug.startsWith('other') || indSlug === 'other-industries';
+      if (customCategoryWrap && inputCustomCategory) {
+        if (isOther) {
+          customCategoryWrap.classList.remove('hidden');
+          inputCustomCategory.required = true;
+        } else {
+          customCategoryWrap.classList.add('hidden');
+          inputCustomCategory.required = false;
+          inputCustomCategory.value = '';
+        }
+      }
+
+      if (categoryBadge) {
+        categoryBadge.textContent = 'Selected ✓';
+        categoryBadge.style.color = 'var(--teal)';
+      }
+    }
+
+    document.querySelectorAll<HTMLButtonElement>('.dash-subcat-option-btn').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const indSlug = btn.dataset.industrySlug || '';
+        const indName = btn.dataset.industryName || '';
+        const catSlug = btn.dataset.categorySlug || '';
+        const catName = btn.dataset.categoryName || '';
+        setCategorySelection(indSlug, indName, catSlug, catName);
+      });
+    });
+
+    changeBtn?.addEventListener('click', () => {
+      selectedCard?.classList.add('hidden');
+      accordionWrapper?.classList.remove('hidden');
+      if (searchInput) searchInput.focus();
+    });
+
+    // Real-time Category Search
+    searchInput?.addEventListener('input', () => {
+      const q = searchInput.value.toLowerCase().trim();
+      document.querySelectorAll<HTMLElement>('.dash-industry-item').forEach((item) => {
+        const indBtn = item.querySelector<HTMLButtonElement>('.dash-industry-header-btn');
+        const body = item.querySelector<HTMLElement>('.dash-industry-body');
+        const chevron = item.querySelector('.chevron');
+        const subcatBtns = item.querySelectorAll<HTMLButtonElement>('.dash-subcat-option-btn');
+        let hasMatch = false;
+
+        subcatBtns.forEach((subBtn) => {
+          const name = (subBtn.dataset.categoryName || '').toLowerCase();
+          const match = !q || name.includes(q);
+          subBtn.classList.toggle('hidden', !match);
+          if (match) hasMatch = true;
+        });
+
+        if (!q) {
+          item.classList.remove('hidden');
+          indBtn?.setAttribute('aria-expanded', 'false');
+          body?.classList.add('hidden');
+          chevron?.classList.remove('rotate-180');
+        } else if (hasMatch) {
+          item.classList.remove('hidden');
+          indBtn?.setAttribute('aria-expanded', 'true');
+          body?.classList.remove('hidden');
+          chevron?.classList.add('rotate-180');
+        } else {
+          item.classList.add('hidden');
+        }
+      });
+    });
+
+    // -------------------------------------------------------------------------
+    // Multi-Denomination Selector State (Max 2)
+    // -------------------------------------------------------------------------
+    const selectedDenoms = new Map<string, string>();
+    const chipsContainer = document.getElementById('dash-denom-chips-container');
+    const emptyHint = document.getElementById('dash-denom-empty-hint');
+    const counterBadge = document.getElementById('dash-denom-counter');
+    const customDenomWrap = document.getElementById('dash-custom-denom-wrap');
+    const customDenomInput = document.getElementById('dash-custom-denom-input') as HTMLInputElement | null;
+    const moreSelect = document.getElementById('dash-more-denoms-select') as HTMLSelectElement | null;
+
+    function renderDenominations() {
+      if (chipsContainer) {
+        chipsContainer.querySelectorAll('.dash-denom-chip').forEach((c) => c.remove());
+        if (selectedDenoms.size === 0) {
+          emptyHint?.classList.remove('hidden');
+        } else {
+          emptyHint?.classList.add('hidden');
+          selectedDenoms.forEach((name, slug) => {
+            const chip = document.createElement('span');
+            chip.className = 'dash-denom-chip inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold border border-[var(--teal)] bg-[rgba(46,146,131,0.12)] text-[var(--teal)]';
+            chip.innerHTML = `<span>${name}</span><button type="button" class="remove-chip hover:opacity-75 focus:outline-none" aria-label="Remove ${name}" data-slug="${slug}">✕</button>`;
+            chip.querySelector('.remove-chip')?.addEventListener('click', (e) => {
+              e.stopPropagation();
+              toggleDenomination(slug, name);
+            });
+            chipsContainer.appendChild(chip);
+          });
+        }
+      }
+
+      if (counterBadge) {
+        const count = selectedDenoms.size;
+        counterBadge.textContent = `${count} of 2 selected`;
+        if (count === 2) {
+          counterBadge.style.color = 'var(--teal)';
+          counterBadge.textContent = '2 of 2 selected (maximum)';
+        } else {
+          counterBadge.style.color = '';
+        }
+      }
+
+      document.querySelectorAll<HTMLButtonElement>('.dash-denom-toggle-btn').forEach((btn) => {
+        const slug = btn.dataset.slug || '';
+        const isSelected = selectedDenoms.has(slug);
+        btn.classList.toggle('chip-active', isSelected);
+        btn.classList.toggle('font-bold', isSelected);
+      });
+
+      if (customDenomWrap && customDenomInput) {
+        if (selectedDenoms.has('other')) {
+          customDenomWrap.classList.remove('hidden');
+          customDenomInput.required = true;
+        } else {
+          customDenomWrap.classList.add('hidden');
+          customDenomInput.required = false;
+        }
+      }
+    }
+
+    function toggleDenomination(slug: string, name: string) {
+      if (selectedDenoms.has(slug)) {
+        selectedDenoms.delete(slug);
+      } else {
+        if (selectedDenoms.size >= 2) {
+          alert('You can select up to two denominations. Remove one to choose another.');
+          return;
+        }
+        selectedDenoms.set(slug, name);
+      }
+      renderDenominations();
+    }
+
+    document.querySelectorAll<HTMLButtonElement>('.dash-denom-toggle-btn').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const slug = btn.dataset.slug || '';
+        const name = btn.dataset.name || '';
+        toggleDenomination(slug, name);
+      });
+    });
+
+    moreSelect?.addEventListener('change', () => {
+      const slug = moreSelect.value;
+      if (!slug) return;
+      const option = moreSelect.options[moreSelect.selectedIndex];
+      const name = option ? option.text : slug;
+      toggleDenomination(slug, name);
+      moreSelect.value = '';
+    });
 
     function showBanner(ok: boolean, msg: string) {
       if (!banner || !bannerText) return;
@@ -334,12 +684,29 @@ const sortedDenominations = [...DENOMINATIONS]
       if (formTitle) formTitle.textContent = '+ Create a new listing';
       if (formSubmitBtn) formSubmitBtn.textContent = 'Publish listing';
       formCancelBtn?.classList.add('hidden');
+
+      // Reset category
+      if (inputIndustrySlug) inputIndustrySlug.value = '';
+      if (inputCategorySlug) inputCategorySlug.value = '';
+      if (inputCustomCategory) inputCustomCategory.value = '';
+      selectedCard?.classList.add('hidden');
+      accordionWrapper?.classList.remove('hidden');
+      customCategoryWrap?.classList.add('hidden');
+      if (categoryBadge) {
+        categoryBadge.textContent = 'Category required';
+        categoryBadge.style.color = '';
+      }
+
+      // Reset denominations
+      selectedDenoms.clear();
+      renderDenominations();
     }
 
     function fillForm(data: Record<string, unknown>, id: string, name: string) {
       if (!form) return;
       form.dataset.listingId = id;
       for (const [k, v] of Object.entries(data)) {
+        if (k === 'denominations') continue;
         const el = form.elements.namedItem(k) as HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement | null;
         if (!el) continue;
         if (el instanceof HTMLInputElement && el.type === 'checkbox') {
@@ -348,6 +715,37 @@ const sortedDenominations = [...DENOMINATIONS]
           el.value = String(v ?? '');
         }
       }
+
+      // Restore category
+      const indSlug = String(data.industrySlug || '');
+      const catSlug = String(data.categorySlug || '');
+      const customCat = String(data.customCategory || '');
+      if (catSlug) {
+        const catBtn = document.querySelector<HTMLButtonElement>(`.dash-subcat-option-btn[data-category-slug="${catSlug}"]`);
+        const indName = catBtn?.dataset.industryName || indSlug;
+        const catName = catBtn?.dataset.categoryName || catSlug;
+        setCategorySelection(indSlug, indName, catSlug, catName);
+        if (inputCustomCategory && customCat) {
+          inputCustomCategory.value = customCat;
+        }
+      } else {
+        selectedCard?.classList.add('hidden');
+        accordionWrapper?.classList.remove('hidden');
+      }
+
+      // Restore denominations (up to 2)
+      selectedDenoms.clear();
+      const rawDenoms = Array.isArray(data.denominations) ? data.denominations : (data.denominations ? [data.denominations] : []);
+      for (const d of rawDenoms.slice(0, 2)) {
+        const slug = String(d);
+        if (!slug) continue;
+        const toggleBtn = document.querySelector<HTMLButtonElement>(`.dash-denom-toggle-btn[data-slug="${slug}"]`);
+        const option = moreSelect?.querySelector<HTMLOptionElement>(`option[value="${slug}"]`);
+        const dName = toggleBtn?.dataset.name || option?.text || slug;
+        selectedDenoms.set(slug, dName);
+      }
+      renderDenominations();
+
       if (formTitle) formTitle.textContent = `Edit “${name}”`;
       if (formSubmitBtn) formSubmitBtn.textContent = 'Save changes';
       formCancelBtn?.classList.remove('hidden');
@@ -381,14 +779,22 @@ const sortedDenominations = [...DENOMINATIONS]
       out.showWebsite = (form.elements.namedItem('showWebsite') as HTMLInputElement)?.checked ?? false;
       out.showAddress = (form.elements.namedItem('showAddress') as HTMLInputElement)?.checked ?? false;
       out.showDenomination = (form.elements.namedItem('showDenomination') as HTMLInputElement)?.checked ?? true;
-      const denom = String(form.elements.namedItem('denominations') ? (form.elements.namedItem('denominations') as HTMLSelectElement).value : '');
-      out.denominations = denom ? [denom] : [];
+      out.industrySlug = inputIndustrySlug?.value || '';
+      out.categorySlug = inputCategorySlug?.value || '';
+      out.customCategory = inputCustomCategory?.value || '';
+      out.denominations = Array.from(selectedDenoms.keys());
       return out;
     };
 
     async function handleRowAction(act: string, id: string, data: Record<string, unknown>, name: string) {
-      if (act === 'edit') {
+      if (act === 'edit' || act === 'submit' || act === 'resubmit') {
         fillForm(data, id, name);
+        if (act === 'submit' && formSubmitBtn) {
+          formSubmitBtn.textContent = 'Submit for review';
+        }
+        if (act === 'resubmit' && formSubmitBtn) {
+          formSubmitBtn.textContent = 'Resubmit for review';
+        }
         return;
       }
       if (act === 'delete') {
@@ -412,9 +818,9 @@ const sortedDenominations = [...DENOMINATIONS]
     form?.querySelectorAll<HTMLButtonElement>('button[data-intent]').forEach((btn) => {
       btn.addEventListener('click', async () => {
         if (!form || !statusEl) return;
-        const intent = btn.dataset.intent as 'draft' | 'publish';
+        const intent = btn.dataset.intent as 'draft' | 'submit' | 'publish';
         const id = form.dataset.listingId || '';
-        const body = { action: intent === 'draft' ? 'draft' : 'publish', listing: collect() };
+        const body = { action: intent === 'draft' ? 'draft' : 'submit', listing: collect() };
 
         if (intent !== 'draft') {
           const descVal = String(body.listing ? (body.listing as Record<string, unknown>).description ?? '' : '').trim();
@@ -427,16 +833,64 @@ const sortedDenominations = [...DENOMINATIONS]
         btn.disabled = true;
         statusEl.textContent = intent === 'draft' ? 'Saving draft…' : (id ? 'Saving changes…' : 'Publishing listing…');
 
+        const lData = (body.listing as Record<string, unknown>) || {};
+        const listingName = String(lData.name || '').trim();
+        const typeSlug = String(lData.typeSlug || 'business');
+        const city = String(lData.city || '');
+        const region = String(lData.region || '');
+        const statusLabel = intent === 'draft' ? 'Draft' : 'Pending Review';
+
+        let tempRow: HTMLTableRowElement | null = null;
+        const tbody = document.querySelector('#listings-table-card tbody');
+        const emptyRow = document.getElementById('empty-table-row');
+        if (!id && listingName && tbody) {
+          if (emptyRow) emptyRow.style.display = 'none';
+          tempRow = document.createElement('tr');
+          tempRow.className = 'border-t align-top';
+          tempRow.style.borderColor = 'var(--border)';
+          tempRow.setAttribute('data-temp-row', 'true');
+          tempRow.innerHTML = `
+            <td class="p-3">
+              <p class="font-medium">${listingName}</p>
+              <p class="text-xs" style="color:var(--text-mute)">${typeSlug}</p>
+            </td>
+            <td class="p-3">${city || '—'}${region ? ', ' + region : ''}</td>
+            <td class="p-3">
+              <span class="chip !text-[11px]">${statusLabel}</span>
+            </td>
+            <td class="p-3 text-xs" style="color:var(--text-mute)">Just now</td>
+            <td class="p-3">
+              <div class="flex flex-wrap justify-end gap-1.5" data-actions data-name="${listingName}">
+                <button type="button" class="btn btn-ghost !px-2.5 !py-1 !text-xs" data-act="edit">Edit</button>
+                <button type="button" class="btn btn-primary !px-2.5 !py-1 !text-xs" data-act="submit">Submit</button>
+              </div>
+            </td>
+          `;
+          tbody.prepend(tempRow);
+        } else if (id && tbody) {
+          const row = tbody.querySelector(`[data-row-id="${id}"]`);
+          const chip = row?.querySelector('.chip');
+          if (chip) chip.textContent = statusLabel;
+        }
+
         try {
           const { ok, json } = await send(id ? `/api/listings/${id}` : '/api/submissions', id ? 'PATCH' : 'POST', body);
           if (ok) {
             sessionStorage.setItem('cl:flash', intent === 'draft' ? 'listing-saved' : 'listing-published');
             location.reload();
           } else {
+            if (tempRow) tempRow.remove();
+            if (emptyRow && tbody && tbody.querySelectorAll('tr:not(#empty-table-row)').length === 0) {
+              emptyRow.style.display = '';
+            }
             showBanner(false, json.error ?? 'Something went wrong.');
             statusEl.textContent = '';
           }
         } catch {
+          if (tempRow) tempRow.remove();
+          if (emptyRow && tbody && tbody.querySelectorAll('tr:not(#empty-table-row)').length === 0) {
+            emptyRow.style.display = '';
+          }
           showBanner(false, 'Network error — try again.');
           statusEl.textContent = '';
         } finally {

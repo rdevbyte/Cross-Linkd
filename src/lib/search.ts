@@ -68,6 +68,7 @@ function expandTerms(text: string): string[] {
 function haystack(l: SampleListing): string {
   return [
     l.name, l.tagline, l.description, l.city, l.region,
+    l.industrySlug ?? '', l.categorySlug ?? '', l.customCategory ?? '',
     ...l.services, ...l.hashtags, ...l.industries, ...l.professions, ...l.denominations,
   ].join(' ').toLowerCase();
 }
@@ -110,15 +111,16 @@ for (const ind of INDUSTRIES) {
 }
 
 function listingInIndustry(l: SampleListing, industrySlug: string): boolean {
-  if (l.industries.includes(industrySlug)) return true;
+  if (l.industrySlug === industrySlug || l.industries.includes(industrySlug)) return true;
   const cats = INDUSTRY_CATS.get(industrySlug);
-  return cats ? l.industries.some((i) => cats.has(i)) : false;
+  return cats ? ((l.categorySlug && cats.has(l.categorySlug)) || l.industries.some((i) => cats.has(i))) : false;
 }
 
 function listingInCategory(l: SampleListing, catSlug: string): boolean {
+  if (l.categorySlug === catSlug || l.industries.includes(catSlug)) return true;
   const cat = CATEGORY_INDEX.get(catSlug);
   if (!cat) return false;
-  if (l.industries.includes(catSlug)) return true; // tagged with the sub-industry itself
+  if (l.industrySlug && l.industrySlug === cat.industry) return true;
   if (!l.industries.includes(cat.industry)) return false;
   if (l.professions.length === 0) return true;
   return l.professions.some((p) => cat.professions.has(p));

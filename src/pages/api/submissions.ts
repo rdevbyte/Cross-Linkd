@@ -16,9 +16,14 @@ export const POST: APIRoute = async ({ request, locals }) => {
   const parsedAction = z.object({ action: z.enum(['publish', 'draft', 'submit', 'resubmit', 'save']).default('publish') }).safeParse(body);
   const action = parsedAction.success ? parsedAction.data.action : 'publish';
 
-  const parsed = listingInputSchema.safeParse((body as { listing?: unknown }).listing);
+  const rawListing = (body as { listing?: unknown }).listing;
+  const parsed = listingInputSchema.safeParse(rawListing);
   if (!parsed.success) return jsonError(400, parsed.error.errors[0]?.message ?? 'Invalid listing data.', { field: parsed.error.errors[0]?.path?.[0] });
   const values = parsed.data;
+
+  if (values.denominations && values.denominations.length > 2) {
+    return jsonError(400, 'You can select up to two denominations.');
+  }
 
   if (action !== 'draft') {
     if (!values.description || values.description.trim().length < 30) {
@@ -33,7 +38,7 @@ export const POST: APIRoute = async ({ request, locals }) => {
   }
 
   try {
-    const saved = await saveListing(locals.user!.id, values, { action: action === 'draft' ? 'draft' : 'publish' });
+    const saved = await saveListing(locals.user!.id, values, { action });
     return jsonOk({ listing: saved });
   } catch (err) {
     console.error('[api/submissions] create failed:', err);

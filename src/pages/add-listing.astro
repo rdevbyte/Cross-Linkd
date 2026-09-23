@@ -9,8 +9,25 @@ const error = Astro.url.searchParams.get('error');
 const success = Astro.url.searchParams.get('success') === '1';
 const slug = Astro.url.searchParams.get('slug');
 
-const sortedDenominations = [...DENOMINATIONS]
-  .filter((d) => d.slug !== 'non-denominational')
+const popularDenominations = [
+  { slug: 'non-denominational', name: 'Non-Denominational' },
+  { slug: 'baptist', name: 'Baptist' },
+  { slug: 'lutheran', name: 'Lutheran' },
+  { slug: 'reformed-presbyterian', name: 'Presbyterian & Reformed' },
+  { slug: 'methodist-wesleyan', name: 'Methodist & Wesleyan' },
+  { slug: 'pentecostal-charismatic', name: 'Pentecostal & Charismatic' },
+  { slug: 'anglican-episcopal', name: 'Anglican & Episcopal' },
+  { slug: 'catholic', name: 'Catholic' },
+  { slug: 'eastern-orthodox', name: 'Eastern Orthodox' },
+  { slug: 'evangelical', name: 'Evangelical Free' },
+  { slug: 'anabaptist', name: 'Anabaptist & Mennonite' },
+  { slug: 'restorationist', name: 'Churches of Christ' },
+  { slug: 'interdenominational', name: 'Interdenominational' },
+  { slug: 'other', name: 'Other (specify custom denomination)' },
+];
+
+const allOtherDenominations = [...DENOMINATIONS]
+  .filter((d) => !popularDenominations.some((p) => p.slug === d.slug))
   .sort((a, b) => a.name.localeCompare(b.name));
 ---
 <BaseLayout user={user} seo={{ title: 'List Your Business — Free Directory Listing | CrossLinkd', description: 'Create a free listing for your Christian-owned business, church, ministry, or professional practice. Published immediately and free to list.', path: '/add-listing' }}>
@@ -29,7 +46,7 @@ const sortedDenominations = [...DENOMINATIONS]
         </div>
       </div>
     ) : (
-      <form method="POST" action="/api/listings" class="card mt-6 space-y-6 p-6 sm:p-8">
+      <form method="POST" action="/api/listings" class="card mt-6 space-y-6 p-6 sm:p-8" id="add-listing-form">
         {error && <p class="rounded-xl bg-red-500/10 p-3 text-sm font-medium text-red-600" role="alert">{error}</p>}
         {!user && <p class="rounded-xl p-3 text-sm" style="background:rgba(216,149,34,.12)">You’re creating a listing as a guest. <a href="/auth/signup" class="font-bold underline">Create a free account</a> to edit and manage this listing later.</p>}
 
@@ -55,15 +72,9 @@ const sortedDenominations = [...DENOMINATIONS]
             <textarea name="description" rows="4" maxlength="8000" class="input mt-1.5" placeholder="Describe what your business offers, who you serve, and what makes your business distinct..."></textarea>
           </label>
 
-          <div class="mt-4 grid gap-4 sm:grid-cols-2">
-            <label class="text-sm font-medium">Industry / Category
-              <select name="industries" class="input mt-1.5">
-                <option value="">Select a category…</option>
-                {INDUSTRIES.map((i) => <option value={i.slug}>{i.name}</option>)}
-              </select>
-            </label>
+          <div class="mt-4">
             <label class="text-sm font-medium">Price range
-              <select name="priceRange" class="input mt-1.5">
+              <select name="priceRange" class="input mt-1.5 w-full sm:w-1/2">
                 <option value="">Select price range (optional)</option>
                 <option value="$">$ (Inexpensive / Budget-friendly)</option>
                 <option value="$$">$$ (Moderate / Standard)</option>
@@ -76,27 +87,148 @@ const sortedDenominations = [...DENOMINATIONS]
 
         <hr style="border-color:var(--border)" />
 
-        <!-- Faith Affiliation & Denomination -->
+        <!-- Hierarchical Industry & Category Selector -->
         <div>
-          <h2 class="text-base font-bold">Faith affiliation &amp; denomination</h2>
-          <p class="mt-0.5 text-xs" style="color:var(--text-soft)">Optional. Helps community members discover faith-aligned businesses and ministries.</p>
+          <div class="flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <h2 class="text-base font-bold">Industry &amp; business category *</h2>
+              <p class="mt-0.5 text-xs" style="color:var(--text-soft)">Select a broad industry to explore specific categories, then choose the category that best fits your business.</p>
+            </div>
+            <span id="category-badge" class="chip !text-[11px] font-bold">Category required</span>
+          </div>
 
-          <div class="mt-3 grid gap-4 sm:grid-cols-2">
-            <label class="text-sm font-medium">Denomination / affiliation <span class="font-normal" style="color:var(--text-mute)">(optional)</span>
-              <select name="denominations" id="denomination-select" class="input mt-1.5">
-                <option value="">Select denomination / affiliation (optional)…</option>
-                <option value="non-denominational">Non-Denominational</option>
-                {sortedDenominations.map((d) => <option value={d.slug}>{d.name}</option>)}
-                <option value="other">Other (specify custom denomination below)</option>
-              </select>
+          <!-- Hidden inputs for submission -->
+          <input type="hidden" name="industrySlug" id="input-industry-slug" value="" required />
+          <input type="hidden" name="categorySlug" id="input-category-slug" value="" required />
+
+          <!-- Selected Category Display Banner -->
+          <div id="category-selected-card" class="hidden mt-3 p-3.5 rounded-xl border border-[var(--teal)] bg-[rgba(46,146,131,0.08)]">
+            <div class="flex items-center justify-between">
+              <div>
+                <span class="text-xs uppercase font-bold tracking-wide" style="color:var(--teal)">Selected Category</span>
+                <p class="font-bold text-sm sm:text-base mt-0.5" id="category-selected-text">Food &amp; Beverage › Bakery</p>
+              </div>
+              <button type="button" class="btn btn-secondary !py-1 !px-3 !text-xs font-semibold" id="change-category-btn">Change category</button>
+            </div>
+          </div>
+
+          <!-- Custom Category Input when 'Other' category is chosen -->
+          <div id="custom-category-wrap" class="hidden mt-3 rounded-xl p-3.5 border border-[var(--border)] bg-[var(--surface-2)]">
+            <label class="block text-xs font-semibold">Custom category name *
+              <input name="customCategory" id="input-custom-category" class="input mt-1.5 w-full" placeholder="e.g. Specialty Gluten-Free Bakery, Stained Glass Restoration, etc." maxlength="180" />
             </label>
+            <p class="text-[11px] mt-1" style="color:var(--text-mute)">Please specify your business's exact trade or service.</p>
+          </div>
 
-            <label class="text-sm font-medium" id="custom-denom-label">Custom denomination name
+          <!-- Accordion Selection Container -->
+          <div id="category-accordion-wrapper" class="mt-3">
+            <div class="relative mb-2.5">
+              <input
+                type="search"
+                id="category-search-input"
+                class="input w-full !pl-9 text-xs"
+                placeholder="Search categories (e.g. Bakery, Plumbing, Roofing, Dental, Counseling)..."
+                autocomplete="off"
+              />
+              <svg class="absolute left-3 top-3 h-4 w-4 text-[var(--text-mute)]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+            </div>
+
+            <div class="space-y-2 max-h-[360px] overflow-y-auto pr-1 rounded-xl" id="industry-accordion-list">
+              {INDUSTRIES.map((ind) => (
+                <div class="industry-item rounded-xl border border-[var(--border)] bg-[var(--surface)] overflow-hidden" data-industry-slug={ind.slug}>
+                  <button
+                    type="button"
+                    class="industry-header-btn w-full flex items-center justify-between p-3 text-left font-bold text-xs sm:text-sm hover:bg-[var(--surface-2)] transition-colors focus:outline-none focus:bg-[var(--surface-2)]"
+                    aria-expanded="false"
+                    aria-controls={`ind-cats-${ind.slug}`}
+                  >
+                    <span class="flex items-center gap-2">
+                      <span class="industry-name">{ind.name}</span>
+                      <span class="text-[11px] font-normal" style="color:var(--text-mute)">({ind.categories.length})</span>
+                    </span>
+                    <svg class="w-4 h-4 transition-transform duration-200 chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="6 9 12 15 18 9"/></svg>
+                  </button>
+
+                  <div id={`ind-cats-${ind.slug}`} class="industry-body hidden p-3 border-t border-[var(--border)] bg-[var(--surface-2)]" role="region">
+                    <div class="grid gap-2 sm:grid-cols-2">
+                      {ind.categories.map((cat) => (
+                        <button
+                          type="button"
+                          class="subcat-option-btn p-2 rounded-lg text-left text-xs font-medium border border-[var(--border)] bg-[var(--surface)] hover:border-[var(--accent)] hover:bg-[var(--surface-2)] transition-all flex items-center justify-between"
+                          data-industry-slug={ind.slug}
+                          data-industry-name={ind.name}
+                          data-category-slug={cat.slug}
+                          data-category-name={cat.name}
+                        >
+                          <span class="subcat-name">{cat.name}</span>
+                          <span class="select-indicator text-xs font-bold opacity-0 transition-opacity" style="color:var(--teal)">✓</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <hr style="border-color:var(--border)" />
+
+        <!-- Faith Affiliation & Multi-Denomination Selector (Max 2) -->
+        <div>
+          <div class="flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <h2 class="text-base font-bold">Faith affiliation &amp; denomination</h2>
+              <p class="mt-0.5 text-xs" style="color:var(--text-soft)">Select up to two denominations that best represent this organization.</p>
+            </div>
+            <span id="denom-counter" class="chip !text-[11px]">0 of 2 selected</span>
+          </div>
+
+          <!-- Active Selection Chips Display -->
+          <div id="denom-chips-container" class="mt-3 flex flex-wrap items-center gap-2 min-h-[38px] p-2.5 rounded-xl border border-dashed border-[var(--border)] bg-[var(--surface-2)]">
+            <span id="denom-empty-hint" class="text-xs" style="color:var(--text-mute)">No denominations selected yet. Choose up to two below.</span>
+          </div>
+
+          <!-- Hidden inputs for multi-denomination form submission -->
+          <div id="denom-hidden-inputs"></div>
+
+          <!-- Selection Controls -->
+          <div class="mt-3">
+            <p class="text-xs font-bold uppercase tracking-wide mb-2" style="color:var(--text-mute)">Select denominations (click to add/remove)</p>
+            <div class="flex flex-wrap gap-1.5" id="popular-denoms-grid">
+              {popularDenominations.map((d) => (
+                <button
+                  type="button"
+                  class="denom-toggle-btn chip !py-1.5 !px-3 !text-xs font-medium cursor-pointer transition-colors"
+                  data-slug={d.slug}
+                  data-name={d.name}
+                >
+                  {d.name}
+                </button>
+              ))}
+            </div>
+
+            <!-- More Denominations Dropdown -->
+            <div class="mt-3">
+              <label class="block text-xs font-semibold mb-1" style="color:var(--text-mute)">More historical &amp; regional denominations:
+                <select id="more-denoms-select" class="input mt-1 w-full text-xs">
+                  <option value="">Choose additional denomination…</option>
+                  {allOtherDenominations.map((d) => (
+                    <option value={d.slug}>{d.name}</option>
+                  ))}
+                </select>
+              </label>
+            </div>
+          </div>
+
+          <!-- Custom Denomination Input when 'Other' is chosen -->
+          <div id="custom-denom-wrap" class="hidden mt-3 rounded-xl p-3 border border-[var(--border)] bg-[var(--surface-2)]">
+            <label class="block text-xs font-semibold">Custom denomination or movement name *
               <input
                 name="customDenomination"
                 id="custom-denom-input"
-                class="input mt-1.5"
-                placeholder="e.g. Calvary Chapel, Vineyard, Independent Baptist..."
+                class="input mt-1.5 w-full"
+                placeholder="e.g. Calvary Chapel, Vineyard Movement, Independent Baptist..."
                 maxlength="180"
               />
             </label>
@@ -169,7 +301,7 @@ const sortedDenominations = [...DENOMINATIONS]
           <!-- Phone Number -->
           <div class="mt-5 space-y-1.5">
             <label class="block text-sm font-medium">Phone number
-              <input name="phone" class="input mt-1.5" placeholder="Enter phone number" />
+              <input name="phone" maxlength="60" class="input mt-1.5" placeholder="Enter phone number" />
             </label>
             <label class="flex items-center gap-2 text-xs font-semibold cursor-pointer">
               <input type="checkbox" name="showPhone" value="1" class="h-4 w-4 accent-[var(--accent)]" />
@@ -219,4 +351,222 @@ const sortedDenominations = [...DENOMINATIONS]
       </form>
     )}
   </div>
+
+  <script>
+    // -------------------------------------------------------------------------
+    // 1. Expandable Industry & Category Accordion Controller
+    // -------------------------------------------------------------------------
+    const accordionWrapper = document.getElementById('category-accordion-wrapper');
+    const searchInput = document.getElementById('category-search-input') as HTMLInputElement | null;
+    const selectedCard = document.getElementById('category-selected-card');
+    const selectedText = document.getElementById('category-selected-text');
+    const changeBtn = document.getElementById('change-category-btn');
+    const inputIndustrySlug = document.getElementById('input-industry-slug') as HTMLInputElement | null;
+    const inputCategorySlug = document.getElementById('input-category-slug') as HTMLInputElement | null;
+    const customCategoryWrap = document.getElementById('custom-category-wrap');
+    const inputCustomCategory = document.getElementById('input-custom-category') as HTMLInputElement | null;
+    const categoryBadge = document.getElementById('category-badge');
+
+    // Industry Accordion Toggles
+    document.querySelectorAll<HTMLButtonElement>('.industry-header-btn').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const isExpanded = btn.getAttribute('aria-expanded') === 'true';
+        const bodyId = btn.getAttribute('aria-controls');
+        const body = bodyId ? document.getElementById(bodyId) : null;
+        const chevron = btn.querySelector('.chevron');
+
+        // Toggle state
+        btn.setAttribute('aria-expanded', String(!isExpanded));
+        if (body) {
+          body.classList.toggle('hidden', isExpanded);
+        }
+        if (chevron) {
+          chevron.classList.toggle('rotate-180', !isExpanded);
+        }
+      });
+    });
+
+    // Subcategory selection
+    document.querySelectorAll<HTMLButtonElement>('.subcat-option-btn').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const indSlug = btn.dataset.industrySlug || '';
+        const indName = btn.dataset.industryName || '';
+        const catSlug = btn.dataset.categorySlug || '';
+        const catName = btn.dataset.categoryName || '';
+
+        if (inputIndustrySlug) inputIndustrySlug.value = indSlug;
+        if (inputCategorySlug) inputCategorySlug.value = catSlug;
+
+        // Show selected state card
+        if (selectedText) selectedText.textContent = `${indName} › ${catName}`;
+        selectedCard?.classList.remove('hidden');
+        accordionWrapper?.classList.add('hidden');
+
+        // Show custom category text field if "Other" is selected
+        const isOther = catSlug.startsWith('other') || indSlug === 'other-industries';
+        if (customCategoryWrap && inputCustomCategory) {
+          if (isOther) {
+            customCategoryWrap.classList.remove('hidden');
+            inputCustomCategory.required = true;
+            inputCustomCategory.focus();
+          } else {
+            customCategoryWrap.classList.add('hidden');
+            inputCustomCategory.required = false;
+            inputCustomCategory.value = '';
+          }
+        }
+
+        if (categoryBadge) {
+          categoryBadge.textContent = 'Selected ✓';
+          categoryBadge.style.color = 'var(--teal)';
+        }
+      });
+    });
+
+    changeBtn?.addEventListener('click', () => {
+      selectedCard?.classList.add('hidden');
+      accordionWrapper?.classList.remove('hidden');
+      if (searchInput) searchInput.focus();
+    });
+
+    // Real-time Category Search
+    searchInput?.addEventListener('input', () => {
+      const q = searchInput.value.toLowerCase().trim();
+      document.querySelectorAll<HTMLElement>('.industry-item').forEach((item) => {
+        const indBtn = item.querySelector<HTMLButtonElement>('.industry-header-btn');
+        const body = item.querySelector<HTMLElement>('.industry-body');
+        const chevron = item.querySelector('.chevron');
+        const subcatBtns = item.querySelectorAll<HTMLButtonElement>('.subcat-option-btn');
+        let hasMatch = false;
+
+        subcatBtns.forEach((subBtn) => {
+          const name = (subBtn.dataset.categoryName || '').toLowerCase();
+          const match = !q || name.includes(q);
+          subBtn.classList.toggle('hidden', !match);
+          if (match) hasMatch = true;
+        });
+
+        if (!q) {
+          item.classList.remove('hidden');
+          indBtn?.setAttribute('aria-expanded', 'false');
+          body?.classList.add('hidden');
+          chevron?.classList.remove('rotate-180');
+        } else if (hasMatch) {
+          item.classList.remove('hidden');
+          indBtn?.setAttribute('aria-expanded', 'true');
+          body?.classList.remove('hidden');
+          chevron?.classList.add('rotate-180');
+        } else {
+          item.classList.add('hidden');
+        }
+      });
+    });
+
+    // -------------------------------------------------------------------------
+    // 2. Multi-Denomination Selector Controller (Up to 2)
+    // -------------------------------------------------------------------------
+    const selectedDenoms = new Map<string, string>(); // slug -> name
+    const chipsContainer = document.getElementById('denom-chips-container');
+    const emptyHint = document.getElementById('denom-empty-hint');
+    const counterBadge = document.getElementById('denom-counter');
+    const hiddenInputsWrap = document.getElementById('denom-hidden-inputs');
+    const customDenomWrap = document.getElementById('custom-denom-wrap');
+    const customDenomInput = document.getElementById('custom-denom-input') as HTMLInputElement | null;
+    const moreSelect = document.getElementById('more-denoms-select') as HTMLSelectElement | null;
+
+    function renderDenominations() {
+      // Clear chips except empty hint
+      if (chipsContainer) {
+        chipsContainer.querySelectorAll('.denom-chip').forEach((c) => c.remove());
+        if (selectedDenoms.size === 0) {
+          emptyHint?.classList.remove('hidden');
+        } else {
+          emptyHint?.classList.add('hidden');
+          selectedDenoms.forEach((name, slug) => {
+            const chip = document.createElement('span');
+            chip.className = 'denom-chip inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border border-[var(--teal)] bg-[rgba(46,146,131,0.12)] text-[var(--teal)]';
+            chip.innerHTML = `<span>${name}</span><button type="button" class="remove-chip hover:opacity-75 focus:outline-none" aria-label="Remove ${name}" data-slug="${slug}">✕</button>`;
+            chip.querySelector('.remove-chip')?.addEventListener('click', (e) => {
+              e.stopPropagation();
+              toggleDenomination(slug, name);
+            });
+            chipsContainer.appendChild(chip);
+          });
+        }
+      }
+
+      // Update hidden inputs
+      if (hiddenInputsWrap) {
+        hiddenInputsWrap.innerHTML = '';
+        selectedDenoms.forEach((_, slug) => {
+          const input = document.createElement('input');
+          input.type = 'hidden';
+          input.name = 'denominations';
+          input.value = slug;
+          hiddenInputsWrap.appendChild(input);
+        });
+      }
+
+      // Update counter badge
+      if (counterBadge) {
+        const count = selectedDenoms.size;
+        counterBadge.textContent = `${count} of 2 selected`;
+        if (count === 2) {
+          counterBadge.style.color = 'var(--teal)';
+          counterBadge.textContent = '2 of 2 selected (maximum)';
+        } else {
+          counterBadge.style.color = '';
+        }
+      }
+
+      // Update toggle buttons active state
+      document.querySelectorAll<HTMLButtonElement>('.denom-toggle-btn').forEach((btn) => {
+        const slug = btn.dataset.slug || '';
+        const isSelected = selectedDenoms.has(slug);
+        btn.classList.toggle('chip-active', isSelected);
+        btn.classList.toggle('font-bold', isSelected);
+      });
+
+      // Show custom denomination input if "other" is selected
+      if (customDenomWrap && customDenomInput) {
+        if (selectedDenoms.has('other')) {
+          customDenomWrap.classList.remove('hidden');
+          customDenomInput.required = true;
+        } else {
+          customDenomWrap.classList.add('hidden');
+          customDenomInput.required = false;
+        }
+      }
+    }
+
+    function toggleDenomination(slug: string, name: string) {
+      if (selectedDenoms.has(slug)) {
+        selectedDenoms.delete(slug);
+      } else {
+        if (selectedDenoms.size >= 2) {
+          alert('You can select up to two denominations. Remove one to choose another.');
+          return;
+        }
+        selectedDenoms.set(slug, name);
+      }
+      renderDenominations();
+    }
+
+    document.querySelectorAll<HTMLButtonElement>('.denom-toggle-btn').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const slug = btn.dataset.slug || '';
+        const name = btn.dataset.name || '';
+        toggleDenomination(slug, name);
+      });
+    });
+
+    moreSelect?.addEventListener('change', () => {
+      const slug = moreSelect.value;
+      if (!slug) return;
+      const option = moreSelect.options[moreSelect.selectedIndex];
+      const name = option ? option.text : slug;
+      toggleDenomination(slug, name);
+      moreSelect.value = '';
+    });
+  </script>
 </BaseLayout>

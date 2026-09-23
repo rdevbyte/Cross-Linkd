@@ -6,7 +6,7 @@ import { listingPatchSchema } from '@/lib/validation';
 import { saveListing, duplicateExists, type ListingFormValues } from '@/lib/submissions';
 import { apiGuard, jsonError, jsonOk } from '@/lib/guards';
 
-const EDITABLE_FOR_OWNER = new Set(['published', 'draft', 'pending_review', 'rejected', 'changes_requested']);
+const EDITABLE_FOR_OWNER = new Set(['draft', 'pending_review', 'rejected', 'changes_requested']);
 
 async function loadOwned(id: string, userId: string) {
   const db = getDb()!;
@@ -35,6 +35,10 @@ export const PATCH: APIRoute = async ({ params, request, locals }) => {
 
   const values: ListingFormValues = { ...current, ...parsed.data.listing } as ListingFormValues;
 
+  if (values.denominations && values.denominations.length > 2) {
+    return jsonError(400, 'You can select up to two denominations.');
+  }
+
   if (action !== 'draft') {
     if (values.description && values.description.trim().length < 30) {
       return jsonError(400, 'A description of at least 30 characters is required.');
@@ -47,7 +51,7 @@ export const PATCH: APIRoute = async ({ params, request, locals }) => {
   try {
     const saved = await saveListing(locals.user!.id, values, {
       listingId: id,
-      action: action === 'draft' ? 'draft' : 'publish',
+      action,
       currentStatus: current.status,
     });
     return jsonOk({ listing: saved });
