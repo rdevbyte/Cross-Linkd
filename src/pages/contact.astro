@@ -4,20 +4,13 @@ const user = Astro.locals.user;
 const sent = Astro.url.searchParams.get('sent') === '1';
 const topic = Astro.url.searchParams.get('topic') ?? '';
 ---
-<BaseLayout user={user} seo={{ title: 'Contact — CrossLinkd', description: 'Get in touch with the CrossLinkd team: email, phone, or the contact form. We reply within 1–2 business days.', path: '/contact' }}>
+<BaseLayout user={user} seo={{ title: 'Contact — CrossLinkd', description: 'Get in touch with the CrossLinkd team. Send us a message and we will reply within 1–2 business days.', path: '/contact' }}>
   <div class="mx-auto max-w-xl px-4 py-12">
     <h1 class="text-3xl font-extrabold">Contact us</h1>
     <p class="section-sub">We reply within 1–2 business days.</p>
 
-    <div class="card mt-4 space-y-2 p-5 text-sm" style="color:var(--text-soft)">
-      <p><a href="mailto:hello@crosslinkd.com" class="font-bold underline">hello@crosslinkd.com</a></p>
-      <p><a href="tel:+12145550100" class="font-bold underline">(214) 555-0100</a> — Mon–Fri, 9 AM–5 PM CT</p>
-      <p>CrossLinkd LLC · Dallas, Texas</p>
-      <div class="flex gap-2 pt-1">
-        <a href="https://facebook.com/crosslinkd" target="_blank" rel="noopener" class="chip hover:border-[var(--accent)]">Facebook</a>
-        <a href="https://instagram.com/crosslinkd" target="_blank" rel="noopener" class="chip hover:border-[var(--accent)]">Instagram</a>
-        <a href="https://youtube.com/@crosslinkd" target="_blank" rel="noopener" class="chip hover:border-[var(--accent)]">YouTube</a>
-      </div>
+    <div class="card mt-4 p-5 text-sm leading-relaxed" style="color:var(--text-soft)">
+      <p>Have a question about a listing, verification, or community guidelines? Submit your message below and our moderation team will respond promptly.</p>
     </div>
 
     {sent ? (

@@ -44,11 +44,6 @@ const cols = [
     ],
   },
 ];
-const socials: [string, string, string][] = [
-  ['Facebook', 'https://facebook.com/crosslinkd', 'M22 12a10 10 0 1 0-11.6 9.9v-7H7.9V12h2.5V9.8c0-2.5 1.5-3.9 3.8-3.9 1.1 0 2.2.2 2.2.2v2.5h-1.3c-1.2 0-1.6.8-1.6 1.6V12h2.8l-.4 2.9h-2.4v7A10 10 0 0 0 22 12Z'],
-  ['Instagram', 'https://instagram.com/crosslinkd', 'M12 2.2c3.2 0 3.6 0 4.9.1 3.3.1 4.8 1.7 4.9 4.9.1 1.3.1 1.6.1 4.8s0 3.6-.1 4.8c-.1 3.2-1.7 4.8-4.9 4.9-1.3.1-1.6.1-4.9.1s-3.6 0-4.8-.1c-3.3-.1-4.8-1.7-4.9-4.9-.1-1.3-.1-1.6-.1-4.8s0-3.6.1-4.8C2.4 4 4 2.4 7.2 2.3c1.2-.1 1.6-.1 4.8-.1Zm0 3.6a6.2 6.2 0 1 0 0 12.4 6.2 6.2 0 0 0 0-12.4Zm0 10.2a4 4 0 1 1 0-8 4 4 0 0 1 0 8Zm6.4-10.4a1.4 1.4 0 1 0 0-2.9 1.4 1.4 0 0 0 0 2.9Z'],
-  ['YouTube', 'https://youtube.com/@crosslinkd', 'M23.5 6.2a3 3 0 0 0-2.1-2.1C19.5 3.5 12 3.5 12 3.5s-7.5 0-9.4.6A3 3 0 0 0 .5 6.2 31.3 31.3 0 0 0 0 12a31.3 31.3 0 0 0 .5 5.8 3 3 0 0 0 2.1 2.1c1.9.6 9.4.6 9.4.6s7.5 0 9.4-.6a3 3 0 0 0 2.1-2.1A31.3 31.3 0 0 0 24 12a31.3 31.3 0 0 0-.5-5.8ZM9.5 15.5v-7l6.3 3.5-6.3 3.5Z'],
-];
 ---
 <footer class="mt-20 border-t" style="border-color:var(--border);background:var(--bg-soft)">
   <div class="mx-auto max-w-7xl px-4 py-12">
@@ -56,19 +51,8 @@ const socials: [string, string, string][] = [
       <div>
         <Logo />
         <p class="mt-4 max-w-xs text-sm leading-relaxed" style="color:var(--text-soft)">
-          A hand-reviewed directory of Christian-owned businesses, churches, and ministries in six metro areas.
+          A hand-reviewed national directory of Christian-owned businesses, churches, and ministries across the United States.
         </p>
-        <div class="mt-4 space-y-1.5 text-sm" style="color:var(--text-soft)">
-          <p><a href="mailto:hello@crosslinkd.com" class="hover:underline">hello@crosslinkd.com</a></p>
-          <p><a href="tel:+12145550100" class="hover:underline">(214) 555-0100</a> <span class="text-xs" style="color:var(--text-mute)">Mon–Fri, 9–5 CT</span></p>
-        </div>
-        <div class="mt-4 flex gap-2">
-          {socials.map(([name, href, d]) => (
-            <a href={href} target="_blank" rel="noopener" aria-label={`CrossLinkd on ${name}`} class="flex h-9 w-9 items-center justify-center rounded-xl border transition-colors hover:border-[var(--accent)]" style="border-color:var(--border);color:var(--text-soft)">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d={d}/></svg>
-            </a>
-          ))}
-        </div>
       </div>
       {cols.map((c) => (
         <nav aria-label={c.title}>

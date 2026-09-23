@@ -5,8 +5,8 @@ import ListingCard from '@/components/ListingCard.astro';
 import SearchBar from '@/components/SearchBar';
 import { includeSamples } from '@/lib/sampleGate';
 import { getPublicListings } from '@/lib/publicListings';
-import { FOCUS_CITIES, FOCUS_STATES } from '@/data/locations';
-import { TESTIMONIALS } from '@/data/testimonials';
+import { getPublicTestimonials } from '@/lib/publicReviews';
+import { FOCUS_CITIES } from '@/data/locations';
 import { ARTICLES } from '@/data/articles';
 import { SAMPLE_EVENTS, eventDate } from '@/data/events';
 
@@ -14,10 +14,8 @@ const user = Astro.locals.user;
 
 // ---- Real metrics, computed from the public corpus (no inflated numbers) ----
 const corpus = await getPublicListings();
+const testimonials = await getPublicTestimonials();
 const samplesOn = includeSamples();
-const businessTypes = ['business', 'contractor', 'professional', 'counselor', 'school'];
-const businessCount = corpus.filter((l) => businessTypes.includes(l.typeSlug)).length;
-const churchCount = corpus.filter((l) => ['church', 'ministry'].includes(l.typeSlug)).length;
 const verified = corpus.filter((l) => l.verified).length;
 const recent = corpus.filter((l) => l.addedDaysAgo <= 30).length;
 
@@ -57,7 +55,7 @@ const guides = ARTICLES.slice(0, 3);
 
 const seo = {
   title: 'CrossLinkd — Find Christian-Owned Businesses You Can Trust',
-  description: `A hand-reviewed directory of ${businessCount} Christian-owned businesses, ${churchCount} churches and ministries in Dallas–Fort Worth, Nashville, Atlanta, Phoenix, and Colorado Springs. Verification dates on every profile.`,
+  description: 'A hand-reviewed national directory of Christian-owned businesses, churches, and ministries across the United States. Verification dates on every profile.',
   path: '/',
   schema: [
     {
@@ -77,7 +75,6 @@ const seo = {
       name: 'CrossLinkd',
       url: 'https://crosslinkd.example.com/',
       logo: 'https://crosslinkd.example.com/favicon.svg',
-      sameAs: ['https://facebook.com/crosslinkd', 'https://instagram.com/crosslinkd', 'https://youtube.com/@crosslinkd'],
     },
   ],
 };
@@ -90,8 +87,8 @@ const seo = {
         Find Christian-owned businesses you can trust.
       </h1>
       <p data-animate="hero" class="mx-auto mt-4 max-w-2xl text-[15px] sm:text-lg" style="color:var(--text-soft)">
-        CrossLinkd is a hand-reviewed directory of {businessCount} Christian-owned businesses and {churchCount} churches and
-        ministries in {FOCUS_CITIES.length} cities. Every listing is checked by a person, and every badge shows its verification date.
+        CrossLinkd is a hand-reviewed national directory of Christian-owned businesses, churches, and
+        ministries across the United States. Every listing is checked by a person, and every badge shows its verification date.
       </p>
 
       <div data-animate="hero" class="mx-auto mt-7 max-w-4xl text-left">
@@ -110,21 +107,21 @@ const seo = {
       </div>
 
       <!-- Real numbers from the current dataset -->
-      <dl data-animate="hero" class="mx-auto mt-9 grid max-w-3xl grid-cols-2 gap-3 sm:grid-cols-4">
+      <dl data-animate="hero" class="mx-auto mt-9 grid max-w-4xl grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
         {[
           [`${corpus.length}`, 'Businesses & churches listed'],
           [`${verified}`, 'Verified & credentialed'],
-          [`${FOCUS_CITIES.length} cities, ${FOCUS_STATES.length} states`, 'Focused where we can check'],
+          ['National', 'Growing coverage across the United States'],
           [`+${recent}`, 'Added in the last 30 days'],
         ].map(([n, l]) => (
-          <div class="card p-3">
-            <dt class="order-2 text-xs leading-snug" style="color:var(--text-mute)">{l}</dt>
-            <dd class="text-lg font-extrabold sm:text-xl">{n}</dd>
+          <div class="card flex h-full flex-col items-center justify-center p-4 text-center sm:p-5">
+            <dd class="text-xl font-extrabold sm:text-2xl">{n}</dd>
+            <dt class="mt-1 text-xs leading-snug" style="color:var(--text-mute)">{l}</dt>
           </div>
         ))}
       </dl>
       <p class="mt-3 text-xs" style="color:var(--text-mute)">
-        Launching focused — we list only what we can review. New cities are added when they have enough checked listings.
+        A hand-reviewed national directory connecting Christian-owned businesses and communities across the country.
       </p>
     </div>
   </div>
@@ -149,7 +146,7 @@ const seo = {
   </Section>
 
   <!-- ============ POPULAR CITIES ============ -->
-  <Section title="Where we serve" sub={`Six metros across ${FOCUS_STATES.map((s) => s.name).join(', ')}. More cities coming as they are reviewed.`} href="/browse/locations" linkLabel="Browse by state →">
+  <Section title="Where we serve" sub="Featured locations and growing coverage across the United States." href="/browse/locations" linkLabel="Browse by state →">
     <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3" data-animate="grid">
       {FOCUS_CITIES.map((c) => (
         <a href={`/locations/${c.slug}`} class="card card-hover p-5">
@@ -177,24 +174,26 @@ const seo = {
     </div>
   </Section>
 
-  <!-- ============ TESTIMONIALS ============ -->
-  <Section title="What people say" sub="From directory users and listed owners alike.">
-    <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3" data-animate="grid">
-      {TESTIMONIALS.map((t) => (
-        <figure class="card flex flex-col p-6">
-          <blockquote class="flex-1 text-[15px] leading-relaxed" style="color:var(--text-soft)">“{t.quote}”</blockquote>
-          <figcaption class="mt-4 flex items-center gap-3">
-            <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-extrabold text-white" style={`background:hsl(${t.hue},45%,55%)`} aria-hidden="true">{t.name.charAt(0)}</span>
-            <div class="text-sm">
-              <p class="font-bold">{t.name}</p>
-              <p style="color:var(--text-mute)">{t.role} • {t.city}</p>
-              {t.listingSlug && <a href={`/directory/${t.listingSlug}`} class="text-xs text-[var(--teal)] hover:underline">View the listing →</a>}
-            </div>
-          </figcaption>
-        </figure>
-      ))}
-    </div>
-  </Section>
+  <!-- ============ TESTIMONIALS (Dynamically populated from real reviews) ============ -->
+  {testimonials.length > 0 && (
+    <Section title="What people say" sub="From directory users and listed owners alike.">
+      <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3" data-animate="grid">
+        {testimonials.map((t) => (
+          <figure class="card flex flex-col p-6">
+            <blockquote class="flex-1 text-[15px] leading-relaxed" style="color:var(--text-soft)">“{t.quote}”</blockquote>
+            <figcaption class="mt-4 flex items-center gap-3">
+              <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-extrabold text-white" style={`background:hsl(${t.hue},45%,55%)`} aria-hidden="true">{t.name.charAt(0)}</span>
+              <div class="text-sm">
+                <p class="font-bold">{t.name}</p>
+                <p style="color:var(--text-mute)">{t.listingName ? `Review for ${t.listingName}` : t.role}</p>
+                {t.listingSlug && <a href={`/directory/${t.listingSlug}`} class="text-xs text-[var(--teal)] hover:underline">View the listing →</a>}
+              </div>
+            </figcaption>
+          </figure>
+        ))}
+      </div>
+    </Section>
+  )}
 
   <!-- ============ HOW IT WORKS ============ -->
   <Section title="How CrossLinkd works" id="how-it-works">
