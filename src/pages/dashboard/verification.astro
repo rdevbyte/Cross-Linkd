@@ -29,15 +29,4 @@ if (__userGate) return __userGate;
       </div>
     ))}
   </div>
-  <form method="POST" action="/api/verifications" class="card mt-6 space-y-4 p-6" enctype="multipart/form-data">
-    <h2 class="font-extrabold">Submit verification evidence</h2>
-    <div class="grid gap-4 sm:grid-cols-2">
-      <label class="text-sm font-medium">Badge requested
-        <select name="type" class="input mt-1.5"><option value="domain">Domain</option><option value="christian_owned">Christian-Owned</option><option value="church">Church</option><option value="ministry">Ministry</option><option value="professional_credential">Professional credential</option></select>
-      </label>
-      <label class="text-sm font-medium">Supporting document<input name="document" type="file" class="input mt-1.5" /></label>
-    </div>
-    <label class="block text-sm font-medium">Notes for reviewer<textarea name="notes" rows="3" class="input mt-1.5" placeholder="Provide links, license numbers, verification details, or relevant context..."></textarea></label>
-    <button class="btn btn-primary" type="submit">Submit for review</button>
-  </form>
 </DashboardLayout>

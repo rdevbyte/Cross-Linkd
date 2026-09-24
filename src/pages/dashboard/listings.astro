@@ -15,74 +15,81 @@ const user = Astro.locals.user!;
 const dbReady = hasDatabase();
 let rows: Array<{
   id: string; slug: string; name: string; typeSlug: string; status: string;
+  reviewNote?: string | null;
   city: string | null; region: string | null; updatedAt: Date;
   data: Record<string, unknown>;
 }> = [];
 
 if (dbReady) {
-  const db = getDb()!;
-  const mine = await db
-    .select({ listing: listings, loc: listingLocations })
-    .from(listings)
-    .leftJoin(listingLocations, and(eq(listingLocations.listingId, listings.id), eq(listingLocations.isPrimary, true)))
-    .where(and(eq(listings.ownerId, user.id), isNull(listings.deletedAt)))
-    .orderBy(desc(listings.updatedAt));
+  try {
+    const db = getDb();
+    if (db) {
+      const mine = await db
+        .select({ listing: listings, loc: listingLocations })
+        .from(listings)
+        .leftJoin(listingLocations, and(eq(listingLocations.listingId, listings.id), eq(listingLocations.isPrimary, true)))
+        .where(and(eq(listings.ownerId, user.id), isNull(listings.deletedAt)))
+        .orderBy(desc(listings.updatedAt));
 
-  const ids = mine.map((m) => m.listing.id);
-  const denomsByListing = new Map<string, string[]>();
-  if (ids.length) {
-    const denomRows = await db
-      .select({ listingId: listingDenominations.listingId, slug: denominations.slug })
-      .from(listingDenominations)
-      .innerJoin(denominations, eq(listingDenominations.denominationId, denominations.id))
-      .where(inArray(listingDenominations.listingId, ids));
-    for (const d of denomRows) {
-      const list = denomsByListing.get(d.listingId) ?? [];
-      list.push(d.slug);
-      denomsByListing.set(d.listingId, list);
+      const ids = mine.map((m) => m.listing.id);
+      const denomsByListing = new Map<string, string[]>();
+      if (ids.length) {
+        const denomRows = await db
+          .select({ listingId: listingDenominations.listingId, slug: denominations.slug })
+          .from(listingDenominations)
+          .innerJoin(denominations, eq(listingDenominations.denominationId, denominations.id))
+          .where(inArray(listingDenominations.listingId, ids));
+        for (const d of denomRows) {
+          const list = denomsByListing.get(d.listingId) ?? [];
+          list.push(d.slug);
+          denomsByListing.set(d.listingId, list);
+        }
+      }
+
+      rows = mine.map(({ listing: l, loc }) => {
+        const listDenoms = (Array.isArray(l.denominationsList) && l.denominationsList.length > 0)
+          ? (l.denominationsList as string[])
+          : (denomsByListing.get(l.id) ?? []);
+        return {
+          id: l.id,
+          slug: l.slug,
+          name: l.name,
+          typeSlug: l.typeSlug,
+          status: l.status,
+          reviewNote: l.reviewNote,
+          city: loc?.city ?? null,
+          region: loc?.region ?? null,
+          updatedAt: l.updatedAt,
+          data: {
+            name: l.name,
+            typeSlug: l.typeSlug,
+            industrySlug: l.industrySlug ?? '',
+            categorySlug: l.categorySlug ?? '',
+            customCategory: l.customCategory ?? '',
+            tagline: l.tagline ?? '',
+            description: l.description ?? '',
+            website: l.website ?? '',
+            phone: l.phone ?? '',
+            email: l.email ?? '',
+            showEmail: l.showEmail,
+            showPhone: l.showPhone,
+            showWebsite: l.showWebsite,
+            showAddress: l.showAddress,
+            showDenomination: l.showDenomination,
+            customDenomination: l.customDenomination ?? '',
+            denominations: listDenoms,
+            city: loc?.city ?? '',
+            region: loc?.region ?? '',
+            postalCode: loc?.postalCode ?? '',
+            isOnlineOnly: l.isOnlineOnly,
+            priceRange: l.priceRange ?? '',
+          },
+        };
+      });
     }
+  } catch (err) {
+    console.error('[dashboard/listings] failed to fetch listings from db:', err);
   }
-
-  rows = mine.map(({ listing: l, loc }) => {
-    const listDenoms = (Array.isArray(l.denominationsList) && l.denominationsList.length > 0)
-      ? (l.denominationsList as string[])
-      : (denomsByListing.get(l.id) ?? []);
-    return {
-      id: l.id,
-      slug: l.slug,
-      name: l.name,
-      typeSlug: l.typeSlug,
-      status: l.status,
-      reviewNote: l.reviewNote,
-      city: loc?.city ?? null,
-      region: loc?.region ?? null,
-      updatedAt: l.updatedAt,
-      data: {
-        name: l.name,
-        typeSlug: l.typeSlug,
-        industrySlug: l.industrySlug ?? '',
-        categorySlug: l.categorySlug ?? '',
-        customCategory: l.customCategory ?? '',
-        tagline: l.tagline ?? '',
-        description: l.description ?? '',
-        website: l.website ?? '',
-        phone: l.phone ?? '',
-        email: l.email ?? '',
-        showEmail: l.showEmail,
-        showPhone: l.showPhone,
-        showWebsite: l.showWebsite,
-        showAddress: l.showAddress,
-        showDenomination: l.showDenomination,
-        customDenomination: l.customDenomination ?? '',
-        denominations: listDenoms,
-        city: loc?.city ?? '',
-        region: loc?.region ?? '',
-        postalCode: loc?.postalCode ?? '',
-        isOnlineOnly: l.isOnlineOnly,
-        priceRange: l.priceRange ?? '',
-      },
-    };
-  });
 }
 
 const notice = Astro.url.searchParams.get('notice') ?? '';
