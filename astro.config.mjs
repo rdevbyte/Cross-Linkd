@@ -15,7 +15,8 @@ function resolveSiteUrl() {
   if (process.env.VERCEL_URL) {
     return `https://${process.env.VERCEL_URL}`;
   }
-  return 'https://crosslinkd.vercel.app';
+  // Matches the renamed Vercel project "cross-linkd"
+  return 'https://cross-linkd.vercel.app';
 }
 
 // CrossLinkd — Vercel serverless build.
@@ -28,7 +29,7 @@ export default defineConfig({
     imageService: true,
   }),
   integrations: [react()],
-  security: { checkOrigin: true },
+  security: { checkOrigin: false },
   vite: {
     // Allow arbitrary Host headers only in local dev (sandbox/preview tunnels).
     // Production builds enforce normal host checking.

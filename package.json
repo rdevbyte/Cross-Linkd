@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "description": "CrossLinkd \u2014 a premium faith-based discovery platform for Christian-owned businesses, churches, ministries, professionals, and events.",
+  "description": "CrossLinkd — a premium faith-based discovery platform for Christian-owned businesses, churches, ministries, professionals, and events.",
   "allowScripts": {
     "esbuild": true,
     "sharp": true
