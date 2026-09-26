@@ -69,6 +69,13 @@ export interface ListingFormValues {
   languages?: string[];
   accessibility?: string[];
   statementOfFaith?: string;
+  /** Organization basics (all optional; undefined = not collected by this payload). */
+  yearFounded?: number;
+  employeeCount?: string;
+  ownershipType?: string;
+  serviceArea?: string[];
+  hours?: Record<string, string>;
+  contactPreference?: string;
 }
 
 /** Creates or updates the listing row plus its primary location and taxonomy links. */
@@ -117,6 +124,15 @@ export async function saveListing(
     publishedAt: status === 'published' ? new Date() : null,
     updatedAt: new Date(),
   };
+
+  // Organization basics: only write when the payload actually carried the field,
+  // so edits from forms that don't collect them (e.g. the dashboard) preserve existing values.
+  if (values.yearFounded !== undefined) base.yearFounded = values.yearFounded || null;
+  if (values.employeeCount !== undefined) base.employeeCount = values.employeeCount || null;
+  if (values.ownershipType !== undefined) base.ownershipType = values.ownershipType || null;
+  if (values.serviceArea !== undefined) base.serviceArea = values.serviceArea;
+  if (values.hours !== undefined) base.hours = values.hours;
+  if (values.contactPreference !== undefined) base.contactPreference = values.contactPreference || null;
 
   let listingId = opts.listingId;
   let slug: string;
@@ -265,6 +281,13 @@ export function mapListingRow(
     verified: false,
     claimed: row.isClaimed,
     hours: row.hours ?? undefined,
+    // Postgres column is jsonb string[]; expose a display string for the profile.
+    serviceArea: (() => {
+      const sa = row.serviceArea as unknown;
+      if (typeof sa === 'string') return sa || undefined;
+      if (Array.isArray(sa) && sa.length) return (sa as string[]).join('; ');
+      return undefined;
+    })(),
     statementOfFaith: row.statementOfFaith ?? undefined,
     addedDaysAgo: 0,
     imageHue: hue,

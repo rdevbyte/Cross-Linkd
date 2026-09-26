@@ -253,6 +253,8 @@ export const listings = pgTable('listings', {
   priceRange: varchar('price_range', { length: 16 }),
   yearFounded: integer('year_founded'),
   employeeCount: varchar('employee_count', { length: 40 }),
+  ownershipType: varchar('ownership_type', { length: 80 }),
+  contactPreference: varchar('contact_preference', { length: 40 }),
   // Faith profile (neutral, descriptive)
   statementOfFaith: text('statement_of_faith'),
   coreBeliefs: jsonb('core_beliefs').$type<string[]>().default([]),

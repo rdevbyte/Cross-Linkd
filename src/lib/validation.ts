@@ -1,5 +1,15 @@
 import { z } from 'zod';
 
+/** Operating-hours presets expanded into the profile's day-map shape (see seed samples). */
+const HOUR_PRESETS: Record<string, Record<string, string>> = {
+  standard: { 'Mon–Fri': '9a–5p', Sat: 'Closed', Sun: 'Closed' },
+  extended: { 'Mon–Fri': '8a–8p', Sat: '9a–5p', Sun: 'Closed' },
+  weekends: { Sat: '9a–5p', Sun: '12p–4p' },
+  appointment: { 'By appointment': 'Call or email to schedule' },
+  always: { 'Every day': 'Open 24 hours' },
+  vary: { 'Hours vary': 'Contact us for current hours' },
+};
+
 export const searchFilterSchema = z.object({
   q: z.string().max(300).default(''),
   near: z.string().max(160).optional(),
@@ -47,6 +57,32 @@ export const listingInputSchema = z.object({
   country: z.string().max(120).default('United States'),
   isOnlineOnly: z.boolean().default(false),
   priceRange: z.enum(['$', '$$', '$$$', '$$$$', '']).default(''),
+  yearFounded: z.coerce.number().int().min(1800).max(new Date().getFullYear()).optional(),
+  employeeCount: z
+    .enum(['Solo (just me)', '2–10', '11–50', '51–200', '201–500', '500+', ''])
+    .optional(),
+  ownershipType: z
+    .enum([
+      'Privately owned',
+      'Family-owned',
+      'Partnership',
+      'Corporation',
+      'Cooperative',
+      'Nonprofit / ministry-run',
+      'Government / public',
+      '',
+    ])
+    .optional(),
+  serviceArea: z
+    .string()
+    .max(300)
+    .optional()
+    .transform((v) => (v === undefined ? undefined : v.trim() ? [v.trim()] : [])),
+  hours: z
+    .enum(['', 'standard', 'extended', 'weekends', 'appointment', 'always', 'vary'])
+    .optional()
+    .transform((v) => (v === undefined ? undefined : HOUR_PRESETS[v] ?? {})),
+  contactPreference: z.enum(['', 'Email', 'Phone call', 'Text message', 'Any is fine']).optional(),
   statementOfFaith: z.string().max(8000).optional(),
   industrySlug: z.string().max(120).optional(),
   categorySlug: z.string().max(120).optional(),
