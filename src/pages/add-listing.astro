@@ -8,6 +8,8 @@ const user = Astro.locals.user;
 const error = Astro.url.searchParams.get('error');
 const success = Astro.url.searchParams.get('success') === '1';
 const slug = Astro.url.searchParams.get('slug');
+// Guest submissions enter moderation; signed-in owners publish immediately.
+const pendingReview = Astro.url.searchParams.get('status') === 'pending_review';
 const thisYear = new Date().getFullYear();
 
 const popularDenominations = [
@@ -140,10 +142,14 @@ const CONTACT_PREF_OPTIONS = ['Email', 'Phone call', 'Text message', 'Any is fin
 
     {success ? (
       <div class="card mt-6 border-l-4 p-6" style="border-left-color:var(--teal)" role="status">
-        <h2 class="text-lg font-extrabold">Your listing is now live</h2>
-        <p class="mt-1 text-sm" style="color:var(--text-soft)">It is published as an owner-submitted listing. That is not a verification of faith, ownership, licenses, credentials, or service quality.</p>
+        <h2 class="text-lg font-extrabold">{pendingReview ? 'Your listing was submitted for review' : 'Your listing is now live'}</h2>
+        <p class="mt-1 text-sm" style="color:var(--text-soft)">
+          {pendingReview
+            ? 'Guest submissions are checked by a person before they appear in the directory. Create an account to manage the listing and see its status.'
+            : 'It is published as an owner-submitted listing. That is not a verification of faith, ownership, licenses, credentials, or service quality.'}
+        </p>
         <div class="mt-4 flex flex-wrap gap-2">
-          {slug && <a href={`/directory/${slug}`} class="btn btn-primary">View public listing</a>}
+          {slug && !pendingReview && <a href={`/directory/${slug}`} class="btn btn-primary">View public listing</a>}
           {user ? <a href="/dashboard/listings" class="btn btn-secondary">Manage your listings</a> : <a href="/auth/signup" class="btn btn-secondary">Create account to manage listing</a>}
         </div>
       </div>
@@ -682,7 +688,7 @@ const CONTACT_PREF_OPTIONS = ['Email', 'Phone call', 'Text message', 'Any is fin
     const progressBar = document.getElementById('progress-bar');
     const progressText = document.getElementById('progress-text');
     const stickyBar = document.getElementById('sticky-bar');
-    const saveDraftBtn = document.getElementById('save-draft-btn') as HTMLButtonElement | null;
+    const saveDraftBtn = document.getElementById('save-draft-btn');
 
     const flatCategories = [];
     industries.forEach((ind) => {
@@ -1316,8 +1322,8 @@ const CONTACT_PREF_OPTIONS = ['Email', 'Phone call', 'Text message', 'Any is fin
     const formStatus = document.getElementById('form-status');
     const reviewStatus = document.getElementById('review-status');
     const stickyStatus = document.getElementById('sticky-status');
-    const publishBtn = document.getElementById('publish-btn') as HTMLButtonElement | null;
-    const reviewPublishBtn = document.getElementById('review-publish-btn') as HTMLButtonElement | null;
+    const publishBtn = document.getElementById('publish-btn');
+    const reviewPublishBtn = document.getElementById('review-publish-btn');
     function showFormStatus(message, kind) {
       [formStatus, reviewStatus, stickyStatus].forEach((el) => {
         if (!el) return;

@@ -1,11 +1,15 @@
 /**
  * Business listing workflow (database-backed).
- * Listings are published immediately upon creation.
+ * `saveListing` decides the status from the requested action: `publish` goes live
+ * immediately, `submit`/`resubmit` enter moderation, `draft` stays private.
  * Owners manage and edit their own listings.
  */
 import { and, eq, ilike, ne, sql, inArray } from 'drizzle-orm';
 import { getDb } from '@/db/client';
-import { listings, listingLocations, listingIndustries, listingDenominations, industries, denominations } from '@/db/schema';
+import {
+  listings, listingLocations, listingIndustries, listingDenominations, listingHashtags,
+  industries, denominations, hashtags,
+} from '@/db/schema';
 import type { SampleListing } from '@/data/listings';
 import { slugify } from '@/lib/slug';
 
@@ -138,71 +142,138 @@ export async function saveListing(
   if (values.isHiring !== undefined) base.isHiring = values.isHiring;
   if (values.careersUrl !== undefined) base.careersUrl = values.careersUrl.trim() || null;
 
-  let listingId = opts.listingId;
-  let slug: string;
+  const slug = opts.listingId ? undefined : await uniqueSlug(values.name);
 
-  if (listingId) {
-    const patch: Partial<typeof listings.$inferInsert> = base;
-    const [row] = await db
-      .update(listings)
-      .set(patch)
-      .where(eq(listings.id, listingId))
-      .returning({ id: listings.id, slug: listings.slug });
-    if (!row) throw new Error('Listing not found.');
-    slug = row.slug;
-    await db.delete(listingLocations).where(eq(listingLocations.listingId, listingId));
-    await db.delete(listingIndustries).where(eq(listingIndustries.listingId, listingId));
-    await db.delete(listingDenominations).where(eq(listingDenominations.listingId, listingId));
-  } else {
-    slug = await uniqueSlug(values.name);
-    const insert: typeof listings.$inferInsert = {
-      ...(base as typeof listings.$inferInsert),
-      ownerId: userId || null,
-      slug,
-      status,
-      name: values.name.trim(),
-      typeSlug: values.typeSlug,
-    };
-    const [row] = await db.insert(listings).values(insert).returning({ id: listings.id, slug: listings.slug });
-    listingId = row.id;
-  }
+  // Everything below is one unit of work: a failure between the child-table
+  // deletes and re-inserts must never leave a listing without its location or taxonomy.
+  return db.transaction(async (tx) => {
+    let listingId = opts.listingId;
+    let savedSlug: string;
 
-  if (values.city || values.region) {
-    await db.insert(listingLocations).values({
-      listingId: listingId!,
-      label: 'Primary',
-      city: values.city || null,
-      region: values.region || null,
-      postalCode: values.postalCode || null,
-      isPrimary: true,
-    });
-  }
-
-  // Taxonomy child tables key on seeded UUIDs — resolve slugs, ignore unknowns.
-  const industrySlugs = [
-    ...new Set([
-      ...(values.industrySlug ? [values.industrySlug] : []),
-      ...(values.categorySlug ? [values.categorySlug] : []),
-      ...(values.industries ?? []),
-      ...(values.professions ?? []),
-    ]),
-  ].slice(0, 12);
-
-  if (industrySlugs.length) {
-    const known = await db.select({ id: industries.id, slug: industries.slug }).from(industries).where(inArray(industries.slug, industrySlugs));
-    if (known.length) {
-      await db.insert(listingIndustries).values(known.map((k) => ({ listingId: listingId!, industryId: k.id })));
+    if (listingId) {
+      const patch: Partial<typeof listings.$inferInsert> = base;
+      const [row] = await tx
+        .update(listings)
+        .set(patch)
+        .where(eq(listings.id, listingId))
+        .returning({ id: listings.id, slug: listings.slug });
+      if (!row) throw new Error('Listing not found.');
+      savedSlug = row.slug;
+      await tx.delete(listingLocations).where(eq(listingLocations.listingId, listingId));
+      await tx.delete(listingIndustries).where(eq(listingIndustries.listingId, listingId));
+      await tx.delete(listingDenominations).where(eq(listingDenominations.listingId, listingId));
+    } else {
+      savedSlug = slug!;
+      const insert: typeof listings.$inferInsert = {
+        ...(base as typeof listings.$inferInsert),
+        ownerId: userId || null,
+        slug: savedSlug,
+        status,
+        name: values.name.trim(),
+        typeSlug: values.typeSlug,
+      };
+      const [row] = await tx.insert(listings).values(insert).returning({ id: listings.id, slug: listings.slug });
+      listingId = row.id;
     }
-  }
 
-  if (cleanDenominations.length) {
-    const known = await db.select({ id: denominations.id, slug: denominations.slug }).from(denominations).where(inArray(denominations.slug, cleanDenominations));
-    if (known.length) {
-      await db.insert(listingDenominations).values(known.map((k) => ({ listingId: listingId!, denominationId: k.id })));
+    if (values.city || values.region) {
+      await tx.insert(listingLocations).values({
+        listingId: listingId!,
+        label: 'Primary',
+        city: values.city || null,
+        region: values.region || null,
+        postalCode: values.postalCode || null,
+        isPrimary: true,
+      });
     }
-  }
 
-  return { id: listingId!, slug, status };
+    // Taxonomy child tables key on seeded UUIDs — resolve slugs, ignore unknowns.
+    const industrySlugs = [
+      ...new Set([
+        ...(values.industrySlug ? [values.industrySlug] : []),
+        ...(values.categorySlug ? [values.categorySlug] : []),
+        ...(values.industries ?? []),
+        ...(values.professions ?? []),
+      ]),
+    ].slice(0, 12);
+
+    if (industrySlugs.length) {
+      const known = await tx.select({ id: industries.id, slug: industries.slug }).from(industries).where(inArray(industries.slug, industrySlugs));
+      if (known.length) {
+        await tx.insert(listingIndustries).values(known.map((k) => ({ listingId: listingId!, industryId: k.id })));
+      }
+    }
+
+    if (cleanDenominations.length) {
+      const known = await tx.select({ id: denominations.id, slug: denominations.slug }).from(denominations).where(inArray(denominations.slug, cleanDenominations));
+      if (known.length) {
+        await tx.insert(listingDenominations).values(known.map((k) => ({ listingId: listingId!, denominationId: k.id })));
+      }
+    }
+
+    // Hashtags: only touched when the payload carries them (a partial PATCH keeps the existing set).
+    if (values.hashtags !== undefined) {
+      const tags = [...new Set(values.hashtags.map(normalizeHashtag).filter(Boolean))].slice(0, 20);
+      if (opts.listingId) await tx.delete(listingHashtags).where(eq(listingHashtags.listingId, listingId!));
+      if (tags.length) {
+        await tx.insert(hashtags).values(tags.map((tag) => ({ tag }))).onConflictDoNothing({ target: hashtags.tag });
+        const rows = await tx.select({ id: hashtags.id }).from(hashtags).where(inArray(hashtags.tag, tags));
+        if (rows.length) {
+          await tx.insert(listingHashtags).values(rows.map((r) => ({ listingId: listingId!, hashtagId: r.id })));
+        }
+      }
+    }
+
+    return { id: listingId!, slug: savedSlug, status };
+  });
+}
+
+/** `#Faith-Based!` → `faith-based`; empty when nothing usable remains. */
+export function normalizeHashtag(raw: string): string {
+  return String(raw ?? '').trim().replace(/^#+/, '').toLowerCase().replace(/[^a-z0-9_-]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 80);
+}
+
+/**
+ * Stored row (+ primary location) → the form shape accepted by `saveListing`.
+ * Used to merge a partial PATCH over the current values so fields the client
+ * did not send are preserved instead of being reset to defaults.
+ */
+export function rowToFormValues(
+  row: ListingRow,
+  loc: { city: string | null; region: string | null; postalCode: string | null } | undefined,
+): ListingFormValues {
+  return {
+    name: row.name,
+    typeSlug: row.typeSlug,
+    tagline: row.tagline ?? undefined,
+    description: row.description ?? undefined,
+    website: row.website ?? undefined,
+    phone: row.phone ?? undefined,
+    email: row.email ?? undefined,
+    showEmail: row.showEmail,
+    showPhone: row.showPhone,
+    showWebsite: row.showWebsite,
+    showAddress: row.showAddress,
+    showDenomination: row.showDenomination,
+    customDenomination: row.customDenomination ?? undefined,
+    industrySlug: row.industrySlug ?? undefined,
+    categorySlug: row.categorySlug ?? undefined,
+    customCategory: row.customCategory ?? undefined,
+    city: loc?.city ?? undefined,
+    region: loc?.region ?? undefined,
+    postalCode: loc?.postalCode ?? undefined,
+    isOnlineOnly: row.isOnlineOnly,
+    isHiring: row.isHiring,
+    careersUrl: row.careersUrl ?? undefined,
+    priceRange: row.priceRange ?? undefined,
+    statementOfFaith: row.statementOfFaith ?? undefined,
+    denominations: row.denominationsList ?? [],
+    languages: row.languages ?? undefined,
+    accessibility: row.accessibility ?? undefined,
+    // yearFounded / employeeCount / ownershipType / serviceArea / hours /
+    // contactPreference / hashtags are left undefined: saveListing only writes
+    // them when a payload carries them, so the stored values survive.
+  };
 }
 
 /** Owner-visible status list. */
@@ -234,6 +305,7 @@ export function mapListingRow(
   row: ListingRow,
   loc: { city: string | null; region: string | null; postalCode: string | null; latitude: string | null; longitude: string | null } | undefined,
   denominationsList: string[] = [],
+  hashtagsList: string[] = [],
 ): SampleListing {
   let hue = 0;
   for (const ch of row.slug) hue = (hue * 31 + ch.charCodeAt(0)) % 360;
@@ -273,7 +345,7 @@ export function mapListingRow(
     industries: row.industrySlug ? [row.industrySlug] : [],
     professions: row.categorySlug ? [row.categorySlug] : [],
     denominations: row.showDenomination ? denoms.slice(0, 2) : [],
-    hashtags: [],
+    hashtags: hashtagsList,
     services: [],
     languages: row.languages ?? ['English'],
     accessibility: row.accessibility ?? [],

@@ -4,6 +4,8 @@
  * the Resend REST API. Without a key, messages are logged server-side so local
  * development and previews keep working without secrets.
  */
+import { resolveSiteUrl } from './siteUrl.mjs';
+
 export interface MailMessage {
   to: string;
   subject: string;
@@ -13,14 +15,18 @@ export interface MailMessage {
 }
 
 export function appUrl(path: string): string {
-  const base = process.env.PUBLIC_SITE_URL ?? 'http://localhost:4321';
-  return `${base.replace(/\/$/, '')}${path.startsWith('/') ? path : `/${path}`}`;
+  return `${resolveSiteUrl()}${path.startsWith('/') ? path : `/${path}`}`;
 }
 
 export async function sendMail({ to, subject, text, replyTo }: MailMessage): Promise<{ delivered: boolean; provider: string }> {
   const key = process.env.RESEND_API_KEY;
   const from = process.env.MAIL_FROM ?? 'CrossLinkd <onboarding@resend.dev>';
   if (!key) {
+    if (process.env.NODE_ENV === 'production') {
+      // Never write sign-in / reset / verification links into production logs.
+      console.error(`[email] RESEND_API_KEY is not set — message to ${to} ("${subject}") was NOT sent.`);
+      return { delivered: false, provider: 'none' };
+    }
     console.log(`[email:console] to=${to} replyTo=${replyTo ?? 'none'} subject="${subject}"\n${text}`);
     return { delivered: false, provider: 'console' };
   }

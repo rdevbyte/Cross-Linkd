@@ -24,15 +24,29 @@ const user = Astro.locals.user;
         .then((data) => {
           const items = data.listings ?? [];
           if (!items.length || !grid) { empty?.classList.remove('hidden'); return; }
-          grid.innerHTML = items.map((l: any) => `
-            <article class="card card-hover overflow-hidden">
-              <a href="/directory/${l.slug}" class="block p-5">
-                <p class="text-xs font-bold uppercase tracking-wide" style="color:var(--teal)">${l.typeSlug}</p>
-                <p class="mt-1 text-lg font-bold">${l.name}</p>
-                <p class="mt-1 text-sm" style="color:var(--text-soft)">${l.tagline ?? ''}</p>
-                <p class="mt-2 text-sm">★ ${Number(l.rating).toFixed(1)} • ${l.isOnlineOnly ? 'Online' : `${l.city}, ${l.region}`}</p>
-              </a>
-            </article>`).join('');
+          // Listing fields are owner-controlled: build nodes with textContent, never innerHTML.
+          const el = (tag: string, className: string, text?: string) => {
+            const node = document.createElement(tag);
+            if (className) node.className = className;
+            if (text !== undefined) node.textContent = text;
+            return node;
+          };
+          grid.replaceChildren(...items.map((l: any) => {
+            const article = el('article', 'card card-hover overflow-hidden');
+            const link = document.createElement('a');
+            link.className = 'block p-5';
+            link.href = `/directory/${encodeURIComponent(String(l.slug ?? ''))}`;
+            const type = el('p', 'text-xs font-bold uppercase tracking-wide', String(l.typeSlug ?? ''));
+            type.style.color = 'var(--teal)';
+            const name = el('p', 'mt-1 text-lg font-bold', String(l.name ?? ''));
+            const tagline = el('p', 'mt-1 text-sm', String(l.tagline ?? ''));
+            tagline.style.color = 'var(--text-soft)';
+            const where = l.isOnlineOnly ? 'Online' : `${l.city ?? ''}, ${l.region ?? ''}`;
+            const meta = el('p', 'mt-2 text-sm', `★ ${Number(l.rating ?? 0).toFixed(1)} • ${where}`);
+            link.append(type, name, tagline, meta);
+            article.append(link);
+            return article;
+          }));
         })
         .catch(() => empty?.classList.remove('hidden'));
     }

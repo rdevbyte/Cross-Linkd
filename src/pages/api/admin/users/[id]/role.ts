@@ -7,7 +7,8 @@ import { apiGuard, jsonError, jsonOk } from '@/lib/guards';
 
 /**
  * POST /api/admin/users/[id]/role — super-admin-only role management.
- * Roles take effect on the user's next sign-in (role rides the session JWT).
+ * The role rides the session JWT, so existing sessions are revoked
+ * (`sessions_valid_after`) and the change applies at the user's next sign-in.
  * Self-role changes are refused to prevent accidental lockout.
  */
 export const POST: APIRoute = async ({ params, request, locals }) => {
@@ -26,7 +27,9 @@ export const POST: APIRoute = async ({ params, request, locals }) => {
   const target = rows[0];
   if (!target || target.deletedAt) return jsonError(404, 'User not found.');
 
-  await db.update(users).set({ role: parsed.data.role, updatedAt: new Date() }).where(eq(users.id, id));
+  await db.update(users)
+    .set({ role: parsed.data.role, sessionsValidAfter: new Date(), updatedAt: new Date() })
+    .where(eq(users.id, id));
   await db.insert(auditLogs).values({
     actorId: locals.user!.id,
     action: 'user.role_change',

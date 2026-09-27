@@ -143,7 +143,7 @@ export default function SearchBar({
     setHighlight(0);
   };
 
-  const pickLocation = (item: SuggestItem) => {
+  const pickLocation = (item: LocationChoice) => {
     setLocValue(item.value);
     setLocOpen(false);
     submit(value, item.value);

@@ -2,6 +2,8 @@ import type { APIRoute } from 'astro';
 import { getDb, hasDatabase } from '@/db/client';
 import { reviews } from '@/db/schema';
 import { reviewInputSchema } from '@/lib/validation';
+import { rateLimit } from '@/lib/rateLimit.mjs';
+import { clientIp } from '@/lib/clientIp';
 
 /** POST /api/reviews — submit a review (starts in `pending` for moderation). */
 export const POST: APIRoute = async ({ request, locals, redirect }) => {
@@ -13,6 +15,10 @@ export const POST: APIRoute = async ({ request, locals, redirect }) => {
     body: String(form.get('body') ?? ''),
   });
   if (!parsed.success) return redirect('/search?error=invalid-review', 303);
+  const key = locals.user?.id ? `review:user:${locals.user.id}` : `review:ip:${clientIp(request)}`;
+  if (!rateLimit(key, locals.user?.id ? 20 : 5, 60 * 60 * 1000)) {
+    return redirect('/search?error=review-rate-limited', 303);
+  }
 
   // Light anti-spam: block links in demo path (production adds Turnstile + rate limits).
   if (/https?:\/\//i.test(parsed.data.body ?? '')) {
@@ -31,7 +37,9 @@ export const POST: APIRoute = async ({ request, locals, redirect }) => {
         status: 'pending',
       });
     } catch (err) {
-      console.error('[api/reviews] failed:', err);
+      // Do not report success for a review that was never stored.
+      console.error('[api/reviews] failed:', err instanceof Error ? err.message : err);
+      return redirect('/search?error=review-failed', 303);
     }
   } else {
     console.log('[demo] review submitted:', parsed.data);

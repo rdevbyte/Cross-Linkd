@@ -38,7 +38,14 @@ function listingGate(
   return message ? { status: 400, message } : null;
 }
 
-/** POST /api/listings — create a listing (published immediately). Supports form data and JSON. */
+/**
+ * POST /api/listings — create a listing from the public form. Supports form data and JSON.
+ * Signed-in owners publish immediately (they are accountable and per-user throttled).
+ * Guest submissions are accepted but enter the moderation queue (`pending_review`)
+ * so anonymous content is never live before a person has looked at it.
+ */
+const creationAction = (user: { id?: string } | null | undefined): 'publish' | 'submit' => (user?.id ? 'publish' : 'submit');
+
 export const POST: APIRoute = async ({ request, locals, redirect }) => {
   const isJson = request.headers.get('content-type')?.includes('application/json');
 
@@ -77,11 +84,13 @@ export const POST: APIRoute = async ({ request, locals, redirect }) => {
     }
 
     let createdSlug = '';
+    let status = '';
     if (hasDatabase()) {
       try {
         const ownerId = locals.user?.id ?? null;
-        const result = await saveListing(ownerId, parsed.data, { action: 'publish' });
+        const result = await saveListing(ownerId, parsed.data, { action: creationAction(locals.user) });
         createdSlug = result.slug;
+        status = result.status;
       } catch (err) {
         console.error('[api/listings] json insert failed', err instanceof Error ? err.name : 'error');
         return new Response(JSON.stringify({ ok: false, error: 'Could not save listing.' }), {
@@ -91,7 +100,7 @@ export const POST: APIRoute = async ({ request, locals, redirect }) => {
       }
     }
 
-    return new Response(JSON.stringify({ ok: true, slug: createdSlug }), {
+    return new Response(JSON.stringify({ ok: true, slug: createdSlug, status }), {
       status: 201,
       headers: { 'Content-Type': 'application/json' },
     });
@@ -156,16 +165,21 @@ export const POST: APIRoute = async ({ request, locals, redirect }) => {
   if (formGate) return redirect(`/add-listing?error=${encodeURIComponent(formGate.message)}`, 303);
 
   let createdSlug = '';
+  let status = '';
   if (hasDatabase()) {
     try {
       const ownerId = locals.user?.id ?? null;
-      const result = await saveListing(ownerId, d, { action: 'publish' });
+      const result = await saveListing(ownerId, d, { action: creationAction(locals.user) });
       createdSlug = result.slug;
+      status = result.status;
     } catch (err) {
       console.error('[api/listings] insert failed:', err instanceof Error ? err.name : 'error');
       return redirect(`/add-listing?error=${encodeURIComponent('Something went wrong saving your listing. Please try again.')}`, 303);
     }
   }
 
-  return redirect(`/add-listing?success=1${createdSlug ? `&slug=${encodeURIComponent(createdSlug)}` : ''}`, 303);
+  const params = new URLSearchParams({ success: '1' });
+  if (createdSlug) params.set('slug', createdSlug);
+  if (status) params.set('status', status);
+  return redirect(`/add-listing?${params.toString()}`, 303);
 };

@@ -330,7 +330,7 @@ try {
   ]);
 
   check('redirects to success page immediately', page.url().includes('success=1'));
-  check('success message confirms listing is live', (await page.locator('text=Your listing is now live!').count()) > 0);
+  check('success message confirms listing is live', (await page.locator('text=Your listing is now live').count()) > 0);
   const viewLink = page.locator('a:has-text("View public listing")');
   check('view public listing link exists', (await viewLink.count()) > 0);
   const publicHref = await viewLink.getAttribute('href');

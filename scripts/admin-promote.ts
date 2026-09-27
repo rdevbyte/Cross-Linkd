@@ -38,7 +38,7 @@ async function main() {
     }
     const role = revoke ? 'member' : 'super_admin';
     const res = await client.query(
-      `update users set role = $1, updated_at = now() where lower(email) = $2 and deleted_at is null returning id, email, display_name, role`,
+      `update users set role = $1, sessions_valid_after = now(), updated_at = now() where lower(email) = $2 and deleted_at is null returning id, email, display_name, role`,
       [role, email],
     );
     if (!res.rowCount) {
@@ -50,7 +50,7 @@ async function main() {
        values (gen_random_uuid(), $1, 'user.role_change', 'user', $2, $3)`,
       [res.rows[0].id, res.rows[0].id, JSON.stringify({ to: role, via: 'admin-promote-cli' })],
     );
-    console.log(`✓ ${email} is now "${role}". The change takes effect on their next sign-in.`);
+    console.log(`✓ ${email} is now "${role}". Existing sessions were revoked; the change takes effect on their next sign-in.`);
   } finally {
     await client.end();
   }

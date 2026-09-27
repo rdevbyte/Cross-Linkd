@@ -1,23 +1,7 @@
 import { defineConfig } from 'astro/config';
 import react from '@astrojs/react';
 import vercel from '@astrojs/vercel';
-
-function resolveSiteUrl() {
-  const envUrl = process.env.PUBLIC_SITE_URL?.trim();
-  if (envUrl) {
-    return envUrl.startsWith('http://') || envUrl.startsWith('https://')
-      ? envUrl
-      : `https://${envUrl}`;
-  }
-  if (process.env.VERCEL_PROJECT_PRODUCTION_URL) {
-    return `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`;
-  }
-  if (process.env.VERCEL_URL) {
-    return `https://${process.env.VERCEL_URL}`;
-  }
-  // Matches the renamed Vercel project "cross-linkd"
-  return 'https://cross-linkd.vercel.app';
-}
+import { resolveSiteUrl } from './src/lib/siteUrl.mjs';
 
 // CrossLinkd — Vercel serverless build.
 // SSR enabled so API routes, auth, search, and dashboards work on Vercel.

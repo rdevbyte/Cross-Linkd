@@ -38,12 +38,20 @@ export const searchFilterSchema = z.object({
 });
 export type SearchFilters = z.infer<typeof searchFilterSchema>;
 
-export const listingInputSchema = z.object({
+/**
+ * Base object shape. Kept separate from `listingInputSchema` because a
+ * `.superRefine()`-wrapped schema (ZodEffects) has no `.partial()`; deriving the
+ * PATCH schema from the refined schema threw at module load and took every
+ * importer (auth, listings, reviews, admin) down with it.
+ */
+const listingInputBase = z.object({
   name: z.string().min(2).max(240),
   typeSlug: z.string().min(2).max(80),
   tagline: z.string().max(280).optional(),
   description: z.string().max(8000).optional(),
-  website: z.string().url().optional().or(z.literal('')),
+  // Protocol is enforced in `refineListingUrls` (http/https only) — `z.string().url()`
+  // alone accepts `javascript:` and `data:` URLs, which are rendered as hrefs.
+  website: z.string().max(2000).optional().or(z.literal('')),
   phone: z.string().max(60).optional(),
   email: z.string().email().optional().or(z.literal('')),
   showEmail: z.boolean().default(false),
@@ -96,14 +104,21 @@ export const listingInputSchema = z.object({
   hashtags: z.array(z.string().max(80)).default([]),
   languages: z.array(z.string()).default(['English']),
   accessibility: z.array(z.string()).default([]),
-}).superRefine((data, ctx) => {
-  const message = careersUrlError(data.careersUrl ?? '');
-  if (message) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['careersUrl'], message });
 });
 
+/** Cross-field URL checks shared by the full and the partial (PATCH) schema. */
+const refineListingUrls = (data: { careersUrl?: string; website?: string }, ctx: z.RefinementCtx) => {
+  const careersMessage = careersUrlError(data.careersUrl ?? '');
+  if (careersMessage) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['careersUrl'], message: careersMessage });
+  const websiteMessage = careersUrlError(data.website ?? '');
+  if (websiteMessage) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['website'], message: websiteMessage });
+};
+
+export const listingInputSchema = listingInputBase.superRefine(refineListingUrls);
+
 export const reviewInputSchema = z.object({
-  listingId: z.string().min(1),
-  rating: z.number().min(1).max(5),
+  listingId: z.string().uuid('Select a listing.'),
+  rating: z.number().int().min(1).max(5),
   title: z.string().max(160).optional(),
   body: z.string().max(3000).optional(),
   serviceQuality: z.number().min(1).max(5).optional(),
@@ -147,7 +162,7 @@ export const listingActionSchema = z.object({
 
 export const listingPatchSchema = z.object({
   action: z.enum(['publish', 'save', 'submit', 'resubmit', 'draft']).default('publish'),
-  listing: listingInputSchema.partial().required({ name: true, typeSlug: true }),
+  listing: listingInputBase.partial().required({ name: true, typeSlug: true }).superRefine(refineListingUrls),
 });
 
 export const moderationActionSchema = z.object({

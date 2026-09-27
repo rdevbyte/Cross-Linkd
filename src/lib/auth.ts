@@ -5,20 +5,36 @@
  */
 import { SignJWT, jwtVerify } from 'jose';
 import { createHash, randomBytes as _randomBytes } from 'node:crypto';
-import { eq as eq2 } from 'drizzle-orm';
+import { and, eq as eq2, gt, isNull, sql } from 'drizzle-orm';
 import bcrypt from 'bcryptjs';
 
 const COOKIE = 'cl_session';
-const secret = () => {
-  const s = process.env.AUTH_SECRET?.trim() || 'crosslinkd-production-stable-fallback-auth-key-2026';
-  return createHash('sha256').update(s).digest();
-};
+
+/**
+ * Session signing key. In production `AUTH_SECRET` is REQUIRED: without it we
+ * refuse to mint or accept sessions (fail closed) instead of falling back to a
+ * key that lives in the repository, which would let anyone forge a session for
+ * any user/role. Outside production a fixed development key keeps local dev
+ * and the e2e suites working without a .env file.
+ */
+export function getAuthSecret(): Uint8Array | null {
+  const configured = process.env.AUTH_SECRET?.trim();
+  const raw = configured || (process.env.NODE_ENV === 'production' ? '' : 'crosslinkd-development-only-session-key');
+  if (!raw) return null;
+  return createHash('sha256').update(raw).digest();
+}
+export const authConfigured = (): boolean => getAuthSecret() !== null;
 
 export interface SessionUser {
   id: string;
   email: string;
   displayName: string;
   role: string;
+}
+
+/** A verified session: the user plus the token's issue time (seconds since epoch). */
+export interface SessionClaims extends SessionUser {
+  issuedAt: number;
 }
 
 export async function hashPassword(pw: string): Promise<string> {
@@ -29,27 +45,50 @@ export async function verifyPassword(pw: string, hash: string): Promise<boolean>
 }
 
 export async function createSessionToken(user: SessionUser): Promise<string> {
-  return new SignJWT({ ...user })
+  const key = getAuthSecret();
+  if (!key) throw new Error('AUTH_SECRET is not configured; refusing to issue a session.');
+  const { id, email, displayName, role } = user;
+  return new SignJWT({ id, email, displayName, role })
     .setProtectedHeader({ alg: 'HS256' })
     .setIssuedAt()
     .setExpirationTime('30d')
-    .sign(secret());
+    .sign(key);
 }
 
-export async function readSessionToken(token: string | undefined): Promise<SessionUser | null> {
+export async function readSessionToken(token: string | undefined): Promise<SessionClaims | null> {
   if (!token) return null;
+  const key = getAuthSecret();
+  if (!key) return null;
   try {
-    const { payload } = await jwtVerify(token, secret());
+    const { payload } = await jwtVerify(token, key);
     if (typeof payload.id !== 'string' || typeof payload.email !== 'string') return null;
     return {
       id: payload.id,
       email: payload.email,
       displayName: typeof payload.displayName === 'string' ? payload.displayName : 'Member',
       role: typeof payload.role === 'string' ? payload.role : 'member',
+      issuedAt: typeof payload.iat === 'number' ? payload.iat : 0,
     };
   } catch {
     return null;
   }
+}
+
+// ---------------- Session revocation (users.sessions_valid_after watermark) ----------------
+
+/**
+ * True when a token issued at `issuedAt` (JWT seconds) predates the user's
+ * revocation watermark. Compared at whole-second precision so a session issued
+ * in the same second as the bump (sign-out → immediate sign-in) stays valid.
+ */
+export function isSessionRevoked(issuedAt: number, validAfter: Date | null | undefined): boolean {
+  if (!validAfter) return false;
+  return issuedAt < Math.floor(validAfter.getTime() / 1000);
+}
+
+/** Invalidates every existing session of `userId` (sign-out, password reset, role change, deletion). */
+export async function revokeUserSessions(db: any, users: any, userId: string): Promise<void> {
+  await db.update(users).set({ sessionsValidAfter: new Date() }).where(eq2(users.id, userId));
 }
 
 export function sessionCookie(token: string): string {
@@ -92,7 +131,11 @@ export function sha256Hex(input: string): string {
   return createHash('sha256').update(input).digest('hex');
 }
 
-/** Marks the token used and returns its row, or null when invalid/expired/used. */
+/**
+ * Marks the token used and returns its owner, or null when invalid/expired/used.
+ * A single conditional UPDATE … RETURNING makes consumption atomic: two
+ * concurrent requests with the same link can never both succeed.
+ */
 export async function consumeAuthToken(
   db: any,
   tokens: any,
@@ -100,13 +143,17 @@ export async function consumeAuthToken(
   kind: AuthTokenKind,
 ): Promise<{ userId: string } | null> {
   const tokenHash = sha256Hex(rawToken);
-  const rows = await db.select().from(tokens).where(eq2(tokens.tokenHash, tokenHash)).limit(1) as Array<{
-    id: unknown; userId: string; kind: string; expiresAt: Date; usedAt: Date | null;
-  }>;
-  const row = rows[0];
-  if (!row || row.kind !== kind || row.usedAt || row.expiresAt.getTime() < Date.now()) return null;
-  await db.update(tokens).set({ usedAt: new Date() }).where(eq2(tokens.tokenHash, tokenHash));
-  return { userId: row.userId };
+  const rows = await db
+    .update(tokens)
+    .set({ usedAt: new Date() })
+    .where(and(
+      eq2(tokens.tokenHash, tokenHash),
+      eq2(tokens.kind, kind),
+      isNull(tokens.usedAt),
+      gt(tokens.expiresAt, sql`now()`),
+    ))
+    .returning({ userId: tokens.userId }) as Array<{ userId: string }>;
+  return rows[0] ?? null;
 }
 
 export function canEditListing(user: SessionUser | null, ownerId?: string | null): boolean {

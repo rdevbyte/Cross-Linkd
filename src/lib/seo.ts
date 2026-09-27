@@ -1,7 +1,23 @@
+import { resolveSiteUrl } from './siteUrl.mjs';
+
 const SITE = () =>
-  (import.meta.env.PUBLIC_SITE_URL as string | undefined) ??
-  process.env.PUBLIC_SITE_URL ??
-  'https://cross-linkd.vercel.app';
+  (import.meta.env.PUBLIC_SITE_URL as string | undefined)?.replace(/\/$/, '') ?? resolveSiteUrl();
+
+/**
+ * Serialize a JSON-LD object for inline `<script type="application/ld+json">`.
+ * `JSON.stringify` does not escape `</script>`, so listing-controlled strings
+ * (name, description, city…) could close the script element and inject markup
+ * for every visitor. Escaping `<`, `>`, `&` and the JS line terminators as
+ * `\uXXXX` keeps the payload valid JSON while making it inert as HTML.
+ */
+export function safeJsonLd(value: unknown): string {
+  return JSON.stringify(value)
+    .replace(/</g, '\\u003c')
+    .replace(/>/g, '\\u003e')
+    .replace(/&/g, '\\u0026')
+    .replace(/\u2028/g, '\\u2028')
+    .replace(/\u2029/g, '\\u2029');
+}
 
 export interface SeoInput {
   title: string;

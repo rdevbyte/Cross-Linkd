@@ -4,7 +4,7 @@ import ThemeHead from '@/components/ThemeHead.astro';
 import VerseBanner from '@/components/VerseBanner.astro';
 import Navbar from '@/components/Navbar.astro';
 import Footer from '@/components/Footer.astro';
-import { buildSeo, type SeoInput } from '@/lib/seo';
+import { buildSeo, safeJsonLd, type SeoInput } from '@/lib/seo';
 
 interface Props { seo: SeoInput; user?: { displayName: string; role: string } | null; wide?: boolean; mobileActions?: boolean }
 const { seo, user = null, mobileActions = false } = Astro.props;
@@ -34,7 +34,7 @@ const s = buildSeo(seo);
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Google+Sans:ital,opsz,wght@0,17..18,400..700;1,17..18,400..700&family=Roboto:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet" />
     {(Array.isArray(s.schema) ? s.schema : s.schema ? [s.schema] : []).map((schema) => (
-      <script type="application/ld+json" set:html={JSON.stringify(schema)} />
+      <script type="application/ld+json" set:html={safeJsonLd(schema)} />
     ))}
     <ThemeHead />
   </head>
@@ -59,7 +59,7 @@ const s = buildSeo(seo);
       const bar = document.querySelector('.mobile-action-bar');
       const hero = document.querySelector('[data-mobile-hero]');
       if (bar && hero && 'IntersectionObserver' in window) {
-        const showBar = (show) => {
+        const showBar = (show: boolean) => {
           bar.toggleAttribute('hidden', !show);
           document.body.classList.toggle('has-mobile-actions', show);
         };

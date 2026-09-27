@@ -3,8 +3,10 @@ import { eq } from 'drizzle-orm';
 import { getDb, hasDatabase } from '@/db/client';
 import { users, authTokens } from '@/db/schema';
 import { magicRequestSchema } from '@/lib/validation';
-import { createAuthToken, consumeAuthToken, createSessionToken, sessionCookie } from '@/lib/auth';
+import { createAuthToken, consumeAuthToken, createSessionToken, sessionCookie, authConfigured } from '@/lib/auth';
 import { sendMail, appUrl } from '@/lib/mailer';
+import { rateLimit } from '@/lib/rateLimit.mjs';
+import { clientIp } from '@/lib/clientIp';
 
 /**
  * POST /api/auth/magic-link — email a sign-in link (also verifies the address).
@@ -21,6 +23,12 @@ export const POST: APIRoute = async ({ request, redirect }) => {
     next,
   });
   if (!parsed.success) return redirect('/auth/signin?error=Enter+a+valid+email.', 303);
+  if (
+    !rateLimit(`magic:ip:${clientIp(request)}`, 10, 15 * 60 * 1000) ||
+    !rateLimit(`magic:email:${parsed.data.email}`, 5, 15 * 60 * 1000)
+  ) {
+    return redirect('/auth/signin?error=' + encodeURIComponent('Too many sign-in links requested. Wait 15 minutes and try again.'), 303);
+  }
 
   const found = await db.select().from(users).where(eq(users.email, parsed.data.email)).limit(1);
   const u = found[0];
@@ -40,6 +48,7 @@ export const GET: APIRoute = async ({ url, cookies, redirect }) => {
   const nextRaw = url.searchParams.get('next') ?? '/dashboard';
   const next = nextRaw.startsWith('/') && !nextRaw.startsWith('//') ? nextRaw : '/dashboard';
   if (!raw || !hasDatabase()) return redirect('/auth/signin?error=' + encodeURIComponent('This sign-in link is invalid.'), 303);
+  if (!authConfigured()) return redirect('/auth/signin?error=' + encodeURIComponent('Sign-in is temporarily unavailable. Please try again later.'), 303);
   const db = getDb()!;
   const result = await consumeAuthToken(db, authTokens, raw, 'magic');
   if (!result) return redirect('/auth/signin?error=' + encodeURIComponent('This sign-in link has expired. Request a new one.'), 303);

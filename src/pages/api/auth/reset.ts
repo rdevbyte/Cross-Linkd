@@ -5,10 +5,12 @@ import { users, authTokens } from '@/db/schema';
 import { resetRequestSchema, resetConfirmSchema } from '@/lib/validation';
 import { createAuthToken, consumeAuthToken, hashPassword } from '@/lib/auth';
 import { sendMail, appUrl } from '@/lib/mailer';
+import { rateLimit } from '@/lib/rateLimit.mjs';
+import { clientIp } from '@/lib/clientIp';
 
 /**
- * POST /api/auth/reset            — request a reset link (no user enumeration).
- * POST /api/auth/reset?confirm=1  — consume token + set new password.
+ * POST /api/auth/reset                    — request a reset link (no user enumeration).
+ * POST /api/auth/reset  (intent=confirm)  — consume token + set new password (form rendered by /auth/reset?token=…).
  */
 export const POST: APIRoute = async ({ request, redirect }) => {
   if (!hasDatabase()) {
@@ -18,21 +20,35 @@ export const POST: APIRoute = async ({ request, redirect }) => {
   const form = await request.formData();
   const isConfirm = form.get('intent') === 'confirm';
 
+  if (!rateLimit(`reset:ip:${clientIp(request)}`, 10, 15 * 60 * 1000)) {
+    return redirect('/auth/reset?error=' + encodeURIComponent('Too many attempts. Wait 15 minutes and try again.'), 303);
+  }
+
   if (isConfirm) {
     const parsed = resetConfirmSchema.safeParse({
       token: String(form.get('token') ?? ''),
       password: String(form.get('password') ?? ''),
     });
     if (!parsed.success) {
-      return redirect(`/auth/reset?error=${encodeURIComponent(parsed.error.errors[0]?.message ?? 'Invalid reset link.')}`, 303);
+      const token = String(form.get('token') ?? '');
+      const message = parsed.error.errors[0]?.message ?? 'Invalid reset link.';
+      // Keep the token in the URL so the user can correct the password without a new email.
+      return redirect(`/auth/reset?token=${encodeURIComponent(token)}&error=${encodeURIComponent(message)}`, 303);
     }
     const result = await consumeAuthToken(db, authTokens, parsed.data.token, 'password_reset');
     if (!result) return redirect('/auth/reset?error=' + encodeURIComponent('This reset link is invalid or has expired. Request a new one.'), 303);
-    await db.update(users).set({ passwordHash: await hashPassword(parsed.data.password) }).where(eq(users.id, result.userId));
+    // New password + revoke every session that was open before the reset.
+    await db.update(users)
+      .set({ passwordHash: await hashPassword(parsed.data.password), sessionsValidAfter: new Date(), updatedAt: new Date() })
+      .where(eq(users.id, result.userId));
     return redirect('/auth/signin?notice=password-reset', 303);
   }
 
   const parsed = resetRequestSchema.safeParse({ email: String(form.get('email') ?? '').toLowerCase().trim() });
+  if (parsed.success && !rateLimit(`reset:email:${parsed.data.email}`, 3, 15 * 60 * 1000)) {
+    // Same response as success — throttled silently, no enumeration.
+    return redirect('/auth/reset?sent=1', 303);
+  }
   if (parsed.success) {
     const found = await db.select().from(users).where(eq(users.email, parsed.data.email)).limit(1);
     const u = found[0];

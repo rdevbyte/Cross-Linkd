@@ -10,7 +10,7 @@ const error = Astro.url.searchParams.get('error') ?? '';
     <p class="section-sub">These are the account controls this site can actually perform. There is no separate audit log.</p>
 
     {error && <p class="mt-4 rounded-xl bg-red-500/10 p-3 text-sm font-medium text-red-700" role="alert">{error}</p>}
-    {deleted && <p class="card mt-4 p-4 text-sm" style="border-left:4px solid var(--teal)" role="status">The account record was marked deleted, and matching rows in the sessions table were removed. Sign out if the browser still shows you as signed in. Published listings stay up until the owner removes them.</p>}
+    {deleted && <p class="card mt-4 p-4 text-sm" style="border-left:4px solid var(--teal)" role="status">The account record was marked deleted and every signed-in session was ended. Published listings stay up until the owner removes them.</p>}
 
     {user ? (
       <div class="mt-6 space-y-4">
@@ -25,7 +25,7 @@ const error = Astro.url.searchParams.get('error') ?? '';
         </div>
         <form method="POST" action="/api/account/delete" class="card space-y-3 p-5">
           <h2 class="text-lg font-extrabold">Mark this account deleted</h2>
-          <p class="text-sm leading-relaxed" style="color:var(--text-soft)">This sets a deleted date and deletes matching rows in the sessions table. It does not automatically unpublish listings, and it does not erase a contact message you already sent. Sign out afterward if the browser still shows you as signed in.</p>
+          <p class="text-sm leading-relaxed" style="color:var(--text-soft)">This sets a deleted date and ends every signed-in session. It does not automatically unpublish listings, and it does not erase a contact message you already sent.</p>
           <label class="flex items-start gap-2 text-sm">
             <input type="checkbox" name="confirm" value="delete" required class="mt-1 h-4 w-4 accent-[var(--accent)]" />
             <span>I understand this marks the account deleted and does not unpublish listings.</span>

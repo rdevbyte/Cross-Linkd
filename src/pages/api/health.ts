@@ -1,18 +1,17 @@
 import type { APIRoute } from 'astro';
 import { sql } from 'drizzle-orm';
 import { getDb, hasDatabase } from '@/db/client';
+import { authConfigured } from '@/lib/auth';
+import { isStaff } from '@/lib/guards';
 
-/** GET /api/health — safe status check for database & auth setup. */
-export const GET: APIRoute = async () => {
+/**
+ * GET /api/health — uptime probe.
+ * Anonymous callers get `{ ok, dbConnected }` only. Signed-in staff additionally
+ * see configuration diagnostics. Environment variable names and raw driver
+ * errors are never exposed to the public.
+ */
+export const GET: APIRoute = async ({ locals }) => {
   const dbConfigured = hasDatabase();
-  const foundKeys = [
-    'DATABASE_URL',
-    'POSTGRES_URL',
-    'POSTGRES_PRISMA_URL',
-    'NEON_DATABASE_URL',
-    'DIRECT_URL',
-  ].filter((key) => Boolean(process.env[key]?.trim()));
-
   let dbConnected = false;
   let dbError: string | null = null;
 
@@ -28,28 +27,19 @@ export const GET: APIRoute = async () => {
     }
   }
 
-  const allKeys = Object.keys(process.env)
-    .filter((k) => !k.startsWith('npm_') && !k.startsWith('__') && !k.includes('PATH'))
-    .sort();
+  const body: Record<string, unknown> = { ok: dbConnected, dbConnected };
+  if (isStaff(locals.user)) {
+    body.hasDatabase = dbConfigured;
+    body.detectedKeys = ['DATABASE_URL', 'POSTGRES_URL', 'POSTGRES_PRISMA_URL', 'NEON_DATABASE_URL', 'DIRECT_URL']
+      .filter((key) => Boolean(process.env[key]?.trim()));
+    body.dbError = dbError;
+    body.authSecretSet = authConfigured();
+    body.adminSetupKeySet = Boolean(process.env.ADMIN_SETUP_KEY?.trim());
+    body.mailConfigured = Boolean(process.env.RESEND_API_KEY?.trim());
+  }
 
-  return new Response(
-    JSON.stringify(
-      {
-        ok: dbConnected,
-        hasDatabase: dbConfigured,
-        detectedKeys: foundKeys,
-        dbConnected,
-        dbError,
-        authSecretSet: Boolean(process.env.AUTH_SECRET?.trim()),
-        adminSetupKeySet: Boolean(process.env.ADMIN_SETUP_KEY?.trim()),
-        visibleEnvKeys: allKeys,
-      },
-      null,
-      2,
-    ),
-    {
-      status: 200,
-      headers: { 'Content-Type': 'application/json' },
-    },
-  );
+  return new Response(JSON.stringify(body, null, 2), {
+    status: dbConnected || !dbConfigured ? 200 : 503,
+    headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' },
+  });
 };

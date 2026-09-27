@@ -16,7 +16,7 @@ const pageUrl = `${siteUrl}/articles/${article.slug}`;
 const publicSlugs = new Set((await getPublicListings()).map((l) => l.slug));
 const relatedListings = article.relatedListingSlugs
   .map((s) => listingBySlug(s))
-  .filter((l): l is NonNullable<typeof l> => Boolean(l) && publicSlugs.has(l.slug));
+  .filter((l): l is NonNullable<typeof l> => l !== undefined && publicSlugs.has(l.slug));
 
 const seo = {
   title: `${article.title} | CrossLinkd`,

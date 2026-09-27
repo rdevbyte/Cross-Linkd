@@ -1,12 +1,13 @@
 import type { APIRoute } from 'astro';
 import { and, eq } from 'drizzle-orm';
 import { getDb, hasDatabase } from '@/db/client';
-import { listings } from '@/db/schema';
+import { listings, listingLocations } from '@/db/schema';
 import { listingPatchSchema } from '@/lib/validation';
-import { saveListing, duplicateExists, type ListingFormValues } from '@/lib/submissions';
+import { saveListing, duplicateExists, rowToFormValues, type ListingFormValues } from '@/lib/submissions';
 import { apiGuard, jsonError, jsonOk } from '@/lib/guards';
 
-const EDITABLE_FOR_OWNER = new Set(['draft', 'pending_review', 'rejected', 'changes_requested']);
+/** Owners may edit anything that is not staff-locked (`suspended`) or gone (`archived`). */
+const EDITABLE_FOR_OWNER = new Set(['draft', 'pending_review', 'published', 'rejected', 'changes_requested']);
 
 async function loadOwned(id: string, userId: string) {
   const db = getDb()!;
@@ -14,7 +15,11 @@ async function loadOwned(id: string, userId: string) {
   return rows[0] ?? null;
 }
 
-/** PATCH /api/listings/[id] — owner updates their listing (stays published immediately). */
+/**
+ * PATCH /api/listings/[id] — owner updates their listing. The payload is merged over
+ * the stored values, so a partial PATCH never resets fields (location, privacy
+ * flags, denominations…) the client did not send.
+ */
 export const PATCH: APIRoute = async ({ params, request, locals }) => {
   const deny = apiGuard.user(locals);
   if (deny) return deny;
@@ -33,7 +38,13 @@ export const PATCH: APIRoute = async ({ params, request, locals }) => {
     return jsonError(409, `Listings with status "${current.status}" cannot be edited.`);
   }
 
-  const values: ListingFormValues = { ...current, ...parsed.data.listing } as ListingFormValues;
+  const db = getDb()!;
+  const [loc] = await db
+    .select({ city: listingLocations.city, region: listingLocations.region, postalCode: listingLocations.postalCode })
+    .from(listingLocations)
+    .where(and(eq(listingLocations.listingId, id), eq(listingLocations.isPrimary, true)))
+    .limit(1);
+  const values: ListingFormValues = { ...rowToFormValues(current, loc), ...parsed.data.listing };
 
   if (values.denominations && values.denominations.length > 2) {
     return jsonError(400, 'You can select up to two denominations.');
@@ -43,7 +54,7 @@ export const PATCH: APIRoute = async ({ params, request, locals }) => {
     if (values.description && values.description.trim().length < 30) {
       return jsonError(400, 'A description of at least 30 characters is required.');
     }
-    if (await duplicateExists(locals.user!.id, values.name, values.city!, id)) {
+    if (await duplicateExists(locals.user!.id, values.name, values.city, id)) {
       return jsonError(409, 'You already have another listing with this name in this city.');
     }
   }

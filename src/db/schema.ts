@@ -61,6 +61,8 @@ export const users = pgTable('users', {
   interests: jsonb('interests').$type<string[]>().default([]),
   notificationPrefs: jsonb('notification_prefs').$type<Record<string, boolean>>().default({}),
   lastActiveAt: timestamp('last_active_at', { withTimezone: true }),
+  /** Sessions issued before this instant are rejected (sign-out, reset, role change, deletion). Migration 0004. */
+  sessionsValidAfter: timestamp('sessions_valid_after', { withTimezone: true }),
   deletedAt: timestamp('deleted_at', { withTimezone: true }),
   ...timestamps,
 }, (t) => [index('users_email_idx').on(t.email), index('users_role_idx').on(t.role)]);

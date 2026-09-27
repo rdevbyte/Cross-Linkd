@@ -31,7 +31,9 @@ export const POST: APIRoute = async ({ params, request, locals }) => {
 
   const db = getDb()!;
   try {
-    await db.transaction(async (tx) => {
+    // A `return` inside the transaction callback only ends the callback, so the
+    // 404/409 responses are handed back out and returned from the route below.
+    const early = await db.transaction(async (tx): Promise<Response | undefined> => {
       const rows = await tx.select().from(reviews).where(eq(reviews.id, id)).limit(1);
       const review = rows[0];
       if (!review || review.deletedAt) return jsonError(404, 'Review not found.');
@@ -74,7 +76,9 @@ export const POST: APIRoute = async ({ params, request, locals }) => {
         targetId: id,
         metadata: note ? { note } : {},
       });
+      return undefined;
     });
+    if (early) return early;
   } catch (err) {
     console.error('[api/admin/reviews] moderation failed:', err);
     return jsonError(500, 'Could not moderate the review. Please try again.');

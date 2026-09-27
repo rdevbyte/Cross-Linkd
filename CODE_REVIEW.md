@@ -272,70 +272,74 @@ whitelisted renderer.
 
 ## ✅ Fix status (post-review implementation)
 
-Every finding above was either fixed in this pass, deliberately scoped out, or
-re-confirmed as working. Status legend: **FIXED** = code changed & verified;
-**VERIFIED** = reviewed, no change needed; **SCOPE** = intentionally deferred
-(needs a product decision, called out where it matters).
+Status legend: **FIXED** = code changed and verified by the checks listed under
+*Test evidence*; **VERIFIED** = reviewed, no change needed; **SCOPE** = deliberately
+deferred (needs a product decision or infrastructure). Claims below are limited to
+what the shipped code does; nothing here depends on an unrun test.
 
 ### Critical
 | ID | Status | What was done |
 |----|--------|---------------|
-| C1 | **FIXED** | `POST /api/listings` now requires a session (`apiGuard.user`); unauthenticated → 401. Public "add a listing" form no longer hardcodes `action:'publish'` — it submits into the moderation queue. Verified in `e2e-auth` (unauthenticated submit → 401) and `e2e-listing-creation`. |
-| C2 | **FIXED** | All three `innerHTML` sinks (favorites, directory `[slug]`, search) rewritten to build DOM with `createElement`/`textContent` or use Astro's escaping; user content is never interpolated into HTML. CSP header added (see M12). |
-| C3 | **FIXED** | `/api/health` no longer echoes env vars / infra; anonymous callers get a minimal `{ok, dbConnected}` probe, detailed diagnostics only for authenticated admins. |
-| C4 | **FIXED** | Removed the hardcoded JWT fallback. `getAuthSecret()` returns `null` when unset and every token path (sign-in, sign-up, magic-link, session read) fails **closed** — no more forgeable sessions. Verified: with `AUTH_SECRET` unset, sign-in is disabled. |
-| C5 | **FIXED** | `api/listings/update.ts` and `api/listings/deactivate.ts` (both IDOR-prone, owner-unguarded) **deleted**. Editing goes through the owned `api/listings/[id].ts`, which verifies ownership (cross-user PATCH → 404). |
-| C6 | **FIXED** | Password-reset confirm branch is now reachable and functional; reset page renders a token-bound confirm form; confirm is single-use, sets the new hash, and bumps the session watermark. Full flow covered by `e2e-auth` §5b (request → link → confirm → old session dead → new password works → reuse rejected). |
+| C1 | **FIXED** | `POST /api/listings` stays open for guests (public "add a listing" form) but guest submissions now go to `pending_review` (moderation queue); only signed-in users publish immediately. The success page says which one happened. |
+| C2 | **FIXED** | `favorites.astro` builds cards with `createElement`/`textContent` instead of `innerHTML`; `directory/[slug]` and search already escaped through Astro. JSON-LD is serialized with `safeJsonLd` (escapes `<`, `>`, `&`, U+2028/9) so a listing name can no longer break out of `<script type="application/ld+json">`. CSP header: **SCOPE**. |
+| C3 | **FIXED** | `/api/health` returns `{ok, dbConnected}` to anonymous callers; env-key names, DB errors and config flags are only returned to staff sessions. |
+| C4 | **FIXED** | No hardcoded JWT fallback in production: `getAuthSecret()` fails **closed** (sessions unreadable, sign-in/sign-up/magic-link/reset return "temporarily unavailable"). A stable dev-only key keeps local work running. Tokens minted with one key are rejected under another. |
+| C5 | **FIXED** | `api/listings/update.ts` and `api/listings/deactivate.ts` deleted (both wrote to an unowned/legacy shape). Editing goes through the owner-checked `api/listings/[id].ts`, which now also permits editing *published* listings and merges partial PATCH bodies over the stored row before re-validating. |
+| C6 | **FIXED** | `/auth/reset?token=…` renders a confirm form; `POST /api/auth/reset` (`intent=confirm`) validates, consumes the single-use token, sets the new hash and bumps the session watermark (all other sessions die). Validation errors re-redirect **with** the token so the user is not stranded. |
 
 ### High
 | ID | Status | What was done |
 |----|--------|---------------|
-| H1 | **FIXED** | In-memory sliding-window rate limiter (`src/lib/ratelimit.ts`) on sign-in, sign-up, magic-link, reset, and the public contact/review forms. Rate-limited responses return 429. |
-| H2 | **FIXED** | Added a `users.sessions_valid_after` watermark (migration `0004`). Middleware rejects any session issued at/before the watermark. Bumped on sign-out, password reset, and role change — so a stolen 30-day JWT is killed the moment the user signs out / changes role / resets. Verified in `e2e-auth` (revoked admin's existing session is rejected immediately). |
-| H3 | **FIXED** | Middleware now performs real Origin verification on mutating requests (Origin must equal the request Host; loopback allowed only in dev). Stricter than the old allowlist, and it blocks cross-site form/fetch submissions riding a victim's cookie. |
-| H4 | **FIXED** | Search path consolidated on Postgres FTS with a safe `websearch_to_tsquery` for user input; the dead/buggy code path removed. Verified in `e2e-listing-creation` (new listing appears in search immediately). |
-| H5 | **VERIFIED / partial** | The 500-row in-memory catalog is retained for the public search/sort surface (documented), but the detail + sitemap reads no longer depend on it. Full unbounded pagination is **SCOPE** (product decision on when to move search to server-side paging). |
-| H6 | **FIXED** | Review pipeline completes: submit → pending → admin publish/remove (`api/admin/reviews/[id]`) → aggregates recomputed → owner response. Public page renders published reviews + owner responses. Covered end-to-end in `e2e-auth`. |
-| H7 | **FIXED** | Stub endpoints that returned fake success now either persist or return an honest error. `api/auth/verify.ts`, magic-link, and verifications all consume tokens atomically (see M2) and return correct status codes. |
+| H1 | **FIXED** | `src/lib/rateLimit.mjs` (existing sliding window) applied to sign-in (IP + email), sign-up, magic-link (IP + email), reset (IP + email) and reviews (user + IP). Limited requests redirect with an explicit error (no fake success). The unused duplicate `src/lib/ratelimit.ts` was removed. |
+| H2 | **FIXED** | `users.sessions_valid_after` (migration `drizzle/0004_users_sessions_valid_after.sql`). Tokens carry `issuedAt`; middleware rejects tokens issued before the watermark and also rejects soft-deleted users. Bumped on sign-out (= sign out everywhere), password reset, role change (API and `scripts/admin-promote.ts`), and account deletion. `GET /api/auth/signout` removed (logout must be a POST). |
+| H3 | **FIXED** | Middleware origin check is an exact-host allow-list (own host, `PUBLIC_SITE_URL`, production hosts, loopback outside production). `*.vercel.app` wildcards and `startsWith('http://localhost')` prefix matches are gone. |
+| H4 | **FIXED** | Postgres search uses `websearch_to_tsquery` (user input can no longer throw and silently drop to the demo engine), validates `page`/`perPage`/`minRating` (NaN-safe, `perPage ≤ 50`) and returns a real `total`. |
+| H5 | **FIXED / partial** | Listing detail reads by slug directly (`limit 1`) instead of loading the 500-row catalog; hashtags are joined. Public search/sort still uses the capped catalog — pagination of that surface remains **SCOPE**. |
+| H6 | **FIXED** | `api/admin/reviews/[id]` no longer swallows early returns inside the transaction (a not-found/invalid moderation used to fall through and return 200). Review submission failures redirect with an honest error instead of "thanks". |
+| H7 | **FIXED** | Sign-in/sign-up/magic-link/reset without a DB or secret respond 303 with a clear error (previously 500). `POST /api/listings` reports `status` so the UI never claims "live" for a queued listing. |
 
 ### Medium (selected)
 | ID | Status | What was done |
 |----|--------|---------------|
-| M1 | **FIXED** | Default listing action is now the moderation queue (publish only after admin approval), aligning code with `DEPLOY.md`. The public form and dashboard both route through review. |
-| M2 | **FIXED** | `consumeAuthToken` is now a single conditional `UPDATE … WHERE used_at IS NULL … RETURNING` — atomic, no double-consume. |
-| M3 | **FIXED** | Validation arrays capped (`.max()`), `rating` is integer 1–5, and hashtags are now persisted via `listing_hashtags`. |
-| M4 | **VERIFIED** | `uniqueSlug` prefix scan retained (fine at current scale); noted for later. |
-| M5 | **FIXED** | Admin export uses `apiGuard.admin`; CSV formula-injection (`=`,`+`,`@`,`-` prefix) sanitized. `api/listings/export.ts` now exports the caller's own listings (auth required). |
-| M6 | **FIXED** | Cron endpoints fail **closed** (401) when `CRON_SECRET` is unset in production; comparison is constant-time. |
-| M7 | **FIXED** | Runtime uses the pooled `DATABASE_URL` only; `DIRECT_URL` is reserved for CLI/migrations. |
-| M8 | **FIXED** | `.gitignore` corrected: `data/` anchored so it no longer swallows `src/data/`; `README.md` un-ignored and a README is now shipped. |
-| M9 | **FIXED** | Migration runner tracks applied migrations in `schema_migrations` (idempotent, no re-run of applied files); journal/SQL brought into sync; `0004` added for the watermark column. |
-| M10 | **FIXED** | Sign-in catch now returns a generic message; details logged server-side only. |
-| M11 | **SCOPE** | Signup still signs in pre-verification (banner prompts verify). Enforcing feature-gates on `emailVerifiedAt` is a product decision — flagged, not blocking. |
-| M12 | **FIXED** | `Content-Security-Policy` added in `vercel.json` (`default-src 'self'`, scoped script/style/img/font/conn rules) to contain any future stored-XSS. |
-| M13 | **SCOPE** | Caching/ISR on the 500-row catalog is a scale optimization — noted for when listing count grows. |
-| M14 | **FIXED** | `articles/[slug].astro` no longer uses `set:html` on content; safe escaping throughout. |
+| M1 | **FIXED** | Guest submissions queue for review (see C1); signed-in publish is unchanged. |
+| M2 | **FIXED** | `consumeAuthToken` is a single conditional `UPDATE … WHERE used_at IS NULL … RETURNING`. |
+| M3 | **FIXED** | Validation split into a base schema + refinements so PATCH `.partial()` works; `website` accepts only `http(s)`; review `listingId` is a UUID and `rating` an integer 1–5; hashtags are persisted (`listing_hashtags`) inside the same transaction as the listing. |
+| M4 | **VERIFIED** | `uniqueSlug` prefix scan retained (fine at current scale). |
+| M5 | **VERIFIED** | Admin export guard unchanged in this pass. |
+| M6 | **FIXED** | `src/lib/cronAuth.ts`: cron endpoints fail **closed** in production when `CRON_SECRET` is unset; comparison is constant-time. |
+| M7 | **VERIFIED** | Runtime uses `DATABASE_URL`; `DIRECT_URL` is only used by `db:migrate`. |
+| M8 | **FIXED** | `.gitignore`: `data/` anchored to `/data/` (it silently ignored new files under `src/data/`); `README.md` un-ignored. |
+| M9 | **FIXED** | `db:migrate` records applied files in `schema_migrations`; `0001_init.sql` split with `--> statement-breakpoint` and no longer requires PostGIS (the app never used it). |
+| M10 | **FIXED** | Auth handlers return generic messages; details are logged server-side without request bodies. |
+| M11 | **SCOPE** | Signup still signs in before email verification. |
+| M12 | **SCOPE** | No CSP header yet. |
+| M13 | **SCOPE** | Caching/ISR of the catalog. |
+| M14 | **VERIFIED** | Article content is rendered from trusted local data only. |
 
-### New issues found **during** implementation (fixed)
-- **Session watermark never fired** — `createSessionToken` wrote the JWT `iat` claim but
-  `readSessionToken` read a nonexistent `issuedAt`, so the revocation check in the middleware
-  was dead code (H2's fix wouldn't have worked). Both claim names are now consistent and the
-  watermark is exercised by `e2e-auth`.
-- **Dashboard submit used an optimistic row with no wait** — tests had to wait on the actual
-  `/api/submissions` response before asserting DB state (the row appears client-side before the
-  insert commits). `e2e-auth` now awaits the POST.
-- **Astro 7 built-in origin check** blocks form-encoded POSTs that lack a matching `Origin`;
-  the e2e helpers now send `origin` on non-browser form submissions (browsers send it natively).
+### Additional defects found and fixed during implementation
+- **`/add-listing` form script was dead in browsers** — the `define:vars` (inline) script
+  contained TypeScript assertions (`as HTMLButtonElement | null`) that Astro ships verbatim,
+  which is a JavaScript `SyntaxError`; the whole interactive form (progress, chips, publish
+  button, online toggle) never initialised. Removed the assertions; the served script now parses.
+- **`PUBLIC_SITE_URL` resolution differed between `astro.config.mjs`, `BaseLayout` and the
+  mailer** — unified in `src/lib/siteUrl.mjs` (`resolveSiteUrl`).
+- **`SearchBar` location picks were typed as `SuggestItem`** although the caller passes
+  `LocationChoice` objects without `kind`.
+- **Mailer logged full message bodies (magic links, reset links) in production** when no
+  provider was configured — now an error line only.
+- **`e2e-listing-creation`** asserted `text=Your listing is now live!`; the page says
+  `Your listing is now live` (no `!`).
+- Type-check errors in `BaseLayout.astro` (`show` implicit any) and `articles/[slug].astro`
+  (predicate on a possibly-undefined value) fixed.
 
-### Test evidence
-After the fixes, the full Playwright matrix is green on a freshly reset local DB:
-
-| Suite | Result |
+### Test evidence (this pass)
+| Check | Result |
 |-------|--------|
-| `e2e-layout.mjs` | **64/64** |
-| `e2e-listing-creation.mjs` | **60/60** |
-| `e2e-multidenom-category.mjs` | **72/72** |
-| `e2e-auth.mjs` | **60/60** |
-| **Total** | **256/256** |
+| `npx astro check` (162 files) | 0 errors |
+| `npx tsc --noEmit` | clean |
+| `npm test` (launch-guards 8, hiring-url 3, online-toggle + review-publish 6, `scripts/lib.test.mjs` 11) | 28/28 pass |
+| `npx astro build` | succeeds |
+| Dev-server smoke (no DB): auth POSTs 303 (not 500), deleted routes 404, foreign `*.vercel.app`/`localhost.evil.com` origins 403, `/api/health` minimal, reset confirm form renders, sign-in rate limit trips, JSON-LD parses with no raw `<>&`, `/add-listing` inline script parses | pass |
 
-`npx tsc --noEmit` is clean.
+The Playwright e2e suites (`e2e-*.mjs`) require a running Postgres and were **not** run in
+this pass; run them after `npm run db:migrate` to re-baseline.

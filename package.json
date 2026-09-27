@@ -3,6 +3,9 @@
   "version": "1.0.0",
   "private": true,
   "type": "module",
+  "engines": {
+    "node": ">=22.12.0"
+  },
   "description": "CrossLinkd — a premium faith-based discovery platform for Christian-owned businesses, churches, ministries, professionals, and events.",
   "allowScripts": {
     "esbuild": true,
@@ -16,6 +19,8 @@
     "test:hiring": "node --test scripts/hiring-url.test.mjs",
     "test:online": "node --test scripts/online-toggle.test.mjs scripts/review-publish.test.mjs",
     "test:launch": "node --test scripts/launch-guards.test.mjs",
+    "test:lib": "tsx --test scripts/lib.test.mjs",
+    "test": "npm run test:launch && npm run test:hiring && npm run test:online && npm run test:lib",
     "e2e": "node e2e-layout.mjs",
     "test:creation": "node e2e-listing-creation.mjs",
     "db:generate": "drizzle-kit generate",
