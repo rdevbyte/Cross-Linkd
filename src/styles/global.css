@@ -258,10 +258,58 @@ select.input option {
 }
 select.input option:checked { font-weight: 600; }
 
-/* ============ Brand logo (merged chain mark) ============ */
-.logo-mark { display: inline-block; object-fit: contain; }
-[data-theme='dark'] .light-only { display: none; }
-html:not([data-theme='dark']) .dark-only { display: none; }
+/* ============ Brand logo (merged chain mark) ============
+   Inline SVG (src/components/Logo.astro). Hover/focus "locks" the two links:
+   each slides ~2.5px toward the other (10 artwork units at the 36px mark) while
+   the cross cut-out stays put and brightens, a soft highlight rises along the
+   curves and the mark lifts slightly. --mark-on is the single switch; every
+   animated value derives from it, so enter and leave share one 520ms curve. */
+.logo-mark {
+  --mark-on: 0;
+  --mark-navy: #0e2239;
+  --mark-gold-dot: #bf9449;
+  --mark-shift: 10px;                 /* artwork units (viewBox px), not CSS px */
+  --mark-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --mark-time: 520ms;
+  --mark-glow: 0.7;
+  display: inline-block;
+  overflow: visible;
+  filter: drop-shadow(0 1px 1.5px rgba(14, 34, 57, calc(0.22 * var(--mark-on))));
+  transition: filter var(--mark-time) var(--mark-ease);
+}
+[data-theme='dark'] .logo-mark { --mark-navy: #1a2f4e; --mark-glow: 0.22; }
+.logo-link:focus-visible .logo-mark { --mark-on: 1; }
+@media (hover: hover) {
+  .logo-link:hover .logo-mark { --mark-on: 1; }
+}
+.logo-mark .lk-navy { fill: var(--mark-navy); }
+[data-theme='dark'] .logo-mark .lk-navy { stroke: rgba(159, 179, 209, 0.45); stroke-width: 1.5; paint-order: stroke; }
+.logo-mark .lk-gold-dot { fill: var(--mark-gold-dot); }
+.logo-mark .mv-navy,
+.logo-mark .mv-gold,
+.logo-mark .mv-navy-rel,
+.logo-mark .mv-gold-rel { transition: transform var(--mark-time) var(--mark-ease); }
+.logo-mark .mv-navy { transform: translateX(calc(var(--mark-shift) * var(--mark-on))); }
+.logo-mark .mv-gold { transform: translateX(calc(var(--mark-shift) * -1 * var(--mark-on))); }
+/* *-rel frames sit inside the other link's frame, so they carry twice the shift. */
+.logo-mark .mv-navy-rel { transform: translateX(calc(var(--mark-shift) * 2 * var(--mark-on))); }
+.logo-mark .mv-gold-rel { transform: translateX(calc(var(--mark-shift) * -2 * var(--mark-on))); }
+.logo-mark .lk-sheen { transition: opacity var(--mark-time) var(--mark-ease); }
+.logo-mark .lk-sheen-gold { opacity: calc(0.5 * var(--mark-on)); }
+.logo-mark .lk-sheen-navy { opacity: calc(0.28 * var(--mark-on)); }
+.logo-mark .cross-glow {
+  transform-box: view-box;
+  transform-origin: 120px 73px;       /* the crossing point stays fixed */
+  transform: scale(calc(1 + 0.04 * var(--mark-on)));
+  opacity: calc(var(--mark-glow) * var(--mark-on));
+  transition: opacity var(--mark-time) var(--mark-ease) 80ms, transform var(--mark-time) var(--mark-ease) 80ms;
+}
+@media (prefers-reduced-motion: reduce) {
+  /* No movement, lift or scale — only the highlight and cross tint fade in. */
+  .logo-mark { --mark-shift: 0px; --mark-time: 220ms; --mark-ease: ease; filter: none; transition: none; }
+  .logo-mark .mv-navy, .logo-mark .mv-gold, .logo-mark .mv-navy-rel, .logo-mark .mv-gold-rel { transform: none; transition: none; }
+  .logo-mark .cross-glow { transform: none; transition: opacity var(--mark-time) var(--mark-ease); }
+}
 
 /* ============ Theme slider switch (matte) ============ */
 .theme-slider {
@@ -287,7 +335,7 @@ html:not([data-theme='dark']) .dark-only { display: none; }
 [data-theme='dark'] .theme-slider-track { background: rgba(199, 161, 90, 0.22); }
 .theme-slider-icon { display: block; flex-shrink: 0; }
 @media (prefers-reduced-motion: reduce) {
-  .theme-slider-knob, .theme-slider, .logo-mark { transition: none !important; }
+  .theme-slider-knob, .theme-slider { transition: none !important; }
 }
 
 /* ---- Listing card anatomy ----

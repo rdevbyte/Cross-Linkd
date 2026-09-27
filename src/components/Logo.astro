@@ -1,32 +1,131 @@
 ---
-// CrossLinkd brand mark — merged from the two source logos:
-// the navy C-link + gold square-link chain with a white cross
-// cutout at the interlock, and node dots from the contour concept.
-// mark.png / mark-dark.png are cropped to the artwork (241×148, ratio 1.63).
+// CrossLinkd brand mark — the navy C-link and gold link interlocked around a
+// cross of negative space, with node dots from the contour concept.
+//
+// Drawn inline (traced from public/brand/mark.png, 241×148) so the two links
+// are separate layers: on hover they slide toward each other while the cross
+// cut-out stays fixed. The over/under weave is real geometry — the gold link
+// passes over the navy one in the top half, the navy over the gold in the
+// bottom half — and the 4px contour gaps are transparent mask cuts, so the
+// mark works on any background. Motion lives in global.css ("Brand logo").
 interface Props { size?: number; showWordmark?: boolean; }
 const { size = 36, showWordmark = true } = Astro.props;
 const MARK_RATIO = 241 / 148;
 const width = Math.round(size * MARK_RATIO);
+// The mark renders twice per page (navbar + footer): scope every SVG id.
+const uid = `lm${Math.random().toString(36).slice(2, 8)}`;
+const id = (name: string) => `${uid}-${name}`;
+
+// Geometry in artwork units (viewBox 0 0 241 148). Rings are 150×112 stadiums
+// with 25px outer / 30px inner bands; the inner corner of each hole is trimmed
+// by the same r34 arc that ends the cross stem, exactly as in the source art.
+const NAVY_OUTER = 'M61 17H99A56 56 0 0 1 99 129H61A56 56 0 0 1 61 17Z';
+const NAVY_RING = `${NAVY_OUTER}M59 44H125V90.7A34 34 0 0 1 113.7 102H59A29 29 0 0 1 59 44Z`;
+const GOLD_OUTER = 'M141 17H179A56 56 0 0 1 179 129H141A56 56 0 0 1 141 17Z';
+const GOLD_RING = `${GOLD_OUTER}M181 102H115V55.3A34 34 0 0 1 126.3 44H181A29 29 0 0 1 181 102Z`;
+// Latin cross: 44×12 bar centred on (120,73) and a 10-wide stem whose ends
+// follow the neighbouring arcs.
+const CROSS = 'M98 67H142V79H98ZM115 55.3A34 34 0 0 1 125 44.8V112.5A49 49 0 0 1 115 118.2Z';
+const NAVY_DOTS = [[61.6, 14.8], [59.6, 131.6]] as const;
+const GOLD_DOTS = [[178.8, 14.8], [184.7, 131.5]] as const;
+const DOT_R = 10;
+const HALO_R = 13.5;
 ---
-<a href="/" class="group flex min-w-0 max-w-full items-center gap-2.5" aria-label="CrossLinkd home">
-  <img
-    src="/brand/mark.png"
-    alt=""
+<a href="/" class="logo-link flex min-w-0 max-w-full items-center gap-2.5" aria-label="CrossLinkd home">
+  <svg
+    class="logo-mark shrink-0"
+    viewBox="0 0 241 148"
     width={width}
     height={size}
-    class="logo-mark light-only shrink-0 transition-transform duration-200 group-hover:scale-105"
     style={`height:${size}px;width:auto`}
     aria-hidden="true"
-  />
-  <img
-    src="/brand/mark-dark.png"
-    alt=""
-    width={width}
-    height={size}
-    class="logo-mark dark-only shrink-0 transition-transform duration-200 group-hover:scale-105"
-    style={`height:${size}px;width:auto`}
-    aria-hidden="true"
-  />
+    focusable="false"
+  >
+    <defs>
+      <path id={id('navy')} d={NAVY_RING} fill-rule="evenodd" />
+      <path id={id('gold')} d={GOLD_RING} fill-rule="evenodd" />
+      <radialGradient id={id('gold-fill')} gradientUnits="userSpaceOnUse" cx="205" cy="18" r="130">
+        <stop offset="0" stop-color="#f2cd76" />
+        <stop offset="0.3" stop-color="#dab35c" />
+        <stop offset="0.65" stop-color="#c59c4d" />
+        <stop offset="1" stop-color="#bb8f45" />
+      </radialGradient>
+      <linearGradient id={id('sheen')} x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#fff" stop-opacity="0.55" />
+        <stop offset="0.55" stop-color="#fff" stop-opacity="0" />
+      </linearGradient>
+      <clipPath id={id('top')}><rect x="-20" y="-10" width="281" height="83" /></clipPath>
+      <clipPath id={id('bottom')}><rect x="-20" y="73" width="281" height="85" /></clipPath>
+      <!-- Masks are static; each is applied in the frame it belongs to (the cross in
+           the fixed frame, contour gaps in the frame of the link that casts them, dot
+           halos in their own link's frame) so the cut-outs travel with the right part. -->
+      <mask id={id('cut-cross')} maskUnits="userSpaceOnUse" x="-20" y="-10" width="281" height="168">
+        <rect x="-20" y="-10" width="281" height="168" fill="#fff" />
+        <path d={CROSS} fill="#000" />
+      </mask>
+      <mask id={id('cut-by-gold')} maskUnits="userSpaceOnUse" x="-20" y="-10" width="281" height="168">
+        <rect x="-20" y="-10" width="281" height="168" fill="#fff" />
+        <path d={GOLD_OUTER} fill="none" stroke="#000" stroke-width="8" clip-path={`url(#${id('top')})`} />
+      </mask>
+      <mask id={id('cut-by-navy')} maskUnits="userSpaceOnUse" x="-20" y="-10" width="281" height="168">
+        <rect x="-20" y="-10" width="281" height="168" fill="#fff" />
+        <path d={NAVY_OUTER} fill="none" stroke="#000" stroke-width="8" clip-path={`url(#${id('bottom')})`} />
+      </mask>
+      <mask id={id('navy-dots')} maskUnits="userSpaceOnUse" x="-20" y="-10" width="281" height="168">
+        <rect x="-20" y="-10" width="281" height="168" fill="#fff" />
+        {NAVY_DOTS.map(([cx, cy]) => (
+          <>
+            <circle cx={cx} cy={cy} r={HALO_R} fill="#000" />
+            <circle cx={cx} cy={cy} r={DOT_R} fill="#fff" />
+          </>
+        ))}
+      </mask>
+      <mask id={id('gold-dots')} maskUnits="userSpaceOnUse" x="-20" y="-10" width="281" height="168">
+        <rect x="-20" y="-10" width="281" height="168" fill="#fff" />
+        {GOLD_DOTS.map(([cx, cy]) => (
+          <>
+            <circle cx={cx} cy={cy} r={HALO_R} fill="#000" />
+            <circle cx={cx} cy={cy} r={DOT_R} fill="#fff" />
+          </>
+        ))}
+      </mask>
+    </defs>
+
+    <!-- Navy link, under the gold one. Nested frames: the gold-cast contour gap
+         moves with gold (outer group), the link itself nets its own shift (inner). -->
+    <g mask={`url(#${id('cut-cross')})`}>
+      <g class="mv-gold" mask={`url(#${id('cut-by-gold')})`}>
+        <g class="mv-navy-rel">
+          <g mask={`url(#${id('navy-dots')})`}>
+            <use href={`#${id('navy')}`} class="lk-navy" />
+            <use href={`#${id('navy')}`} class="lk-sheen lk-sheen-navy" fill={`url(#${id('sheen')})`} />
+            {NAVY_DOTS.map(([cx, cy]) => <circle cx={cx} cy={cy} r={DOT_R} class="lk-navy" />)}
+          </g>
+        </g>
+      </g>
+    </g>
+    <!-- Gold link. -->
+    <g mask={`url(#${id('cut-cross')})`}>
+      <g class="mv-navy" mask={`url(#${id('cut-by-navy')})`}>
+        <g class="mv-gold-rel">
+          <g mask={`url(#${id('gold-dots')})`}>
+            <use href={`#${id('gold')}`} fill={`url(#${id('gold-fill')})`} />
+            <use href={`#${id('gold')}`} class="lk-sheen lk-sheen-gold" fill={`url(#${id('sheen')})`} />
+            {GOLD_DOTS.map(([cx, cy]) => <circle cx={cx} cy={cy} r={DOT_R} class="lk-gold-dot" />)}
+          </g>
+        </g>
+      </g>
+    </g>
+    <!-- Navy again, bottom half only: this is where it passes over the gold. -->
+    <g clip-path={`url(#${id('bottom')})`} mask={`url(#${id('cut-cross')})`}>
+      <g class="mv-navy">
+        <g mask={`url(#${id('navy-dots')})`}><use href={`#${id('navy')}`} class="lk-navy" /></g>
+      </g>
+    </g>
+    <!-- Cross emphasis: the cut-out is negative space, so "brighter" means a
+         white fill fading in over whatever the page background is. -->
+    <path class="cross-glow" d={CROSS} fill="#fff" />
+  </svg>
   {showWordmark && (
     <span class="min-w-0 leading-tight">
       <span class="logo-wordmark block text-[17px] font-bold tracking-tight sm:text-[18px]"><span style="color:var(--navy)">Cross</span><span style="color:var(--logo-gold)">Linkd</span></span>
