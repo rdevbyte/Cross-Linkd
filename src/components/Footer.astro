@@ -7,7 +7,7 @@ const cols = [
     links: [
       ['Search Businesses', '/search'],
       ['Browse by Category', '/browse/industries'],
-      ['Browse by State', '/browse/locations'],
+      ['Browse by location', '/browse/locations'],
       ['Events', '/events'],
       ['Favorites', '/favorites'],
     ],
@@ -15,7 +15,6 @@ const cols = [
   {
     title: 'For Business Owners',
     links: [
-      ['List Your Business', '/add-listing'],
       ['Claim a Listing', '/claim-listing'],
       ['How It Works', '/how-it-works'],
       ['Owner Dashboard', '/dashboard'],
@@ -24,11 +23,14 @@ const cols = [
   {
     title: 'Trust & Policies',
     links: [
-      ['Verification & Badges', '/verification'],
-      ['How Businesses Qualify', '/verification#qualify'],
-      ['Review & Moderation Policy', '/reviews-policy'],
-      ['Submission Policy', '/submission-policy'],
-      ['Editorial Policy', '/editorial-policy'],
+      ['How listings work', '/how-it-works'],
+      ['Listing-status definitions', '/listing-statuses'],
+      ['Submission policy', '/submission-policy'],
+      ['Correction and removal policy', '/submission-policy#removal'],
+      ['Community guidelines', '/guidelines'],
+      ['Disclaimer', '/trust'],
+      ['Contact', '/contact'],
+      ['Review policy', '/reviews-policy'],
       ['Appeals', '/appeals'],
     ],
   },
@@ -52,7 +54,7 @@ const cols = [
       <div>
         <Logo />
         <p class="mt-4 max-w-xs text-sm leading-relaxed" style="color:var(--text-soft)">
-          A hand-reviewed national directory of Christian-owned businesses, churches, and ministries across the United States.
+          A community directory of owner-submitted Christian businesses, churches, and ministries. Listings may be in the United States or elsewhere.
         </p>
       </div>
       {cols.map((c) => (
@@ -67,9 +69,9 @@ const cols = [
       ))}
     </div>
     <div class="mt-10 flex flex-col items-start justify-between gap-3 border-t pt-6 sm:flex-row sm:items-center" style="border-color:var(--border)">
-      <p class="text-xs" style="color:var(--text-mute)">© {year} CrossLinkd LLC. Directory inclusion is not an endorsement of any denomination, doctrine, or business.</p>
+      <p class="max-w-3xl text-xs leading-relaxed" style="color:var(--text-mute)">© {year} CrossLinkd LLC. Listing on CrossLinkd does not constitute an endorsement. Please independently evaluate each business, church, ministry, or organization before engaging with it.</p>
       <div class="flex gap-2">
-        <a href="/verification" class="chip hover:border-[var(--teal)]">✓ How we verify</a>
+        <a href="/listing-statuses" class="chip hover:border-[var(--teal)]">Listing Statuses</a>
         <a href="/privacy" class="chip hover:border-[var(--teal)]">Privacy</a>
       </div>
     </div>

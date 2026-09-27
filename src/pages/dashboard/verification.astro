@@ -1,32 +1,30 @@
 ---
 import DashboardLayout from '@/layouts/DashboardLayout.astro';
+import StatusBadge from '@/components/StatusBadge.astro';
 import { requireUserPage } from '@/lib/guards';
+import { LISTING_STATUSES, LONG_DISCLAIMER } from '@/lib/trustCopy';
 
 const user = Astro.locals.user;
 const submitted = Astro.url.searchParams.get('submitted') === '1';
 
-const isEmailVerified = Boolean(user?.email);
-const checks = [
-  ['Account email verification', isEmailVerified ? 'Verified' : 'Pending email verification', isEmailVerified],
-  ['Business domain verification', 'Available upon listing approval', false],
-  ['Claimed listing ownership', 'Available upon listing approval', false],
-  ['Christian-Owned verification badge', 'Not started', false],
-  ['Professional credential badge', 'Not started', false],
-];
-
 const __userGate = requireUserPage(Astro);
 if (__userGate) return __userGate;
 ---
-<DashboardLayout user={user} active="verification" seo={{ title: 'Verification — Dashboard', description: 'Track verification status.', path: '/dashboard/verification', noindex: true }}>
-  <h1 class="text-2xl font-extrabold">Verification</h1>
-  <p class="mt-1 text-sm" style="color:var(--text-soft)">Transparent by design — every badge links to its criteria on the <a href="/trust" class="underline">Trust page</a>.</p>
-  {submitted && <p class="card mt-4 border-l-4 p-3 text-sm font-medium" style="border-left-color:var(--teal)">Evidence submitted. A verification reviewer will respond within 2 business days.</p>}
-  <div class="card mt-4 divide-y" style="--tw-divide-opacity:1">
-    {checks.map(([label, status, done]) => (
-      <div class="flex flex-wrap items-center justify-between gap-2 p-4">
-        <p class="font-medium">{label}</p>
-        <span class="badge-verify" style={done ? 'background:rgba(46,146,131,.14);color:var(--teal)' : 'background:rgba(100,116,139,.14);color:var(--text-soft)'}>{status}</span>
-      </div>
-    ))}
+<DashboardLayout user={user} active="verification" seo={{ title: 'Listing status — Dashboard', description: 'What your listing status does and does not mean.', path: '/dashboard/verification', noindex: true }}>
+  <h1 class="text-2xl font-extrabold">Listing status</h1>
+  <p class="mt-1 text-sm leading-relaxed" style="color:var(--text-soft)">{LONG_DISCLAIMER}</p>
+  {submitted && <p class="card mt-4 border-l-4 p-3 text-sm font-medium" style="border-left-color:var(--teal)" role="status">We received your note. A reply is not a verification of the business.</p>}
+  <div class="card mt-4 p-4 text-sm leading-relaxed" style="color:var(--text-soft)">
+    <p><strong style="color:var(--text)">Account email:</strong> {user?.email ?? 'No email on the account'}. Confirming an account email does not verify a business.</p>
+    <p class="mt-2">Owner claimed is applied only after you show control of a contact channel. CrossLinkd does not offer an independent verification of faith, ownership, licenses, or credentials.</p>
+    <p class="mt-3"><a href="/how-it-works#statuses" class="font-semibold underline">Read the public status definitions</a></p>
   </div>
+  <ul class="mt-4 grid gap-2">
+    {LISTING_STATUSES.map((status) => (
+      <li class="card flex flex-wrap items-center justify-between gap-2 p-4">
+        <StatusBadge name={status.name} />
+        <p class="text-sm" style="color:var(--text-soft)">{status.definition}</p>
+      </li>
+    ))}
+  </ul>
 </DashboardLayout>

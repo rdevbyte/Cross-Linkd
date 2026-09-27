@@ -1,0 +1,43 @@
+---
+import BaseLayout from '@/layouts/BaseLayout.astro';
+import ListingStatuses from '@/components/ListingStatuses';
+import { COMMUNITY_LISTED, LISTING_STATUSES, LONG_DISCLAIMER, SHORT_DISCLAIMER } from '@/lib/trustCopy';
+
+const user = Astro.locals.user;
+const terms = [
+  { title: 'Christian-owned', body: 'The owner identified the business as Christian-owned. It is not a confirmation of faith or ownership.' },
+  { title: 'Self-identified Christian-owned', body: 'The person who submitted the listing said the business is Christian-owned. CrossLinkd did not independently check that claim.' },
+  { title: 'Founded by a Christian', body: 'A Christian may have started the company and may no longer own or run it. Do not read this as current ownership.' },
+  { title: 'Faith-inspired', body: 'A descriptive phrase some owners use. It is not a verification of belief, practice, or ownership.' },
+  { title: 'Christian-operated', body: 'A claim about who runs the business day to day. Treat it as owner-submitted unless you confirm it yourself.' },
+  { title: 'Serves Christian customers', body: 'This only describes a market. It says nothing about ownership or belief.' },
+];
+const statuses = [
+  { name: COMMUNITY_LISTED.name, definition: COMMUNITY_LISTED.definition },
+  ...LISTING_STATUSES,
+];
+const seo = {
+  title: 'Listing Statuses — What CrossLinkd does and does not check | CrossLinkd',
+  description: 'Listing Statuses describe how a profile was submitted or updated. CrossLinkd does not independently verify faith, ownership, licenses, credentials, or service quality.',
+  path: '/listing-statuses',
+};
+---
+<BaseLayout user={user} seo={seo}>
+  <div class="mx-auto grid max-w-6xl gap-5 px-4 py-8 sm:gap-6 sm:py-12">
+    <section class="card p-5 sm:p-7" aria-labelledby="listing-status-heading">
+      <p class="text-sm font-bold" style="color:var(--accent)">Not a certification</p>
+      <h1 id="listing-status-heading" class="mt-2 text-3xl font-extrabold leading-tight sm:text-4xl">Listing Statuses</h1>
+      <p class="section-sub">These labels describe how a listing was added or updated. None of them means CrossLinkd verified faith, ownership, a license, a credential, or the quality of the work.</p>
+    </section>
+
+    <ListingStatuses
+      client:load
+      disclaimer={LONG_DISCLAIMER}
+      statuses={statuses}
+      terms={terms}
+      recommendation="A church or community recommendation indicates that someone submitted or shared the listing. It does not necessarily mean the church endorses the business, its services, its owners, or every belief associated with it."
+    />
+
+    <p class="card p-5 text-sm leading-relaxed sm:p-6" style="color:var(--text-soft)">{SHORT_DISCLAIMER}</p>
+  </div>
+</BaseLayout>

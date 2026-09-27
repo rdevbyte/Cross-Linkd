@@ -29,8 +29,8 @@ export const HASHTAG_CATALOG: HashtagDef[] = [
   // Locations
   L('Dallas'), L('Atlanta'), L('Nashville'), L('Houston'), L('Austin'), L('Phoenix'),
   L('Chicago'), L('Orlando'), L('Charlotte'), L('Denver'), L('Texas'), L('Georgia'),
-  // Verification / trust
-  V('Verified'), V('ChristianOwned'), V('Claimed'), V('Licensed'), V('Accredited'),
+  // Owner-applied labels. These are not CrossLinkd verification results.
+  V('ChristianOwned'), V('Claimed'),
   // General / values
   G('FamilyOwned'), G('SpanishSpeaking'), G('WheelchairAccess'), G('FinancingAvailable'),
   G('OnlineServices'), G('VeteranOwned'), G('WomenOwned'), G('YouthMinistry'),

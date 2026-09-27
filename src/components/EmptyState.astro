@@ -1,16 +1,12 @@
 ---
-interface Props { title: string; body?: string; actionHref?: string; actionLabel?: string }
-const { title, body, actionHref, actionLabel } = Astro.props;
+interface Props {
+  title: string;
+  body: string;
+}
+const { title, body } = Astro.props;
 ---
-<div class="card mx-auto max-w-xl p-10 text-center">
-  <svg class="mx-auto" width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="var(--logo-gold)" stroke-width="1.6" stroke-linecap="round" aria-hidden="true">
-    <circle cx="12" cy="12" r="9" opacity="0.55" />
-    <circle cx="8.2" cy="8.2" r="1.4" fill="var(--logo-gold)" stroke="none" />
-    <circle cx="15.8" cy="15.8" r="1.4" fill="var(--logo-gold)" stroke="none" />
-    <path d="M12 7.6v8.8M7.6 12h8.8" stroke-width="1.9" />
-  </svg>
-  <h2 class="mt-4 text-xl font-bold">{title}</h2>
-  {body && <p class="mx-auto mt-2 max-w-md text-sm" style="color:var(--text-soft)">{body}</p>}
-  {actionHref && <a href={actionHref} class="btn btn-primary mt-5">{actionLabel ?? 'Take action'}</a>}
-  <slot />
+<div class="card p-8 text-center" role="status">
+  <h2 class="text-lg font-extrabold">{title}</h2>
+  <p class="mx-auto mt-2 max-w-md text-sm leading-relaxed" style="color:var(--text-soft)">{body}</p>
+  <div class="mt-4 flex flex-wrap justify-center gap-2"><slot /></div>
 </div>

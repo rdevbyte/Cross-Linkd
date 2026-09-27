@@ -250,6 +250,8 @@ export const listings = pgTable('listings', {
   status: listingStatusEnum('status').default('published').notNull(),
   isClaimed: boolean('is_claimed').default(false).notNull(),
   isOnlineOnly: boolean('is_online_only').default(false).notNull(),
+  isHiring: boolean('is_hiring').default(false).notNull(),
+  careersUrl: text('careers_url'),
   priceRange: varchar('price_range', { length: 16 }),
   yearFounded: integer('year_founded'),
   employeeCount: varchar('employee_count', { length: 40 }),

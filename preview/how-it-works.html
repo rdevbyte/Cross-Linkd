@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>How CrossLinkd works — preview</title>
+  <style>
+    :root {
+      --bg: #faf8f3;
+      --surface: #ffffff;
+      --surface-2: #f7f4ec;
+      --border: #e7e1d3;
+      --border-strong: #d8d0ba;
+      --text: #1d1a14;
+      --text-soft: #57503f;
+      --text-mute: #7a7260;
+      --accent: #8f7028;
+      --accent-ink: #fffdf6;
+      --teal: #22746a;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: Roboto, ui-sans-serif, system-ui, sans-serif;
+      line-height: 1.5;
+    }
+    a { color: var(--teal); }
+    a:focus-visible, button:focus-visible, summary:focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 3px;
+    }
+    .page { max-width: 72rem; margin: 0 auto; padding: 2rem 1rem 3rem; display: grid; gap: 1.25rem; }
+    .section {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 1.25rem;
+      box-shadow: 0 1px 2px rgba(15, 16, 20, 0.04), 0 6px 16px -10px rgba(15, 16, 20, 0.10);
+      padding: 1.25rem;
+    }
+    .head { margin-bottom: 1.25rem; padding-bottom: 1rem; border-bottom: 1px solid var(--border); }
+    h1, h2, h3 { margin: 0; letter-spacing: -0.02em; }
+    h1 { font-size: 2rem; line-height: 1.12; }
+    h2 { font-size: 1.6rem; }
+    .kicker { color: var(--accent); font-size: 0.8125rem; font-weight: 700; }
+    .sub { margin: 0.4rem 0 0; max-width: 46rem; color: var(--text-soft); }
+    .soft { color: var(--text-soft); }
+    .mute { color: var(--text-mute); }
+    .grid, .notes, .profile { display: grid; gap: 0.875rem; }
+    .item {
+      min-width: 0;
+      height: 100%;
+      padding: 1rem 1.125rem;
+      border: 1px solid var(--border);
+      border-radius: 1.25rem;
+      background: var(--surface-2);
+      box-shadow: 0 1px 2px rgba(15, 16, 20, 0.04);
+    }
+    .hero { display: grid; gap: 1.25rem; align-items: start; }
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center;
+      min-height: 44px; padding: 0.6rem 1.1rem; border-radius: 0.75rem;
+      font-weight: 700; font-size: 0.875rem; text-decoration: none; border: 1px solid var(--border-strong);
+      background: var(--surface-2); color: var(--text);
+    }
+    .btn.primary { background: var(--accent); color: var(--accent-ink); border-color: transparent; }
+    .btn:disabled { cursor: not-allowed; color: var(--text-soft); }
+    .chip, .pill {
+      display: inline-flex; align-items: center; gap: 0.3rem;
+      border: 1px solid var(--border-strong); background: var(--surface);
+      border-radius: 999px; padding: 0.2rem 0.6rem; font-size: 0.75rem; font-weight: 700;
+    }
+    .row { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-top: 0.75rem; }
+    .split { display: flex; justify-content: space-between; gap: 0.75rem; border-bottom: 1px solid var(--border); padding: 0.55rem 0; font-size: 0.875rem; }
+    .num {
+      display: inline-flex; width: 2rem; height: 2rem; flex: 0 0 auto; align-items: center; justify-content: center;
+      border-radius: 999px; border: 1px solid var(--border-strong); background: var(--surface); font-weight: 700;
+    }
+    .owner { display: flex; gap: 0.75rem; align-items: flex-start; }
+    .foot { margin-top: 1.25rem; padding-top: 1.25rem; border-top: 1px solid var(--border); }
+    details.item { height: auto; padding: 0; }
+    summary { display: flex; justify-content: space-between; gap: 0.75rem; min-height: 44px; padding: 0.9rem 1.125rem; cursor: pointer; font-weight: 700; }
+    summary::-webkit-details-marker { display: none; }
+    details p { margin: 0; padding: 0 1.125rem 1rem; color: var(--text-soft); font-size: 0.875rem; }
+    .close { text-align: center; padding: 2.25rem 1.25rem; }
+    .actions { display: grid; gap: 0.5rem; }
+    @media (min-width: 640px) {
+      .section { padding: 1.5rem 1.75rem 1.75rem; }
+      .owners, .states, .faq, .notes { grid-template-columns: 1fr 1fr; }
+      .actions { display: flex; flex-wrap: wrap; }
+      h1 { font-size: 3rem; }
+    }
+    @media (min-width: 1024px) {
+      .hero, .profile { grid-template-columns: 1.08fr 0.92fr; }
+      .notes { grid-template-columns: 1fr; }
+      .steps { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+      .steps > li { grid-column: span 2; }
+      .steps > li:nth-child(n + 4) { grid-column: span 3; }
+      .statuses, .three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+      .states { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    }
+    @media (min-width: 1200px) {
+      .statuses { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <section class="section" aria-labelledby="hiw-heading">
+      <div class="hero">
+        <div>
+          <p class="kicker">Two ways to use the directory</p>
+          <h1 id="hiw-heading">How CrossLinkd works</h1>
+          <p class="soft" style="max-width:36rem;font-size:1.05rem">Discover community-listed businesses and organizations, or create a free listing for your own business.</p>
+          <p class="soft" style="font-size:0.875rem">Listing on CrossLinkd does not constitute an endorsement. Please independently evaluate each business, church, ministry, or organization before engaging with it.</p>
+        </div>
+        <figure class="item">
+          <figcaption class="mute" style="font-size:0.75rem;font-weight:700;letter-spacing:.04em;text-transform:uppercase">Example only · not a published listing</figcaption>
+          <div style="display:flex;justify-content:space-between;gap:0.75rem;margin-top:0.75rem">
+            <div>
+              <p style="font-weight:800;font-size:1.125rem">Example profile</p>
+              <p class="soft" style="font-size:0.875rem">Category and place appear when an owner provides them.</p>
+            </div>
+            <span class="chip">No reviews yet</span>
+          </div>
+          <div class="row"><span class="pill">Owner-submitted</span><span class="pill">Owner claimed</span></div>
+          <p class="mute" style="font-size:0.75rem">No confirmation date is shown. This illustration has no owner, no reviews, and no credentials.</p>
+        </figure>
+      </div>
+    </section>
+
+    <section class="section">
+      <header class="head">
+        <h2>The path, in five steps</h2>
+        <p class="sub">A completeness review checks whether the form is filled in. It does not verify credentials.</p>
+      </header>
+      <ol class="grid steps">
+        <li class="item"><p class="kicker">Step 1 of 5</p><h3>Submit or discover a listing</h3><p class="soft" style="font-size:0.875rem">Owners and community members can submit a profile. Visitors can search what is already published.</p></li>
+        <li class="item"><p class="kicker">Step 2 of 5</p><h3>Profile reviewed for completeness</h3><p class="soft" style="font-size:0.875rem">CrossLinkd may check for missing fields and obvious inconsistencies. That is not a check of licenses, credentials, faith, or quality.</p></li>
+        <li class="item"><p class="kicker">Step 3 of 5</p><h3>Listing published</h3><p class="soft" style="font-size:0.875rem">A published profile is owner-submitted. Publishing is not an endorsement, and an incomplete submission is not published.</p></li>
+        <li class="item"><p class="kicker">Step 4 of 5</p><h3>Owner claims or confirms the profile</h3><p class="soft" style="font-size:0.875rem">Owner claimed means someone showed control of a contact channel. Recently confirmed by owner means the owner said the details are current.</p></li>
+        <li class="item"><p class="kicker">Step 5 of 5</p><h3>Listing is maintained or reported by the community</h3><p class="soft" style="font-size:0.875rem">Owners can update a profile. Readers can report a concern. A report is not an investigation.</p></li>
+      </ol>
+    </section>
+
+    <section class="section">
+      <header class="head">
+        <h2>What a profile shows</h2>
+        <p class="sub">Status details describe how this profile was submitted or updated. They do not guarantee business quality, licensing, pricing, outcomes, Christian ownership, or theological agreement.</p>
+      </header>
+      <div class="profile">
+        <article class="item">
+          <p class="mute" style="font-size:0.75rem;font-weight:700;letter-spacing:.04em;text-transform:uppercase">Illustration · not in the directory</p>
+          <h3 style="font-size:1.5rem;margin-top:0.5rem">Example profile</h3>
+          <p class="soft" style="font-size:0.875rem">Category: shown when the owner chooses one</p>
+          <p class="soft" style="font-size:0.875rem">Location: shown when the owner provides a place, or marked Online</p>
+          <div class="row"><span class="pill">Owner-submitted</span><span class="pill">Owner claimed</span><span class="pill">Website confirmed</span></div>
+          <div class="split"><span class="mute">Last confirmed by owner</span><strong>Not shown on this example</strong></div>
+          <div class="split"><span class="mute">Reviews or community feedback</span><strong>No reviews yet</strong></div>
+          <div class="row"><button class="btn" disabled>Contact</button><a class="btn primary" href="/contact?topic=inaccurate">Report listing</a></div>
+          <p class="mute" style="font-size:0.75rem">Contact is disabled here because this is not a published listing. A real profile shows the contact method the owner chose to make public.</p>
+        </article>
+        <ol class="notes">
+          <li class="item"><strong>1. Name and category.</strong> <span class="soft">Written by the person who submitted the listing.</span></li>
+          <li class="item"><strong>2. Status labels.</strong> <span class="soft">Readable without hovering. A label is not a quality score.</span></li>
+          <li class="item"><strong>3. Confirmation date.</strong> <span class="soft">Appears only after an owner reconfirms. This example has none.</span></li>
+          <li class="item"><strong>4. Feedback.</strong> <span class="soft">Shown only after a person submits it. Nothing is invented here.</span></li>
+          <li class="item"><strong>5. Report.</strong> <span class="soft">A report is community reported. It is not proof of an investigation.</span></li>
+        </ol>
+      </div>
+    </section>
+
+    <section class="section" id="statuses">
+      <header class="head">
+        <h2>Listing Statuses</h2>
+        <p class="sub">Each label is text plus an icon. Color is not the only cue. None of these means CrossLinkd certified the organization.</p>
+      </header>
+      <dl class="grid statuses">
+        <div class="item"><dt><span class="pill">Community-listed</span></dt><dd class="soft" style="font-size:0.875rem">The listing is in the directory. That does not mean CrossLinkd investigated the organization.</dd></div>
+        <div class="item"><dt><span class="pill">Owner-submitted</span></dt><dd class="soft" style="font-size:0.875rem">The business provided the listing information.</dd></div>
+        <div class="item"><dt><span class="pill">Owner claimed</span></dt><dd class="soft" style="font-size:0.875rem">Someone demonstrated control of the listing or business contact channel.</dd></div>
+        <div class="item"><dt><span class="pill">Website confirmed</span></dt><dd class="soft" style="font-size:0.875rem">The owner demonstrated control of the listed website or email address.</dd></div>
+        <div class="item"><dt><span class="pill">Recently confirmed by owner</span></dt><dd class="soft" style="font-size:0.875rem">The owner recently reconfirmed that the profile information is current.</dd></div>
+        <div class="item"><dt><span class="pill">Community reported</span></dt><dd class="soft" style="font-size:0.875rem">A user submitted feedback or reported a concern.</dd></div>
+        <div class="item"><dt><span class="pill">Needs update</span></dt><dd class="soft" style="font-size:0.875rem">Some information may be outdated.</dd></div>
+        <div class="item"><dt><span class="pill">Inactive</span></dt><dd class="soft" style="font-size:0.875rem">The listing is no longer actively maintained.</dd></div>
+      </dl>
+    </section>
+
+    <section class="section">
+      <header class="head">
+        <h2>For business owners</h2>
+        <p class="sub">Free forever for the basic listing. No credit card required.</p>
+      </header>
+      <ol class="grid owners">
+        <li class="item owner"><span class="num" aria-hidden="true">1</span><span><h3>Submit a basic listing</h3><p class="soft" style="font-size:0.875rem">Name, type, and contact details. The basic listing is free. No credit card, and no identity documents.</p></span></li>
+        <li class="item owner"><span class="num" aria-hidden="true">2</span><span><h3>Provide accurate information</h3><p class="soft" style="font-size:0.875rem">You are responsible for the text, including any faith or credential statement.</p></span></li>
+        <li class="item owner"><span class="num" aria-hidden="true">3</span><span><h3>Receive a completeness review</h3><p class="soft" style="font-size:0.875rem">Missing fields may be flagged. This does not confirm Christian ownership, a license, or service quality.</p></span></li>
+        <li class="item owner"><span class="num" aria-hidden="true">4</span><span><h3>Claim or confirm the listing</h3><p class="soft" style="font-size:0.875rem">Show control of a contact channel. That status is Owner claimed, not a verification.</p></span></li>
+        <li class="item owner"><span class="num" aria-hidden="true">5</span><span><h3>Add more information</h3><p class="soft" style="font-size:0.875rem">Hours, service area, and a faith statement are optional. They stay self-reported.</p></span></li>
+        <li class="item owner"><span class="num" aria-hidden="true">6</span><span><h3>Keep the profile current</h3><p class="soft" style="font-size:0.875rem">Edit claimed listings from the dashboard when details change.</p></span></li>
+        <li class="item owner"><span class="num" aria-hidden="true">7</span><span><h3>Respond to corrections or reports</h3><p class="soft" style="font-size:0.875rem">Readers can flag a problem. You can correct the profile or reply through the contact form.</p></span></li>
+      </ol>
+      <div class="grid three" style="margin-top:0.875rem">
+        <div class="item soft" style="font-size:0.875rem"><strong style="color:var(--text)">Required.</strong> Listing type, name, and this attestation: “I confirm that the information submitted is accurate to the best of my knowledge.” No identity documents, licenses, or private religious records are requested.</div>
+        <div class="item soft" style="font-size:0.875rem"><strong style="color:var(--text)">Public.</strong> Only contact fields you mark as public appear on the profile. A faith statement is optional and self-reported.</div>
+        <div class="item soft" style="font-size:0.875rem"><strong style="color:var(--text)">After submit.</strong> A complete form may publish as owner-submitted. That is not guaranteed if required fields are missing, and it is not an endorsement. Update a claimed listing in the dashboard, or <a href="/contact?topic=removal">request removal</a>.</div>
+      </div>
+    </section>
+
+    <section class="section close">
+      <h2>Help build a clearer, more transparent directory for your community.</h2>
+    </section>
+  </main>
+</body>
+</html>

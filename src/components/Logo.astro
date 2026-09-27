@@ -5,13 +5,13 @@
 interface Props { size?: number; showWordmark?: boolean; }
 const { size = 40, showWordmark = true } = Astro.props;
 ---
-<a href="/" class="group flex items-center gap-2.5" aria-label="CrossLinkd home">
+<a href="/" class="group flex min-w-0 max-w-full items-center gap-2.5" aria-label="CrossLinkd home">
   <img
     src="/brand/mark.png"
     alt=""
     width={Math.round(size * 1.38)}
     height={size}
-    class="logo-mark light-only transition-transform duration-200 group-hover:scale-105"
+    class="logo-mark light-only shrink-0 transition-transform duration-200 group-hover:scale-105"
     style={`height:${size}px;width:auto`}
     aria-hidden="true"
   />
@@ -20,14 +20,25 @@ const { size = 40, showWordmark = true } = Astro.props;
     alt=""
     width={Math.round(size * 1.38)}
     height={size}
-    class="logo-mark dark-only transition-transform duration-200 group-hover:scale-105"
+    class="logo-mark dark-only shrink-0 transition-transform duration-200 group-hover:scale-105"
     style={`height:${size}px;width:auto`}
     aria-hidden="true"
   />
   {showWordmark && (
-    <span class="leading-tight">
+    <span class="min-w-0 leading-tight">
       <span class="logo-wordmark block text-[16px] font-extrabold tracking-tight sm:text-[17px]" style="color:var(--text)">Cross<span style="color:var(--logo-gold)">Linkd</span></span>
-      <span class="hidden text-[11px] font-medium md:block" style="color:var(--text-mute)">Find a business you can trust</span>
+      <span class="logo-tagline hidden max-w-full whitespace-normal text-[11px] font-medium leading-snug md:block" style="color:var(--text-mute)">Community-listed<br />Christian businesses</span>
     </span>
   )}
 </a>
+<style>
+  .logo-tagline {
+    white-space: normal;
+    overflow-wrap: break-word;
+    max-width: 100%;
+  }
+  .logo-tagline br {
+    display: block;
+    content: "";
+  }
+</style>

@@ -5,4 +5,4 @@ Disallow: /admin/
 Disallow: /dashboard/
 Disallow: /auth/
 
-Sitemap: https://crosslinkd.example.com/sitemap.xml
+Sitemap: https://cross-linkd.vercel.app/sitemap.xml

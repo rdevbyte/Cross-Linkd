@@ -133,13 +133,23 @@ export function searchListings(rawFilters: Partial<SearchFilters> & { q?: string
 
   // Mutable filter set — the "near" field may add city/region constraints.
   const filters: Partial<SearchFilters> & { q?: string; near?: string } = { ...rawFilters };
-  const loc = resolveLocation(rawFilters.near);
-  if (loc?.city) {
-    filters.city = loc.city.city;
-    filters.region = loc.city.region;
-    if (rawFilters.radiusMi === undefined) filters.radiusMi = 25;
-  } else if (loc?.state) {
-    filters.region = loc.state.abbr;
+  const nearRaw = (rawFilters.near ?? '').trim();
+  let nearText = '';
+  if (/^(online|online only|online-only)$/i.test(nearRaw)) {
+    filters.onlineOnly = true;
+  } else {
+    const loc = resolveLocation(nearRaw || undefined);
+    if (loc?.city) {
+      filters.city = loc.city.city;
+      filters.region = loc.city.region;
+      if (rawFilters.radiusMi === undefined) filters.radiusMi = 25;
+    } else if (loc?.state) {
+      filters.region = loc.state.abbr;
+    } else if (nearRaw) {
+      // Match published places the focus-city list does not know, including
+      // locations outside the United States. Do not treat an unknown place as "show everything."
+      nearText = nearRaw.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+    }
   }
 
   let pool: SearchHit[] = [...extra, ...(includeSamples() ? SAMPLE_LISTINGS : [])].map((l) => ({ ...l, score: 0, matchedTags: [] as string[] }));
@@ -190,6 +200,17 @@ export function searchListings(rawFilters: Partial<SearchFilters> & { q?: string
   if (f.minRating) pool = pool.filter((l) => l.rating >= f.minRating!);
   if (f.price?.length) pool = pool.filter((l) => l.priceRange && f.price!.includes(l.priceRange));
   if (f.languages?.length) pool = pool.filter((l) => f.languages!.every((x) => l.languages.includes(x)));
+  if (nearText) {
+    const tokens = nearText.split(' ').filter((t) => t.length > 1);
+    pool = pool.filter((l) => {
+      const blob = [l.city, l.region, l.country, l.postalCode]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, ' ');
+      return tokens.every((t) => blob.includes(t));
+    });
+  }
   if (f.accessibility?.length) pool = pool.filter((l) => f.accessibility!.every((x) =>
     l.accessibility.some((a) => a.toLowerCase().includes(x.toLowerCase()))));
 
@@ -253,8 +274,8 @@ function buildAltLinks(filters: Partial<SearchFilters> & { q?: string; near?: st
     if (!links.some((l) => l.href === href)) links.push({ label, href });
   }
   if (links.length < 4) {
-    links.push({ label: 'Verified businesses only', href: '/search?verifiedOnly=1' });
     links.push({ label: 'Newest listings', href: '/search?sort=newest' });
+    links.push({ label: 'Browse industries', href: '/browse/industries' });
   }
   return links.slice(0, 4);
 }
@@ -263,7 +284,7 @@ function buildSuggestions(q: string, hitCount: number): string[] {
   if (hitCount > 0 || !q.trim()) {
     return ['bakery #Baptist', 'Christian counselor', 'plumber Dallas', 'accountant Nashville'].filter((s) => s !== q).slice(0, 3);
   }
-  return ['Try removing a hashtag', 'Try a different city', 'Browse all verified businesses'];
+  return ['Try removing a hashtag', 'Try a different city', 'Browse owner-submitted listings'];
 }
 
 export function autocompleteSuggestions(

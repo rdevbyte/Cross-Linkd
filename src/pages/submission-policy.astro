@@ -10,16 +10,16 @@ const seo = {
 <BaseLayout user={user} seo={seo}>
   <div class="mx-auto max-w-3xl px-4 py-12">
     <h1 class="text-3xl font-extrabold">Business submission policy</h1>
-    <p class="section-sub">What we accept, what we reject, and what gets a listing removed. Written in plain language; enforced by humans.</p>
+    <p class="section-sub">What we accept, what we reject, and what gets a listing removed. A rejection is a directory decision, not a verification of the listings that remain.</p>
 
     <div class="prose-custom mt-8 space-y-6 text-[15px] leading-relaxed" style="color:var(--text-soft)">
       <div>
         <h2 class="text-xl font-extrabold" style="color:var(--text)">What we accept</h2>
         <ul class="mt-2 list-disc space-y-1.5 pl-5">
-          <li>Businesses where current ownership identifies as Christian and can attest to it when requesting the Christian-owned badge.</li>
-          <li>Churches, ministries, nonprofits, and Christian schools with verifiable leadership and public activity.</li>
-          <li>Individual professionals (counselors, attorneys, tradespeople) who operate under their own name and credentials.</li>
-          <li>Online businesses, if ownership and contact details check out.</li>
+          <li>Businesses whose owners identify them as Christian-owned. That identification is owner-submitted. CrossLinkd does not independently confirm it.</li>
+          <li>Churches, ministries, nonprofits, and Christian schools that provide a public name and a way to contact them.</li>
+          <li>Individual professionals who list under their own name. Any credential they mention is their statement, not a CrossLinkd check.</li>
+          <li>Online businesses that provide ownership contact details. Those details are not independently verified by default.</li>
         </ul>
       </div>
       <div>
@@ -27,37 +27,34 @@ const seo = {
         <ul class="mt-2 list-disc space-y-1.5 pl-5">
           <li>Duplicate listings for the same business (submit one; we will link additional locations).</li>
           <li>Incomplete submissions: no working phone, no service area or address, template filler text.</li>
-          <li>Businesses whose Christian identity claim is clearly a marketing costume with no substance behind it — we will ask what it means in practice.</li>
+          <li>Listings that are incomplete or that contradict themselves in an obvious way. CrossLinkd does not judge the sincerity of a faith claim.</li>
           <li>Anything illegal, or that violates our <a href="/guidelines" class="underline">community guidelines</a>.</li>
         </ul>
       </div>
       <div>
         <h2 class="text-xl font-extrabold" style="color:var(--text)">Quality standards for published listings</h2>
         <ul class="mt-2 list-disc space-y-1.5 pl-5">
-          <li>Accurate name, category, hours, and contact details — checked at review and re-checked periodically.</li>
+          <li>Name, category, hours, and contact details should be filled in. A completeness review does not confirm that they are still true.</li>
           <li>Descriptions describe the business, not a search-engine keyword list.</li>
           <li>Reviews follow the <a href="/reviews-policy" class="underline">review &amp; moderation policy</a>; owners may not review their own business.</li>
         </ul>
       </div>
       <div>
-        <h2 class="text-xl font-extrabold" style="color:var(--text)">What gets a listing removed</h2>
+        <h2 id="removal" class="text-xl font-extrabold" style="color:var(--text)">Correction and removal</h2>
+        <p class="mt-2">To ask for a correction or removal, use the <a href="/contact?topic=report" class="underline">contact form</a>. A request is community reported. It is not proof that CrossLinkd has already investigated the business. Copyright reports use the <a href="/copyright" class="underline">copyright page</a>.</p>
         <ul class="mt-2 list-disc space-y-1.5 pl-5">
-          <li>Ownership change without re-attestation (badges come off; listing may stay unbadged).</li>
-          <li>Lapsed professional licenses.</li>
-          <li>Repeated inability to confirm the business is real and reachable.</li>
+          <li>A listing the owner no longer maintains may be marked Inactive.</li>
+          <li>A license claim that the owner cannot explain may be removed from the text. CrossLinkd does not itself check license databases.</li>
+          <li>Repeated inability to reach the contact channel the owner provided.</li>
           <li>Fraud, misrepresentation, or patterns in reviews that suggest deception.</li>
         </ul>
         <p class="mt-2">Owners are always told why, and can respond through the <a href="/appeals" class="underline">appeals process</a>.</p>
       </div>
       <div>
         <h2 class="text-xl font-extrabold" style="color:var(--text)">Timing</h2>
-        <p class="mt-2">We review submissions within one business day. If we decline, we say exactly why — most issues are fixable and resubmission is welcome.</p>
+        <p class="mt-2">A listing may publish as owner-submitted before anyone reviews it for completeness. If we decline or ask for a fix, we should say why. Do not read silence as a verification.</p>
       </div>
     </div>
 
-    <div class="card mt-8 p-6">
-      <a href="/add-listing" class="btn btn-primary">List Your Business</a>
-      <p class="mt-2 text-xs" style="color:var(--text-mute)">Free to list · verification always free</p>
-    </div>
   </div>
 </BaseLayout>

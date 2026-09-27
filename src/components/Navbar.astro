@@ -8,9 +8,9 @@ const { user } = Astro.props as { user?: { displayName: string; role: string } |
 const links = [
   { href: '/search', label: 'Browse Businesses' },
   { href: '/browse/industries', label: 'Categories' },
-  { href: '/browse/locations', label: 'States' },
+  { href: '/browse/locations', label: 'Locations' },
   { href: '/how-it-works', label: 'How It Works' },
-  { href: '/verification', label: 'Verification' },
+  { href: '/listing-statuses', label: 'Listing Statuses' },
   { href: '/contact', label: 'Contact' },
 ];
 const menuSecondary = [
@@ -22,8 +22,8 @@ const menuSecondary = [
 ---
 <header class="sticky top-0 z-40 border-b" style="background:var(--bg);border-color:var(--border)">
   <!-- Balanced three-zone grid: logo / centered nav / actions -->
-  <div class="mx-auto grid h-16 max-w-[1400px] grid-cols-[auto_1fr_auto] items-center gap-2 px-4 sm:gap-3 sm:px-6">
-    <div class="justify-self-start">
+  <div class="mx-auto grid h-auto min-h-16 max-w-[1400px] grid-cols-[minmax(0,auto)_minmax(0,1fr)_auto] items-center gap-2 overflow-visible px-4 py-2 sm:gap-3 sm:px-6">
+    <div class="min-w-0 justify-self-start">
       <Logo />
     </div>
 

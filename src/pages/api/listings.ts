@@ -2,6 +2,41 @@ import type { APIRoute } from 'astro';
 import { hasDatabase } from '@/db/client';
 import { listingInputSchema } from '@/lib/validation';
 import { saveListing } from '@/lib/submissions';
+import { honeypotTripped, listingSpamReason, publishBlockReason } from '@/lib/formGuards.mjs';
+import { rateLimit } from '@/lib/rateLimit.mjs';
+
+function clientIp(request: Request) {
+  return request.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
+    || request.headers.get('x-real-ip')
+    || 'unknown';
+}
+
+function listingGate(
+  request: Request,
+  user: { id?: string } | null | undefined,
+  data: { email?: string | null; city?: string | null; region?: string | null; isOnlineOnly?: boolean; name?: string | null; description?: string | null; tagline?: string | null },
+  attestation: unknown,
+  terms: unknown,
+  honeypot: unknown,
+) {
+  if (honeypotTripped(honeypot)) return { status: 400, message: 'Please check your entries and try again.' };
+  const key = user?.id ? `publish:user:${user.id}` : `publish:ip:${clientIp(request)}`;
+  if (!rateLimit(key, user?.id ? 30 : 3, 60 * 60 * 1000)) {
+    return { status: 429, message: 'Too many listing submissions from this network. Wait an hour and try again.' };
+  }
+  const spam = listingSpamReason(`${data.name ?? ''} ${data.tagline ?? ''} ${data.description ?? ''}`);
+  if (spam) return { status: 400, message: spam };
+  const message = publishBlockReason({
+    user,
+    email: data.email,
+    city: data.city,
+    region: data.region,
+    isOnlineOnly: data.isOnlineOnly,
+    attestation,
+    terms,
+  });
+  return message ? { status: 400, message } : null;
+}
 
 /** POST /api/listings — create a listing (published immediately). Supports form data and JSON. */
 export const POST: APIRoute = async ({ request, locals, redirect }) => {
@@ -33,6 +68,13 @@ export const POST: APIRoute = async ({ request, locals, redirect }) => {
         { status: 400, headers: { 'Content-Type': 'application/json' } },
       );
     }
+    const jsonGate = listingGate(request, locals.user, parsed.data, body.attestation, body.terms, body.hp_company);
+    if (jsonGate) {
+      return new Response(JSON.stringify({ ok: false, error: jsonGate.message }), {
+        status: jsonGate.status,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
 
     let createdSlug = '';
     if (hasDatabase()) {
@@ -41,7 +83,7 @@ export const POST: APIRoute = async ({ request, locals, redirect }) => {
         const result = await saveListing(ownerId, parsed.data, { action: 'publish' });
         createdSlug = result.slug;
       } catch (err) {
-        console.error('[api/listings] json insert failed:', err);
+        console.error('[api/listings] json insert failed', err instanceof Error ? err.name : 'error');
         return new Response(JSON.stringify({ ok: false, error: 'Could not save listing.' }), {
           status: 500,
           headers: { 'Content-Type': 'application/json' },
@@ -97,6 +139,8 @@ export const POST: APIRoute = async ({ request, locals, redirect }) => {
     region: get('region'),
     postalCode: get('postalCode'),
     isOnlineOnly: form.get('isOnlineOnly') === '1',
+    isHiring: form.get('isHiring') === '1',
+    careersUrl: get('careersUrl'),
     priceRange: get('priceRange'),
     statementOfFaith: get('statementOfFaith'),
     industries: get('industrySlug') ? [get('industrySlug')] : (get('industries') ? [get('industries')] : []),
@@ -108,6 +152,8 @@ export const POST: APIRoute = async ({ request, locals, redirect }) => {
     return redirect(`/add-listing?error=${encodeURIComponent(parsed.error.errors[0]?.message ?? 'Please check your entries.')}`, 303);
   }
   const d = parsed.data;
+  const formGate = listingGate(request, locals.user, d, form.get('attestation'), form.get('terms'), form.get('hp_company'));
+  if (formGate) return redirect(`/add-listing?error=${encodeURIComponent(formGate.message)}`, 303);
 
   let createdSlug = '';
   if (hasDatabase()) {
@@ -116,11 +162,9 @@ export const POST: APIRoute = async ({ request, locals, redirect }) => {
       const result = await saveListing(ownerId, d, { action: 'publish' });
       createdSlug = result.slug;
     } catch (err) {
-      console.error('[api/listings] insert failed:', err);
+      console.error('[api/listings] insert failed:', err instanceof Error ? err.name : 'error');
       return redirect(`/add-listing?error=${encodeURIComponent('Something went wrong saving your listing. Please try again.')}`, 303);
     }
-  } else {
-    console.log('[demo] listing published:', d.name, `by ${locals.user?.email ?? 'guest'}`);
   }
 
   return redirect(`/add-listing?success=1${createdSlug ? `&slug=${encodeURIComponent(createdSlug)}` : ''}`, 303);

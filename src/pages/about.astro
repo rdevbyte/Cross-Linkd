@@ -6,26 +6,26 @@ const team: { name: string; role: string; bio: string; hue: number }[] = [
   {
     name: 'Tom Whitaker',
     role: 'Founder',
-    bio: 'Spent 12 years in local software and four years helping his church vet contractors for facility projects. Started CrossLinkd after watching neighbors get burned by directories that list anyone who pays.',
+    bio: 'Founder. CrossLinkd is a community directory. It does not independently verify the businesses it lists.',
     hue: 36,
   },
   {
     name: 'Grace Okafor',
-    role: 'Head of Review',
-    bio: 'Former paralegal. Leads the two-person team that checks every listing, calls every phone number, and reads every verification document. Says no about 1 in 5 times.',
+    role: 'Operations',
+    bio: 'Named on this page by the site owner. CrossLinkd does not currently run an independent verification desk for faith, ownership, licenses, or credentials.',
     hue: 160,
   },
   {
     name: 'Diego Ramos',
     role: 'Community & Moderation',
-    bio: 'Handles reviews, reports, and appeals. Answers the contact inbox within one business day. Former food-bank volunteer coordinator in Phoenix.',
+    bio: 'Named on this page by the site owner. Reports and appeals are described on the appeals page. A reply-time promise is not confirmed here.',
     hue: 200,
   },
 ];
 
 const seo = {
   title: 'About CrossLinkd — Who We Are & How We Work',
-  description: 'Meet the small team behind CrossLinkd, why we built a hand-reviewed directory of Christian-owned businesses, and exactly how the directory is managed.',
+  description: 'CrossLinkd is a community directory of owner-submitted Christian businesses, churches, and ministries. It does not independently verify listings.',
   path: '/about',
 };
 ---
@@ -38,25 +38,26 @@ const seo = {
       <p>
         <strong style="color:var(--text)">Why we built this.</strong> People want to hire businesses that share their values, and Christian
         business owners want to be findable. But "Christian directory" searches turn up sites where anyone can pay for a listing and nobody
-        checks it. We thought that could be done better: fewer listings, checked by hand, with badges that show their dates.
+        checks it. CrossLinkd does not solve that by claiming to check faith, ownership, or licenses. It is a place to read owner-submitted listings and do your own diligence.
       </p>
       <p>
-        <strong style="color:var(--text)">What we are.</strong> CrossLinkd is a national directory and discovery service connecting
-        Christian-owned businesses, churches, ministries, and professionals across the United States. We check every listing before it goes live.
+        <strong style="color:var(--text)">What we are.</strong> CrossLinkd is a community directory of Christian businesses, churches, ministries,
+        and professionals. Listings are owner-submitted and may be in the United States or elsewhere. Publication is not a check that the listing is accurate.
       </p>
       <p>
         <strong style="color:var(--text)">What we are not.</strong> We are not a denomination and we do not judge anyone's doctrine. We describe
-        traditions neutrally and never rank them. A badge means we checked identity and evidence — nothing more. Directory inclusion is not
-        an endorsement.
+        traditions neutrally and never rank them. We do not independently verify faith, ownership, licenses, certifications, credentials, or service quality.
+        Directory inclusion is not an endorsement.
       </p>
       <p>
-        <strong style="color:var(--text)">How we operate.</strong> Listing, claiming, and verification are free — CrossLinkd does not charge
-        for anything right now. We do not sell your data and we do not run third-party ad networks. If we ever introduce paid features,
+        <strong style="color:var(--text)">How we operate.</strong> Listing and claiming are free right now. CrossLinkd does not charge for a verification,
+        because it does not offer one. We do not sell your data and we do not run third-party ad networks. If we ever introduce paid features,
         they will be clearly explained here first.
       </p>
     </div>
 
     <h2 class="mt-12 text-2xl font-extrabold">The team</h2>
+    <p class="mt-2 text-sm" style="color:var(--text-mute)">Names below still need the site owner to confirm they should be published. Earlier bios claimed a verification operation this directory does not have. Those claims have been removed.</p>
     <div class="mt-4 grid gap-4 sm:grid-cols-3">
       {team.map((m) => (
         <div class="card p-5 text-center">
@@ -70,16 +71,15 @@ const seo = {
 
     <h2 class="mt-12 text-2xl font-extrabold">How the directory is managed</h2>
     <div class="prose-custom mt-3 space-y-3 text-[15px] leading-relaxed" style="color:var(--text-soft)">
-      <p>Every listing passes a human review before publication — see <a href="/how-it-works" class="underline">how it works</a>. Reviews are screened under our <a href="/reviews-policy" class="underline">review &amp; moderation policy</a>, with a separate reviewer for <a href="/appeals" class="underline">appeals</a>. Our <a href="/editorial-policy" class="underline">editorial policy</a> governs the guides we publish, and the <a href="/submission-policy" class="underline">submission policy</a> explains what we accept and what we remove.</p>
-      <p>We re-verify badges periodically and retire listings we cannot keep current. Owners can claim their listing and update it anytime.</p>
+      <p>A submission may be reviewed for completeness and obvious inconsistencies — see <a href="/how-it-works" class="underline">how it works</a>. That is not an independent verification. Reviews are screened under our <a href="/reviews-policy" class="underline">review &amp; moderation policy</a>. Appeals are requested on the <a href="/appeals" class="underline">appeals page</a>. An appeal is not a verification. Our <a href="/editorial-policy" class="underline">editorial policy</a> governs the guides we publish, and the <a href="/submission-policy" class="underline">submission policy</a> explains what we accept and what we remove.</p>
+      <p>Owners can claim a listing and update it. If a listing is no longer maintained, the accurate status is Inactive, not verified.</p>
     </div>
 
     <div class="card mt-10 p-6">
       <h2 class="text-lg font-extrabold">Contact us</h2>
       <p class="mt-2 text-sm leading-relaxed" style="color:var(--text-soft)">
-        Have questions, feedback, or need assistance? Reach out to our team using our contact form and we will reply within 1–2 business days.
+        Have questions, feedback, or need assistance? Use the contact form. A person can read a saved message. We do not promise a reply within 1–2 business days.
       </p>
-      <a href="/contact" class="btn btn-primary mt-4 !py-2 !text-sm">Send us a message</a>
     </div>
   </div>
 </BaseLayout>

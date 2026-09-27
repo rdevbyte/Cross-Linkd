@@ -1,17 +1,44 @@
 ---
 import BaseLayout from '@/layouts/BaseLayout.astro';
 const user = Astro.locals.user;
+const sent = Astro.url.searchParams.get('sent') === '1';
+const error = Astro.url.searchParams.get('error') ?? '';
+const seo = {
+  title: 'Appeals | CrossLinkd',
+  description: 'Ask for another look at a moderation decision. An appeal is not a verification and does not promise a reply time.',
+  path: '/appeals',
+};
 ---
-<BaseLayout user={user} seo={{ title: 'Appeals — CrossLinkd', description: 'How to appeal a moderation decision.', path: '/appeals' }}>
-  <div class="mx-auto max-w-3xl px-4 py-12">
-    <h1 class="text-3xl font-extrabold">Content appeals</h1>
-    <div class="mt-6 space-y-4 text-[15px] leading-relaxed" style="color:var(--text-soft)">
-      <p>Every moderation decision can be appealed to a reviewer who was not involved in the original decision.</p>
-      <ol class="list-decimal space-y-2 pl-5">
-        <li>Submit an appeal within 30 days via the <a href="/contact?topic=appeals" class="underline">contact form</a> with your reference ID.</li>
-        <li>A separate reviewer re-examines the content, evidence, and policy within 5 business days.</li>
-        <li>You receive a written decision: upheld, reversed, or modified. Serious cases may be escalated to a super administrator.</li>
-      </ol>
+<BaseLayout user={user} seo={seo}>
+  <div class="mx-auto max-w-xl px-4 py-12">
+    <h1 class="text-3xl font-extrabold">Appeals</h1>
+    <p class="section-sub">Ask for another look at a moderation decision. An appeal is not a verification, and it does not turn a listing into a recommendation.</p>
+
+    <div class="card mt-4 space-y-3 p-5 text-sm leading-relaxed" style="color:var(--text-soft)">
+      <p>Include the listing or review, the decision you are asking about, and what you want changed. Do not send identity documents, licenses, or private religious records.</p>
+      <p>The request is saved when the database is connected. A person can read it from that inbox. This page does not promise that a separate reviewer will reply, or that the decision will change.</p>
     </div>
+
+    {sent ? (
+      <div class="card mt-6 p-6" style="border-left:4px solid var(--teal)" role="status">
+        <p class="font-bold">Appeal saved</p>
+        <p class="mt-1 text-sm" style="color:var(--text-soft)">A person can read the saved request. Saving it does not reverse the decision or verify the organization.</p>
+      </div>
+    ) : (
+      <form method="POST" action="/api/contact" class="card mt-6 space-y-4 p-6">
+        <input type="hidden" name="topic" value="Appeal a moderation decision" />
+        <input type="hidden" name="return" value="/appeals" />
+        <p class="hp-field" aria-hidden="true"><label>Leave this blank<input type="text" name="hp_company" tabindex="-1" autocomplete="off" /></label></p>
+        {error && <p class="rounded-xl bg-red-500/10 p-3 text-sm font-medium text-red-700" role="alert">{error}</p>}
+        <div class="grid gap-4 sm:grid-cols-2">
+          <label class="text-sm font-medium">Name<input name="name" required class="input mt-1.5" value={user?.displayName ?? ''} autocomplete="name" /></label>
+          <label class="text-sm font-medium">Email<input name="email" type="email" required class="input mt-1.5" value={user?.email ?? ''} autocomplete="email" /></label>
+        </div>
+        <label class="block text-sm font-medium">What should be reviewed again?
+          <textarea name="message" required minlength="10" rows="6" class="input mt-1.5" placeholder="Name the listing or review, the decision, and what you want changed."></textarea>
+        </label>
+        <button class="btn btn-primary w-full !py-3" type="submit">Save appeal</button>
+      </form>
+    )}
   </div>
 </BaseLayout>

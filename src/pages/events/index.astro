@@ -9,14 +9,15 @@ const events: SampleEvent[] = (includeSamples() ? [...SAMPLE_EVENTS] : [])
   .sort((a, b) => a.startsInDays - b.startsInDays);
 const cats = includeSamples() ? [...new Set(SAMPLE_EVENTS.map((e) => e.category))] : [];
 ---
-<BaseLayout user={user} seo={{ title: 'Christian Events — Conferences, Worship Nights, Retreats', description: 'Find church services, conferences, concerts, retreats, volunteer opportunities, and more.', path: '/events' }}>
+<BaseLayout user={user} seo={{ title: 'Events — CrossLinkd', description: 'Events submitted to the directory. An event listing is not an endorsement of the host.', path: '/events', noindex: events.length === 0 }}>
   <div class="mx-auto max-w-7xl px-4 py-10">
     <h1 class="text-3xl font-extrabold">Upcoming events</h1>
-    <p class="section-sub">Worship nights, conferences, retreats, serve days, and gatherings across traditions.</p>
+    <p class="section-sub">{events.length > 0 ? 'Events submitted to the directory. A listing is not an endorsement of the host.' : 'No events are published right now. This page does not invent conferences or worship nights.'}</p>
     <div class="mt-4 flex flex-wrap gap-2">
       <a href="/events" class={`chip ${!cat ? 'chip-active' : ''}`}>All</a>
       {cats.map((c) => <a href={`/events?category=${encodeURIComponent(c)}`} class={`chip ${cat === c ? 'chip-active' : ''}`}>{c}</a>)}
     </div>
+    {events.length === 0 && <p class="card mt-6 p-6 text-sm" style="color:var(--text-soft)">When a host submits an event, it will appear here as community-listed, not as a CrossLinkd endorsement.</p>}
     <div class="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3" data-animate="grid">
       {events.map((e) => (
         <a href={`/events/${e.slug}`} class="card card-hover overflow-hidden">

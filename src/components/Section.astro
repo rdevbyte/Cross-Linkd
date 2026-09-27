@@ -1,16 +1,19 @@
 ---
-interface Props { title?: string; sub?: string; href?: string; linkLabel?: string; id?: string; children?: any }
-const { title, sub, href, linkLabel = 'View all →', id } = Astro.props;
+interface Props {
+  title: string;
+  sub?: string;
+  href?: string;
+  linkLabel?: string;
+}
+const { title, sub, href, linkLabel } = Astro.props;
 ---
-<section id={id} class="mx-auto mt-14 max-w-7xl px-4" data-animate="reveal" aria-label={title ?? undefined}>
-  <div class="flex flex-wrap items-end justify-between gap-3">
-    {title && (
-      <div>
-        <h2 class="section-title">{title}</h2>
-        {sub && <p class="section-sub">{sub}</p>}
-      </div>
-    )}
-    {href && <a href={href} class="text-sm font-semibold hover:underline" style="color:var(--teal)">{linkLabel}</a>}
+<section class="mx-auto mt-12 max-w-7xl px-4">
+  <div class="mb-4 flex flex-wrap items-end justify-between gap-3">
+    <div>
+      <h2 class="text-2xl font-extrabold">{title}</h2>
+      {sub && <p class="mt-1 max-w-3xl text-sm leading-relaxed" style="color:var(--text-soft)">{sub}</p>}
+    </div>
+    {href && linkLabel && <a href={href} class="text-sm font-semibold underline">{linkLabel}</a>}
   </div>
-  <div class="mt-6"><slot /></div>
+  <slot />
 </section>

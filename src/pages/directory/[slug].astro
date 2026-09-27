@@ -2,20 +2,24 @@
 import BaseLayout from '@/layouts/BaseLayout.astro';
 import ListingCard from '@/components/ListingCard.astro';
 import FavoriteButton from '@/components/FavoriteButton';
+import StatusBadge from '@/components/StatusBadge.astro';
 import QRShare from '@/components/QRShare';
 import { type SampleListing, type SampleReview } from '@/data/listings';
 import { getPublicListings, findPublicListing } from '@/lib/publicListings';
 import { typeBySlug } from '@/data/listing-types';
 import { denominationBySlug } from '@/data/denominations';
 import { industryBySlug, categoryBySlug } from '@/data/industries';
-import { compact, timeAgo, monthYear, fullDate } from '@/lib/format';
+import { compact, timeAgo, fullDate } from '@/lib/format';
 import { localBusinessSchema, breadcrumbSchema } from '@/lib/seo';
+import { careersUrlError } from '@/lib/hiringUrl.mjs';
 
 const { slug } = Astro.params;
 const listing: SampleListing | undefined = slug ? await findPublicListing(slug) : undefined;
 if (!listing) return Astro.redirect('/search', 302);
 
 const user = Astro.locals.user;
+const sent = Astro.url.searchParams.get('sent') === '1';
+const formError = Astro.url.searchParams.get('error') ?? '';
 const type = typeBySlug(listing.typeSlug);
 const siteUrl = Astro.url.origin;
 const pageUrl = `${siteUrl}/directory/${listing.slug}`;
@@ -25,11 +29,8 @@ const related = (await getPublicListings()).filter((l) =>
 ).slice(0, 3);
 
 const badgeLabels: Record<string, [string, string]> = {
-  claimed: ['✓ Claimed', 'Owner manages this profile'],
-  christian_owned: ['Verified Christian-Owned', 'Ownership identity confirmed by signed attestation plus evidence'],
-  ministry: ['Faith-based Ministry', 'Ministry presence confirmed by our review team'],
-  church: ['Verified Church', 'Gathering details and leadership confirmed'],
-  professional_credential: ['Credential Verified', 'License or credential checked with the issuing authority'],
+  claimed: ['Owner claimed', 'Someone demonstrated control of the listing or a business contact channel. This is not a check of faith, ownership, or credentials.'],
+  christian_owned: ['Self-identified Christian-owned', 'The listing says it is Christian-owned. CrossLinkd has not independently confirmed that claim.'],
 };
 
 const reviews: SampleReview[] = listing.reviews ?? [];
@@ -38,14 +39,13 @@ const socialLinks: [string, string][] = listing.social
   : [];
 
 const socialIcons: Record<string, string> = { facebook: 'f', instagram: '◎', youtube: '▶', x: '𝕏', linkedin: 'in' };
-
-const verificationLine = listing.verified
-  ? `${monthYear(listing.lastVerifiedDaysAgo ?? 0)} — ${listing.verificationMethod ?? 'review-team check'}`
-  : null;
+const careersHref = listing.careersUrl && !careersUrlError(listing.careersUrl) ? listing.careersUrl : '';
 
 const seo = {
-  title: `${listing.name} — ${type.label} in ${listing.city}, ${listing.region} | CrossLinkd`,
-  description: `${listing.name}${listing.phone ? ` (${listing.phone})` : ''} — ${listing.tagline} Verified listing with hours, reviews, and service area.`,
+  title: listing.isOnlineOnly
+    ? `${listing.name} — Online listing | CrossLinkd`
+    : `${listing.name} — ${listing.city}, ${listing.region} | CrossLinkd`,
+  description: `${listing.name} — ${listing.tagline} Owner-submitted listing. CrossLinkd has not independently verified faith, ownership, licenses, or service quality.`.slice(0, 160),
   path: `/directory/${listing.slug}`,
   schema: [
     localBusinessSchema({
@@ -58,7 +58,7 @@ const seo = {
     breadcrumbSchema([
       { name: 'Home', url: siteUrl },
       { name: type.plural, url: `${siteUrl}/search?type=${type.slug}` },
-      { name: `Christian-owned in ${listing.city}, ${listing.region}`, url: `${siteUrl}/locations/${listing.city.toLowerCase().replace(/\s+/g, '-')}-${listing.region.toLowerCase()}` },
+      { name: `Listings in ${listing.city}, ${listing.region}`, url: `${siteUrl}/locations/${listing.city.toLowerCase().replace(/\s+/g, '-')}-${listing.region.toLowerCase()}` },
       { name: listing.name, url: pageUrl },
     ]),
   ],
@@ -107,19 +107,21 @@ const displayCategory = listing.customCategory || categoryMatch?.category?.name;
             </div>
           )}
           <p class="text-sm" style="color:var(--text-soft)">
-            ★ <strong>{listing.rating.toFixed(1)}</strong> ({listing.reviewCount} reviews) •
-            {compact(listing.recommendations)} recommendations •
-            {listing.isOnlineOnly ? 'Online — serves nationwide' : `${listing.city}, ${listing.region}`}
+            {listing.reviewCount > 0 ? (
+              <>★ <strong>{listing.rating.toFixed(1)}</strong> ({listing.reviewCount} reviews) • </>
+            ) : (
+              <>No reviews yet • </>
+            )}
+            {listing.recommendations > 0 ? `${compact(listing.recommendations)} community notes • ` : ''}
+            {listing.isOnlineOnly ? 'Online' : `${listing.city}, ${listing.region}`}
             {listing.priceRange ? ` • ${listing.priceRange}` : ''}
           </p>
           <div class="flex flex-wrap gap-1.5">
-            {listing.badges.map((b) => (
-              <span class="badge-verify" style="background:rgba(46,146,131,.14);color:var(--teal)" title={badgeLabels[b]?.[1] ?? b}>{badgeLabels[b]?.[0] ?? b}</span>
+            <StatusBadge name="Owner-submitted" definition="The business provided the listing information." />
+            {listing.badges.filter((b) => badgeLabels[b]).map((b) => (
+              <StatusBadge name={badgeLabels[b][0]} definition={badgeLabels[b][1]} />
             ))}
-            {verificationLine && (
-              <span class="badge-verify" style="background:var(--surface-2);color:var(--text-soft)" title={`Checked via ${listing.verificationMethod}`}>Verified {verificationLine}</span>
-            )}
-            {!listing.claimed && <a href={`/claim-listing?listing=${listing.slug}`} class="badge-verify hover:underline" style="background:rgba(216,149,34,.16);color:var(--text)">Unclaimed — own this? Claim it →</a>}
+            {!listing.claimed && <a href={`/claim-listing?listing=${listing.slug}`} class="btn btn-secondary !min-h-11 !px-3 !py-1.5 !text-xs">Unclaimed — own this? Claim it</a>}
           </div>
         </div>
         <div class="flex flex-wrap gap-2">
@@ -151,6 +153,7 @@ const displayCategory = listing.customCategory || categoryMatch?.category?.name;
 
         <section class="card p-6" aria-label="About">
           <h2 class="text-lg font-extrabold">About</h2>
+          <p class="mt-1 text-xs" style="color:var(--text-mute)">Profile text, credentials, and faith statements below are provided by the listing. CrossLinkd has not independently checked them.</p>
           <p class="mt-2 text-[15px] leading-relaxed" style="color:var(--text-soft)">{listing.description}</p>
           {listing.statementOfFaith && (
             <blockquote class="mt-4 rounded-2xl border-l-4 p-4 text-[15px] italic" style="border-color:var(--accent);background:var(--surface-2)">
@@ -187,16 +190,20 @@ const displayCategory = listing.customCategory || categoryMatch?.category?.name;
 
         <section class="card p-6" aria-label="Contact">
           <h2 class="text-lg font-extrabold">Contact {listing.name.split(' ')[0].length > 24 ? 'them' : listing.name.split(',')[0]}</h2>
+          {sent && <p class="mt-3 rounded-xl p-3 text-sm" style="background:rgba(46,146,131,.12)" role="status">Message saved. CrossLinkd does not automatically email the listing owner, and sending a message does not verify the listing.</p>}
+          {formError && <p class="mt-3 rounded-xl bg-red-500/10 p-3 text-sm font-medium text-red-700" role="alert">{formError}</p>}
           <form method="POST" action="/api/contact" class="mt-3 space-y-3">
             <input type="hidden" name="topic" value="Listing inquiry" />
             <input type="hidden" name="listing" value={listing.slug} />
+            <input type="hidden" name="return" value={`/directory/${listing.slug}`} />
+            <p class="hp-field" aria-hidden="true"><label>Leave this blank<input type="text" name="hp_company" tabindex="-1" autocomplete="off" /></label></p>
             <div class="grid gap-3 sm:grid-cols-2">
               <label class="text-sm font-medium">Your name<input name="name" required class="input mt-1" autocomplete="name" /></label>
               <label class="text-sm font-medium">Email or phone<input name="email" required class="input mt-1" autocomplete="email" /></label>
             </div>
             <label class="block text-sm font-medium">Message<textarea name="message" rows="3" required class="input mt-1" placeholder={`Hi — I found you on CrossLinkd and have a question about ${listing.services[0]?.toLowerCase() ?? 'your services'}.`}></textarea></label>
             <button class="btn btn-primary !py-2.5" type="submit">Send message</button>
-            <p class="text-xs" style="color:var(--text-mute)">Goes to the listing owner. Prefer talking? {listing.phone && <a href={`tel:${listing.phone}`} class="underline">Call {listing.phone}</a>}</p>
+            <p class="text-xs" style="color:var(--text-mute)">Saved for a person to read. CrossLinkd does not automatically email the listing owner. Prefer talking? {listing.phone && <a href={`tel:${listing.phone}`} class="underline">Call {listing.phone}</a>}</p>
           </form>
         </section>
 
@@ -211,7 +218,7 @@ const displayCategory = listing.customCategory || categoryMatch?.category?.name;
                 <div class="flex items-center gap-2">
                   <span class="flex h-9 w-9 items-center justify-center rounded-full text-sm font-bold" style="background:var(--surface-2)">{rev.name.charAt(0)}</span>
                   <div>
-                    <p class="text-sm font-bold">{rev.name} {rev.verified && <span class="badge-verify ml-1" style="background:rgba(46,146,131,.14);color:var(--teal)">✓ Verified visit</span>}</p>
+                    <p class="text-sm font-bold">{rev.name} <span class="badge-verify ml-1" style="background:var(--surface-2);color:var(--text-soft)">Community reported</span></p>
                     <p class="text-xs" style="color:var(--text-mute)">★ {rev.rating}.0 • {timeAgo(rev.daysAgo)}</p>
                   </div>
                 </div>
@@ -253,6 +260,15 @@ const displayCategory = listing.customCategory || categoryMatch?.category?.name;
 
       <!-- Sidebar -->
       <aside class="space-y-4">
+        {listing.isHiring && (
+          <div class="card p-5">
+            <h2 class="font-extrabold">Hiring</h2>
+            <p class="mt-2 text-sm" style="color:var(--text-soft)">This company says it is hiring. That statement was provided by the listing.</p>
+            {careersHref && (
+              <a href={careersHref} class="btn btn-secondary mt-3 !min-h-11" target="_blank" rel="noopener noreferrer">View open positions</a>
+            )}
+          </div>
+        )}
         {!listing.isOnlineOnly && (
           <div class="card p-5">
             <h2 class="font-extrabold">Location</h2>
@@ -260,12 +276,18 @@ const displayCategory = listing.customCategory || categoryMatch?.category?.name;
           </div>
         )}
         <div class="card p-5">
-          <h2 class="font-extrabold">Verification</h2>
-          <ul class="mt-2 space-y-1.5 text-sm" style="color:var(--text-soft)">
-            {listing.badges.length ? listing.badges.map((b) => <li>✓ {badgeLabels[b]?.[1] ?? b}</li>) : <li>Not yet verified — <a href="/verification" class="underline">what this means</a></li>}
+          <h2 class="font-extrabold">Listing status</h2>
+          <ul class="mt-3 space-y-2 text-sm" style="color:var(--text-soft)">
+            <li class="flex flex-wrap items-center gap-2"><StatusBadge name="Owner-submitted" /> The business provided the listing information.</li>
+            <li class="flex flex-wrap items-center gap-2">
+              {listing.claimed
+                ? <><StatusBadge name="Owner claimed" /> Someone demonstrated control of a contact channel. This is not a verification.</>
+                : <><StatusBadge name="Not claimed" /> Claiming shows control of a contact channel. It is not a verification.</>}
+            </li>
+            <li>CrossLinkd has not independently verified faith, ownership, licenses, credentials, or service quality.</li>
           </ul>
-          {verificationLine && <p class="mt-2 text-xs" style="color:var(--text-mute)">Last checked {fullDate(listing.lastVerifiedDaysAgo ?? 0)} · method: {listing.verificationMethod ?? 'review-team check'}. Badges are re-checked periodically.</p>}
-          <a href="/verification" class="mt-3 inline-block text-sm font-semibold hover:underline" style="color:var(--teal)">What verification means →</a>
+          <a href="/how-it-works#statuses" class="mt-3 inline-flex min-h-11 items-center text-sm font-semibold underline" style="color:var(--teal)">What these statuses mean</a>
+          <a href="/contact?topic=inaccurate" class="mt-1 block text-sm font-semibold underline" style="color:var(--teal)">Report inaccurate information</a>
         </div>
         <div class="card p-5">
           <h2 class="font-extrabold">Details</h2>

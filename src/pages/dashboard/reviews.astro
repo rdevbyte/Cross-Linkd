@@ -40,7 +40,7 @@ if (hasDatabase()) {
 
       userReviews = rows.map((r) => ({
         id: r.id,
-        name: 'Verified Reviewer',
+        name: 'Community reviewer',
         listingName: r.listingName,
         rating: r.rating,
         body: r.body ?? '',

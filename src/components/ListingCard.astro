@@ -1,7 +1,8 @@
 ---
 import FavoriteButton from './FavoriteButton';
+import StatusBadge from './StatusBadge.astro';
 import type { SampleListing } from '@/data/listings';
-import { compact, timeAgo, monthYear } from '@/lib/format';
+import { compact, timeAgo } from '@/lib/format';
 
 interface Props { listing: SampleListing; distanceMiles?: number; sponsored?: boolean }
 const { listing: l, distanceMiles, sponsored = false } = Astro.props;
@@ -9,8 +10,8 @@ const { listing: l, distanceMiles, sponsored = false } = Astro.props;
 const artUid = String(l.id).replace(/[^a-zA-Z0-9_-]/g, '') || 'card';
 const glowDelay = (-((Array.from(String(l.id)).reduce((a, c) => a + c.charCodeAt(0), 0) * 7) % 75) / 10).toFixed(1);
 const badgeLabels: Record<string, string> = {
-  claimed: '✓ Claimed', christian_owned: '✓ Christian-Owned', ministry: '✓ Faith-based Ministry',
-  church: '✓ Church', professional_credential: '✓ Credential Verified',
+  claimed: 'Owner claimed',
+  christian_owned: 'Self-identified Christian-owned',
 };
 ---
 <article class="card card-hover card-traced relative flex flex-col overflow-hidden">
@@ -91,37 +92,36 @@ const badgeLabels: Record<string, string> = {
       </div>
       <div class="absolute left-3 top-3 flex flex-wrap gap-1.5">
         {sponsored && <span class="chip !bg-black/70 !text-white !text-[11px]">Sponsored</span>}
-        {l.featured && !sponsored && <span class="chip chip-active !text-[11px] font-bold">★ Featured</span>}
+        {l.featured && !sponsored && <span class="chip !text-[11px] font-bold">Highlighted</span>}
       </div>
       <div class="absolute right-3 top-3"><FavoriteButton id={l.id} client:visible /></div>
-      {l.verified && (
-        <span class="badge-verify absolute bottom-3 left-3 !text-[11px] font-bold" style="background:rgba(255,255,255,.92);color:var(--teal)" title={`Verified by our review team, ${monthYear(l.lastVerifiedDaysAgo ?? 0)}`}>
-          ✓ Verified {l.lastVerifiedDaysAgo !== undefined ? monthYear(l.lastVerifiedDaysAgo) : ''}
-        </span>
-      )}
+
     </div>
   </a>
   <div class="flex flex-1 flex-col gap-2 p-4">
     <div class="flex items-start justify-between gap-2">
       <a href={`/directory/${l.slug}`} class="font-bold leading-snug hover:underline">{l.name}</a>
-      <span class="shrink-0 rounded-lg px-2 py-0.5 text-xs font-bold" style="background:var(--surface-2)" title={`${l.reviewCount} reviews`}>
-        ★ {l.rating.toFixed(1)} <span style="color:var(--text-mute)">({compact(l.reviewCount)})</span>
+      <span class="shrink-0 rounded-lg px-2 py-0.5 text-xs font-bold" style="background:var(--surface-2)" title={l.reviewCount > 0 ? `${l.reviewCount} reviews` : 'No reviews yet'}>
+        {l.reviewCount > 0 ? (
+          <>★ {l.rating.toFixed(1)} <span style="color:var(--text-mute)">({compact(l.reviewCount)})</span></>
+        ) : (
+          <span style="color:var(--text-mute)">No reviews yet</span>
+        )}
       </span>
     </div>
     <p class="line-clamp-2 text-sm" style="color:var(--text-soft)">{l.tagline}</p>
     <p class="text-[13px]" style="color:var(--text-mute)">
-      {l.isOnlineOnly ? 'Online — serves nationwide' : `${l.city}, ${l.region}`}
+      {l.isOnlineOnly ? 'Online' : `${l.city}, ${l.region}`}
       {typeof distanceMiles === 'number' && distanceMiles < 9999 ? ` • ${distanceMiles.toFixed(1)} mi` : ''}
       {l.priceRange ? ` • ${l.priceRange}` : ''}
-      {l.verified ? '' : ` • added ${timeAgo(l.addedDaysAgo)}`}
+      {` • added ${timeAgo(l.addedDaysAgo)}`}
     </p>
-    {l.badges.length > 0 && (
-      <div class="flex flex-wrap gap-1.5">
-        {l.badges.map((b) => (
-          <span class="badge-verify" style="background:rgba(46,146,131,.14);color:var(--teal)">{badgeLabels[b] ?? b}</span>
-        ))}
-      </div>
-    )}
+    <div class="flex flex-wrap gap-1.5">
+      <StatusBadge name="Owner-submitted" definition="The business provided the listing information." />
+      {l.badges.filter((b) => badgeLabels[b]).map((b) => (
+        <StatusBadge name={badgeLabels[b]} />
+      ))}
+    </div>
     <div class="mt-auto flex flex-wrap gap-1.5 pt-1">
       {l.hashtags.slice(0, 4).map((t) => (
         <a href={`/search?q=${encodeURIComponent('#' + t)}`} class="chip !py-0.5 !text-[11px] hover:border-[var(--accent)]">#{t}</a>

@@ -2,7 +2,7 @@ import type { APIRoute } from 'astro';
 
 /** GET /robots.txt — sitemap URL follows the deployment origin (PUBLIC_SITE_URL / Vercel URL). */
 export const GET: APIRoute = async ({ site }) => {
-  const base = site?.toString().replace(/\/$/, '') ?? 'https://crosslinkd.example.com';
+  const base = site?.toString().replace(/\/$/, '') ?? 'https://cross-linkd.vercel.app';
   const body = [
     'User-agent: *',
     'Allow: /',

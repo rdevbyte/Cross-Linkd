@@ -1,31 +1,68 @@
 import type { APIRoute } from 'astro';
-import { z } from 'zod';
-import { sendMail } from '@/lib/mailer';
+import { and, eq, isNull } from 'drizzle-orm';
+import { getDb, hasDatabase } from '@/db/client';
+import { listings, reports } from '@/db/schema';
+import { contactError, honeypotTripped, safeReturnPath } from '@/lib/formGuards.mjs';
+import { rateLimit } from '@/lib/rateLimit.mjs';
 
-const schema = z.object({
-  name: z.string().min(2).max(120),
-  topic: z.string().min(2).max(120),
-  email: z.string().email(),
-  message: z.string().min(10).max(3000),
-});
+function clientIp(request: Request) {
+  return request.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
+    || request.headers.get('x-real-ip')
+    || 'unknown';
+}
 
-/** POST /api/contact — validated, delivered via the mail adapter (Resend or server log). */
-export const POST: APIRoute = async ({ request, redirect }) => {
+/** POST /api/contact — save a contact or listing-inquiry message. Does not send email. */
+export const POST: APIRoute = async ({ request, locals, redirect }) => {
   const form = await request.formData();
-  const parsed = schema.safeParse({
-    name: String(form.get('name') ?? '').trim(),
-    topic: String(form.get('topic') ?? '').trim() || 'General question',
-    email: String(form.get('email') ?? '').toLowerCase().trim(),
-    message: String(form.get('message') ?? '').trim(),
-  });
-  if (!parsed.success) {
-    return redirect(`/contact?error=${encodeURIComponent(parsed.error.errors[0]?.message ?? 'Please complete the form.')}`, 303);
+  const get = (key: string) => String(form.get(key) ?? '').trim();
+  const listingRef = get('listing');
+  const listingPath = /^[a-z0-9-]{1,200}$/.test(listingRef) ? `/directory/${listingRef}` : '';
+  const back = safeReturnPath(get('return') || listingPath, listingPath || '/contact');
+  const fail = (message: string) => redirect(`${back}?error=${encodeURIComponent(message)}`, 303);
+
+  if (honeypotTripped(form.get('hp_company'))) return fail('Please check your entries and try again.');
+  if (!rateLimit(`contact:${clientIp(request)}`, 8, 60 * 60 * 1000)) {
+    return fail('Too many messages from this network. Wait an hour and try again.');
   }
-  const { name, topic, email, message } = parsed.data;
-  await sendMail({
-    to: process.env.CONTACT_INBOX ?? 'support@crosslinkd.example.com',
-    subject: `[Contact] ${topic} — ${name}`,
-    text: `From: ${name} <${email}>\nTopic: ${topic}\n\n${message}`,
-  });
-  return redirect('/contact?sent=1', 303);
+
+  const problem = contactError({ name: get('name'), email: get('email'), message: get('message') });
+  if (problem) return fail(problem);
+  if (!hasDatabase()) {
+    return fail('We could not save your message because the directory database is not connected. Please try again later.');
+  }
+
+  try {
+    const db = getDb();
+    if (!db) {
+      return fail('We could not save your message because the directory database is not connected. Please try again later.');
+    }
+    let listingId: string | null = null;
+    if (listingRef) {
+      const match = await db
+        .select({ id: listings.id })
+        .from(listings)
+        .where(and(eq(listings.slug, listingRef), isNull(listings.deletedAt)))
+        .limit(1);
+      listingId = match[0]?.id ?? null;
+    }
+    const details = [
+      `Name: ${get('name')}`,
+      `Contact: ${get('email')}`,
+      listingRef ? `Listing: ${listingRef}` : '',
+      '',
+      get('message'),
+    ].filter((line) => line !== '').join('\n').slice(0, 8000);
+    await db.insert(reports).values({
+      reporterId: locals.user?.id ?? null,
+      listingId,
+      reason: (get('topic') || 'General question').slice(0, 80),
+      details,
+      status: 'open',
+    });
+  } catch (err) {
+    console.error('[api/contact] save failed', err instanceof Error ? err.name : 'error');
+    return fail('We could not save your message. Please try again.');
+  }
+
+  return redirect(`${back}?sent=1`, 303);
 };

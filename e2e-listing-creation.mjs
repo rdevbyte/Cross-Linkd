@@ -115,9 +115,37 @@ try {
   check('sticky bar exists', (await page.locator('#sticky-bar').count()) === 1);
   check('progress bar exists', (await page.locator('#progress-bar').count()) === 1);
   check('completion starts at 0 of 4 sections complete', (await page.locator('#progress-text').textContent())?.trim() === '0 of 4 sections complete');
+  check('hiring status defaults to No', await page.locator('#input-hiring-no').isChecked());
+  check('careers URL field is hidden until hiring is Yes', await page.locator('#careers-url-field').isHidden());
+  await page.locator('#input-hiring-yes').check();
+  check('careers URL field appears when hiring is Yes', await page.locator('#careers-url-field').isVisible());
+  await page.locator('#input-careers-url').fill('not a url');
+  await page.locator('#input-careers-url').blur();
+  check('invalid careers URL shows an inline error', await page.locator('#careers-url-error').isVisible());
+  await page.locator('#input-hiring-no').check();
+  check('careers URL field hides when hiring is No', await page.locator('#careers-url-field').isHidden());
+  check('careers URL is preserved after switching back to No', await page.locator('#input-careers-url').inputValue() === 'not a url');
+  await page.locator('#input-hiring-yes').check();
+  await page.locator('#input-careers-url').fill('https://example.com/careers');
+  await page.locator('#input-careers-url').blur();
+  check('valid careers URL clears the inline error', await page.locator('#careers-url-error').isHidden());
+  await page.locator('#input-careers-url').fill('');
+  await page.locator('#input-hiring-no').check();
   check('online-only toggle exists', (await page.locator('#input-online').count()) === 1);
-  check('online-only text present', (await page.locator('text=This is an online-only listing (serves nationwide)').count()) > 0);
+  check('online-only text present', (await page.locator('text=Is this an online-only listing?').count()) > 0);
   check('online off/on labels exist', (await page.locator('#online-off-label').count()) === 1 && (await page.locator('#online-on-label').count()) === 1);
+  const offState = await page.evaluate(() => {
+    const input = document.getElementById('input-online');
+    const data = new FormData(document.getElementById('add-listing-form'));
+    return {
+      checked: input.checked,
+      sent: data.get('isOnlineOnly'),
+      mode: document.getElementById('online-toggle-wrap').dataset.online,
+      off: document.getElementById('online-off-label').dataset.active,
+      on: document.getElementById('online-on-label').dataset.active,
+    };
+  });
+  check('online off highlights In-person', offState.mode === 'off' && offState.off === 'true' && offState.on === 'false' && offState.checked === false && offState.sent == null);
   check('location fields visible before online toggle', await page.locator('#location-fields').isVisible());
   check('location disabled note hidden before online toggle', await page.locator('#location-disabled-note').isHidden());
 
@@ -224,6 +252,18 @@ try {
   // Online-only marks Contact complete even with no city/region/postal code
   await page.reload({ waitUntil: 'networkidle' });
   await page.evaluate(() => document.getElementById('input-online').click());
+  const onState = await page.evaluate(() => {
+    const input = document.getElementById('input-online');
+    const data = new FormData(document.getElementById('add-listing-form'));
+    return {
+      checked: input.checked,
+      sent: data.get('isOnlineOnly'),
+      mode: document.getElementById('online-toggle-wrap').dataset.online,
+      off: document.getElementById('online-off-label').dataset.active,
+      on: document.getElementById('online-on-label').dataset.active,
+    };
+  });
+  check('online on highlights Online-only and submits 1', onState.mode === 'on' && onState.on === 'true' && onState.off === 'false' && onState.checked === true && onState.sent === '1');
   check('online-only hides location fields', await page.locator('#location-fields').isHidden());
   check('online-only shows location disabled note', await page.locator('#location-disabled-note').isVisible());
   check('preview shows Online-only • Serves nationwide', (await page.locator('#preview-location').textContent())?.trim() === 'Online-only • Serves nationwide');
@@ -276,10 +316,13 @@ try {
   await page.fill('input[name="customDenomination"]', 'Calvary Chapel Fellowship');
 
   check('contact details default private on submit', !(await showEmailBox.isChecked()) && !(await showPhoneBox.isChecked()) && !(await showWebsiteBox.isChecked()));
-  // The agreement control is a peer-based toggle slider; the sr-only input is
-  // toggled programmatically (same pattern as the online-only toggle).
-  await page.evaluate(() => document.querySelector('form input[type="checkbox"][required]').click());
-  check('agreement toggle engaged before submit', await page.locator('form input[type="checkbox"][required]').isChecked());
+  // Both required statements must be checked or the browser will not submit.
+  await page.evaluate(() => {
+    document.querySelectorAll('#add-listing-form input[type="checkbox"][required]').forEach((box) => {
+      if (!box.checked) box.click();
+    });
+  });
+  check('agreement toggle engaged before submit', await page.locator('#input-attestation').isChecked() && await page.locator('#input-terms').isChecked());
 
   await Promise.all([
     page.waitForURL('**/add-listing?success=1**'),

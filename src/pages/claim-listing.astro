@@ -4,27 +4,31 @@ import { getPublicListings } from '@/lib/publicListings';
 const user = Astro.locals.user;
 const preselected = Astro.url.searchParams.get('listing') ?? '';
 const success = Astro.url.searchParams.get('success') === '1';
+const error = Astro.url.searchParams.get('error') ?? '';
 const corpus = await getPublicListings();
 const unclaimed = corpus.filter((l) => !l.claimed);
 ---
-<BaseLayout user={user} seo={{ title: 'Claim a Listing — CrossLinkd', description: 'Claim ownership of your business, church, or ministry profile and get verified.', path: '/claim-listing' }}>
+<BaseLayout user={user} seo={{ title: 'Claim a Listing — CrossLinkd', description: 'Claim a listing by showing control of a contact channel. Claiming is not a verification of faith, ownership, or credentials.', path: '/claim-listing' }}>
   <div class="mx-auto max-w-3xl px-4 py-10">
     <h1 class="text-3xl font-extrabold">Claim your listing</h1>
-    <p class="section-sub">Prove you represent the listing, take control of its content, and unlock verification badges, analytics, and review responses.</p>
+    <p class="section-sub">Show that you control the listing or a business contact channel. A successful claim is labeled Owner claimed. It does not verify faith, ownership, licenses, or credentials.</p>
 
     <div class="mt-6 grid gap-3 sm:grid-cols-3">
-      {[['1. Find it', 'Select your profile below.'], ['2. Prove it', 'Work email, domain, documents, or a quick call.'], ['3. Own it', 'Edit, verify, respond, and grow.']].map(([i, t, b]) => (
-        <div class="card p-4"><span class="text-xl">{i}</span><p class="mt-1 text-sm font-bold">{t}</p><p class="text-[13px]" style="color:var(--text-soft)">{b}</p></div>
+      {[['1. Find it', 'Select your profile below.'], ['2. Show control', 'Use a work email, domain, or another contact channel you control.'], ['3. Manage it', 'Edit the listing and respond to messages. This is not a verification.']].map(([title, body]) => (
+        <div class="card p-4"><p class="text-sm font-bold">{title}</p><p class="mt-1 text-[13px]" style="color:var(--text-soft)">{body}</p></div>
       ))}
     </div>
 
     {success ? (
       <div class="card mt-6 border-l-4 p-6" style="border-left-color:var(--teal)">
-        <h2 class="text-lg font-extrabold">Claim received!</h2>
-        <p class="mt-1 text-sm" style="color:var(--text-soft)">We’ll email you within 1–2 business days. {user ? '' : 'Create an account with the same email to speed things up.'}</p>
+        <h2 class="text-lg font-extrabold">Claim received</h2>
+        <p class="mt-1 text-sm" style="color:var(--text-soft)" role="status">We received your request. Owner claimed is not applied until you show control of a contact channel. A claim is not a verification of faith, ownership, or credentials. {user ? '' : 'Create an account with the same email so you can edit the listing after the claim is accepted.'}</p>
       </div>
     ) : (
       <form method="POST" action="/api/claims" class="card mt-6 space-y-4 p-6 sm:p-8">
+        <p class="hp-field" aria-hidden="true"><label>Leave this blank<input type="text" name="hp_company" tabindex="-1" autocomplete="off" /></label></p>
+        {error && <p class="rounded-xl bg-red-500/10 p-3 text-sm font-medium text-red-700" role="alert">{error}</p>}
+        <p class="text-sm leading-relaxed" style="color:var(--text-soft)">Describe a public contact channel you control, such as a work email that matches the website. Do not send identity documents, licenses, or private religious records.</p>
         <label class="block text-sm font-medium">Which listing is yours? *
           <select name="listingId" class="input mt-1.5" required>
             <option value="">Select a listing…</option>
@@ -40,8 +44,8 @@ const unclaimed = corpus.filter((l) => !l.claimed);
             <option value="">Select…</option><option>Owner</option><option>Pastor / Ministry leader</option><option>Employee</option><option>Authorized representative</option><option>Other</option>
           </select>
         </label>
-        <label class="block text-sm font-medium">Evidence of your affiliation *
-          <textarea name="evidence" required minlength="10" rows="4" class="input mt-1.5" placeholder="e.g. My work email matches the website domain; I can add a verification file; my name appears on the staff page at this URL…"></textarea>
+        <label class="block text-sm font-medium">How you can show control of a contact channel *
+          <textarea name="evidence" required minlength="10" rows="4" class="input mt-1.5" placeholder="Example: my work email matches the website domain, or my name is on the public staff page at this URL."></textarea>
         </label>
         <button class="btn btn-primary w-full !py-3" type="submit" data-animate="cta">Submit claim</button>
         <p class="text-center text-[13px]" style="color:var(--text-mute)">False claims are removed and may result in account suspension.</p>

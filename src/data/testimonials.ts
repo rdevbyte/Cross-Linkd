@@ -15,7 +15,7 @@ export interface Testimonial {
 
 export const TESTIMONIALS: Testimonial[] = [
   {
-    quote: 'We needed a plumber on a Saturday and found one in five minutes. The verification dates right on the profile sold me — I knew someone had actually checked.',
+    quote: 'Sample quote only. Do not publish this as a real review. A directory profile is not a license check.',
     name: 'Rachel T.',
     role: 'Homeowner',
     city: 'Dallas, TX',
@@ -23,7 +23,7 @@ export const TESTIMONIALS: Testimonial[] = [
     hue: 210,
   },
   {
-    quote: 'I list my practice here because the review rules are serious. Every review is from a real client, and the moderation policy is published for anyone to read.',
+    quote: 'Sample quote only. Do not publish this as a real owner statement or as proof that reviews were verified.',
     name: 'Dr. Hannah Reyes',
     role: 'Owner, Mercy Well Christian Counseling',
     city: 'Dallas, TX',
@@ -31,7 +31,7 @@ export const TESTIMONIALS: Testimonial[] = [
     hue: 200,
   },
   {
-    quote: 'The profile walked me through everything before I called: hours, service area, credential check, even who answers the phone. Felt like a referral from a friend.',
+    quote: 'Sample quote only. Hours and service area on a profile are owner-submitted, not a credential check.',
     name: 'Marcus D.',
     role: 'Facilities director',
     city: 'Atlanta, GA',
@@ -39,7 +39,7 @@ export const TESTIMONIALS: Testimonial[] = [
     hue: 95,
   },
   {
-    quote: 'Claiming our listing took one afternoon. A real person reviewed our documents and the Christian-owned badge appeared with the date we were verified.',
+    quote: 'Sample quote only. Claiming a listing is not a Christian-owned verification and does not create a badge.',
     name: 'Marcus & Julie Whitfield',
     role: 'Owners, Good Samaritan Auto Care',
     city: 'Phoenix, AZ',
@@ -47,7 +47,7 @@ export const TESTIMONIALS: Testimonial[] = [
     hue: 205,
   },
   {
-    quote: 'As a new church plant we were hard to find. CrossLinkd is now our top source for first-time visitors outside of personal invitations.',
+    quote: 'Sample quote only. Do not publish this as a real church result or as proof of visitor volume.',
     name: 'Pastor Andre Cole',
     role: 'GracePoint Church, Nashville',
     city: 'Nashville, TN',
@@ -55,7 +55,7 @@ export const TESTIMONIALS: Testimonial[] = [
     hue: 160,
   },
   {
-    quote: 'I booked a bakery for our wedding from a photo and a review count. What I got was a couple who prayed with us and the best cake anyone had ever tasted.',
+    quote: 'Sample quote only. Do not publish this as a real review, rating, or endorsement.',
     name: 'Emily & Sam K.',
     role: 'Newlyweds',
     city: 'Fort Worth, TX',

@@ -1,56 +1,68 @@
 /**
- * GSAP scroll reveals + Anime.js micro-interactions.
- * All motion is gated behind prefers-reduced-motion.
+ * GSAP owns page-level timelines, scroll reveals, and coordinated multi-element fades.
+ * Framer Motion owns React interactions (search popovers, dialogs, card hover/tap, status cards).
+ * Elements inside a form, [data-motion="static"], or [data-motion="react"] are not touched here.
  */
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
-import { animate } from 'animejs';
+import { MOTION } from '@/lib/motion';
+
+const SKIP = 'form, [data-motion="static"], [data-motion="react"]';
+
+function reduced() {
+  return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+}
+
+function skipped(el: Element) {
+  return Boolean(el.closest(SKIP));
+}
 
 export function initPageAnimations() {
-  if (typeof window === 'undefined') return;
-  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-
+  if (typeof window === 'undefined' || reduced()) return;
   gsap.registerPlugin(ScrollTrigger);
 
-  // Hero entrance
-  gsap.fromTo(
-    '[data-animate="hero"]',
-    { opacity: 0, y: 26 },
-    { opacity: 1, y: 0, duration: 0.8, stagger: 0.12, ease: 'power3.out' },
-  );
+  const seen = new Set<HTMLElement>();
 
-  // Scroll reveals
-  gsap.utils.toArray<HTMLElement>('[data-animate="reveal"]').forEach((el) => {
-    gsap.fromTo(
-      el,
-      { opacity: 0, y: 24 },
-      {
-        opacity: 1, y: 0, duration: 0.7, ease: 'power2.out',
-        scrollTrigger: { trigger: el, start: 'top 88%', once: true },
-      },
-    );
-  });
+  function reveal(el: HTMLElement, staggerChildren = false) {
+    if (seen.has(el) || skipped(el)) return;
+    seen.add(el);
+    const base = {
+      opacity: 1,
+      y: 0,
+      ease: MOTION.gsapEase,
+      clearProps: 'transform',
+      scrollTrigger: { trigger: el, start: 'top 92%', once: true },
+      immediateRender: false,
+    };
+    if (staggerChildren) {
+      const kids = Array.from(el.children).filter((child): child is HTMLElement => child instanceof HTMLElement && !skipped(child));
+      if (!kids.length) return;
+      kids.forEach((child) => seen.add(child));
+      gsap.fromTo(kids, { opacity: 0, y: 10 }, { ...base, duration: MOTION.duration.base, stagger: MOTION.stagger });
+      return;
+    }
+    gsap.fromTo(el, { opacity: 0, y: MOTION.distance }, { ...base, duration: MOTION.duration.base });
+  }
 
-  // Card stagger grids
-  gsap.utils.toArray<HTMLElement>('[data-animate="grid"]').forEach((grid) => {
-    gsap.fromTo(
-      grid.children,
-      { opacity: 0, y: 18 },
-      {
-        opacity: 1, y: 0, duration: 0.5, stagger: 0.07, ease: 'power2.out',
-        scrollTrigger: { trigger: grid, start: 'top 90%', once: true },
-      },
-    );
+  document.querySelectorAll<HTMLElement>('[data-animate="hero"]').forEach((el) => reveal(el));
+  document.querySelectorAll<HTMLElement>('[data-animate="reveal"]').forEach((el) => reveal(el));
+  document.querySelectorAll<HTMLElement>('[data-animate="grid"]').forEach((el) => reveal(el, true));
+
+  const fold = window.innerHeight * 0.82;
+  document.querySelectorAll<HTMLElement>('main section').forEach((el) => {
+    if (el.hasAttribute('data-animate') || el.closest('[data-animate="grid"]')) return;
+    if (el.getBoundingClientRect().top < fold) return;
+    reveal(el);
   });
 }
 
-/** Subtle button press pulse for primary CTAs. */
+/** Press feedback for non-React buttons. React controls use Framer tap instead. */
 export function pulseCta(selector = '[data-animate="cta"]') {
-  if (typeof window === 'undefined') return;
-  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-  document.querySelectorAll(selector).forEach((el) => {
+  if (typeof window === 'undefined' || reduced()) return;
+  document.querySelectorAll<HTMLElement>(selector).forEach((el) => {
+    if (skipped(el) || el.closest('[data-motion="react"]')) return;
     el.addEventListener('click', () => {
-      animate(el, { scale: [1, 0.96, 1], duration: 260, ease: 'inOutQuad' });
+      gsap.fromTo(el, { scale: 1 }, { scale: 0.98, duration: MOTION.duration.fast, yoyo: true, repeat: 1, ease: 'power1.inOut' });
     });
   });
 }

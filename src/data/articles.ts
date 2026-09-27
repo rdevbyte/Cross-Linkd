@@ -1,8 +1,6 @@
 /**
- * Resource center articles — practical guides tied to real listings.
- * Editorial rules (see /editorial-policy): short sentences, specific
- * advice, no unsupported claims about companies, every article connects
- * to live listings and category/city pages.
+ * Resource center articles — practical guides. Do not invent businesses,
+ * reviews, credentials, or verification results. See /editorial-policy.
  */
 
 export interface ArticleSection {
@@ -36,14 +34,14 @@ export const ARTICLES: Article[] = [
       {
         heading: 'Start with the license, not the label',
         body: [
-          'Texas licenses plumbers through the Texas State Board of Plumbing Examiners. Ask for the license number and look it up — it takes two minutes. Every contractor listing on CrossLinkd shows a credential-check date when the license has been verified.',
-          'A "Christian-owned" label never replaces a license. It tells you who owns the company, not how well they do the work. Check both.',
+          'Texas licenses plumbers through the Texas State Board of Plumbing Examiners. Ask for the license number and look it up yourself. CrossLinkd does not confirm licenses.',
+          'A "Christian-owned" label on this directory is owner-submitted. It does not tell you how well the company does the work. Check both the license and the work.',
         ],
       },
       {
         heading: 'Ask for the quote in writing',
         body: [
-          'Reputable shops give flat-rate or written estimates before touching a wrench. Cornerstone Plumbing Co. publishes its flat-rate menu and explains every invoice line by line — that transparency matters more than any slogan.',
+          'Reputable shops give flat-rate or written estimates before touching a wrench. Ask for the menu or the invoice lines in writing. Do not treat a directory profile as that proof.',
           'Get two quotes for jobs over $500. Paying for the cheapest bid often costs more the second time.',
         ],
       },
@@ -62,7 +60,7 @@ export const ARTICLES: Article[] = [
         ],
       },
     ],
-    relatedListingSlugs: ['cornerstone-plumbing', 'trinity-auto-works'],
+    relatedListingSlugs: [],
     relatedCategory: { label: 'Plumbers', href: '/search?q=plumber' },
     relatedCity: { label: 'Fort Worth, TX', href: '/locations/fort-worth-tx' },
   },
@@ -78,14 +76,14 @@ export const ARTICLES: Article[] = [
         heading: 'Confirm the credential',
         body: [
           'CPAs are licensed by the state. Enrolled Agents are licensed by the IRS. Bookkeepers may hold certifications but are not licensed — fine for monthly books, less relevant for complex filings.',
-          'On CrossLinkd, accounting listings show which credential was verified and when. If a profile lacks a credential badge, ask the firm directly.',
+          'CrossLinkd does not show a credential-verified badge. Ask the firm for the license or enrollment number and check it with the state board or the IRS.',
         ],
       },
       {
         heading: 'Understand the fees before you sign',
         body: [
           'Individual returns are usually flat-fee. Business clients are usually hourly or monthly. Ask what triggers extra charges — amended returns, notices, and year-end cleanup are the usual three.',
-          'Cedar Ledger Bookkeeping publishes starting rates on its profile, which is a good sign. Firms that hide pricing are harder to hold accountable.',
+          'Ask for starting rates in writing. Firms that will not explain pricing are harder to hold accountable. Do not assume a directory profile has published rates unless you can see them on that listing.',
         ],
       },
       {
@@ -96,7 +94,7 @@ export const ARTICLES: Article[] = [
         ],
       },
     ],
-    relatedListingSlugs: ['cedar-ledger-bookkeeping', 'beacon-cpa-dallas'],
+    relatedListingSlugs: [],
     relatedCategory: { label: 'Accounting & tax', href: '/industries/accounting-tax' },
     relatedCity: { label: 'Nashville, TN', href: '/locations/nashville-tn' },
   },
@@ -112,7 +110,7 @@ export const ARTICLES: Article[] = [
       {
         heading: '1. Who owns it today?',
         body: [
-          'A company can be founded by a Christian and sold years ago. "Christian-owned" is a claim about current ownership — who profits from it and sets its direction. CrossLinkd verifies ownership with a signed attestation plus evidence, and shows the date.',
+          'A company can be founded by a Christian and sold years ago. "Christian-owned" is a claim about current ownership. On CrossLinkd that claim is self-identified. CrossLinkd does not independently confirm it.',
         ],
       },
       {
@@ -130,52 +128,18 @@ export const ARTICLES: Article[] = [
       {
         heading: '4. Is a church standing behind it?',
         body: [
-          'Church-recommended means a congregation publicly endorses the business — usually a member in good standing whose work the church has seen firsthand. It is the strongest community signal, but it is still a human opinion, not a doctrine check.',
+          'A church member or neighbor may recommend a business. On CrossLinkd, that kind of note is community reported. It is an opinion, not a CrossLinkd investigation or a doctrinal seal.',
         ],
       },
       {
         heading: '5. Does the label change the work?',
         body: [
-          'Read the reviews for execution: did they show up, communicate, fix mistakes? Verification badges confirm identity and licenses. Reviews — moderated under our published policy — tell you how the company actually treats people.',
+          'Read reviews for execution: did they show up, communicate, and fix mistakes? Reviews on CrossLinkd are community reported. They are not a verification of identity or licenses. Check those yourself.',
         ],
       },
     ],
-    relatedListingSlugs: ['good-samaritan-auto', 'mercy-well-counseling', 'grace-and-grain-bakery'],
-    relatedCategory: { label: 'How verification works', href: '/verification' },
-  },
-  {
-    slug: 'owner-interview-grace-and-grain',
-    title: 'Owner interview: baking with prayer at Grace & Grain',
-    excerpt: 'The Whitakers on 4 a.m. starts, wedding cakes, why they close Sundays, and what "Christian-owned" costs them.',
-    category: 'Owner stories',
-    publishedDaysAgo: 9,
-    hue: 36,
-    sections: [
-      {
-        heading: 'Why close on Sundays?',
-        body: [
-          '"People think we are leaving money on the table," Aaron Whitaker says, pulling the first sourdough of the day. "We are. On purpose. Sunday is for worship and rest, and my staff knows they can plan their lives around it."',
-          'Grace & Grain turns away roughly a dozen weekend orders a month because of the policy. The Whitakers say regulars plan around it too.',
-        ],
-      },
-      {
-        heading: 'What faith looks like at 4 a.m.',
-        body: [
-          'The team prays before the ovens go on. Not every employee is a Christian — "they know who we are when we hire them, and we do not hide it" — and the bakeshop donates day-old bread to shelters every evening.',
-          '"The donation is not a strategy," Aaron says. "It is just what we do with the extra."',
-        ],
-      },
-      {
-        heading: 'Advice to owners listing on CrossLinkd',
-        body: [
-          '"Fill out the whole profile," Julie says. "Hours, service area, photos. People call when they trust the page. Half our wedding inquiries mention the reviews by name."',
-          'Grace & Grain has been verified since May 2026 — the badge on their profile shows the date, and they re-attest yearly.',
-        ],
-      },
-    ],
-    relatedListingSlugs: ['grace-and-grain-bakery', 'loaves-fishes-catering', 'redeemer-coffee-house'],
-    relatedCategory: { label: 'Bakeries', href: '/search?q=bakery' },
-    relatedCity: { label: 'Dallas, TX', href: '/locations/dallas-tx' },
+    relatedListingSlugs: [],
+    relatedCategory: { label: 'Listing Statuses', href: '/listing-statuses' },
   },
   {
     slug: 'vetting-a-contractor-who-shares-your-values',
@@ -193,7 +157,7 @@ export const ARTICLES: Article[] = [
           '3. What is your change-order process, in writing?',
           '4. Can I call the last three clients?',
           '5. What is the payment schedule? (Never pay everything up front.)',
-          '6. Is your license and insurance current? CrossLinkd shows the verification date on contractor profiles.',
+          '6. Is your license and insurance current? Ask for the documents. CrossLinkd does not show a license verification date.',
           '7. What does your warranty cover after you drive away?',
         ],
       },
@@ -201,50 +165,50 @@ export const ARTICLES: Article[] = [
         heading: 'Where faith fits in',
         body: [
           'Shared values help most when the project hits trouble — and something always does. A contractor who answers question 3 without hesitation usually handles problems the same way they handle framing: carefully.',
-          'Peachtree Craftsmen in Atlanta includes a change-order template in its welcome packet. That is the level of process you are looking for.',
+          'Ask for a written change-order template before the work starts. That process matters more than a faith label on a directory profile.',
         ],
       },
     ],
-    relatedListingSlugs: ['peachtree-craftsmen', 'true-north-remodels', 'anchor-roofing-fort-worth'],
+    relatedListingSlugs: [],
     relatedCategory: { label: 'Contractors', href: '/search?type=contractor' },
   },
   {
     slug: 'how-crosslinkd-verifies-a-business',
-    title: 'How a business gets verified on CrossLinkd',
-    excerpt: 'The exact steps from submission to badge: what owners send us, what a human checks, and when we say no.',
+    title: 'What CrossLinkd does not verify',
+    excerpt: 'Listings are owner-submitted. CrossLinkd does not independently verify faith, ownership, licenses, credentials, or service quality.',
     category: 'How CrossLinkd works',
     publishedDaysAgo: 42,
-    updatedDaysAgo: 4,
+    updatedDaysAgo: 0,
     hue: 160,
     sections: [
       {
-        heading: 'Step 1 — Submission',
+        heading: 'Owner-submitted',
         body: [
-          'An owner submits the listing with contact details, hours, license numbers (if any), and an ownership attestation for the Christian-owned badge. Submission is free. Nothing is published automatically.',
+          'An owner can submit a listing for free and may identify the business as Christian-owned. That identification is theirs. CrossLinkd does not independently confirm it.',
         ],
       },
       {
-        heading: 'Step 2 — Human review',
+        heading: 'Completeness is not a background check',
         body: [
-          'A moderator checks the basics first: real address or service area, working phone, live website, no duplicates. Listings that fail are told exactly why and may fix and resubmit.',
-          'For credential badges, we check license numbers with the issuing authority where records are public. For the Christian-owned badge, we review the attestation against supporting evidence: about pages, business registrations, church membership, or a short call.',
+          'CrossLinkd may review a submission for missing fields and obvious inconsistencies. That review does not confirm faith, ownership, licenses, certifications, credentials, or service quality.',
+          'If a profile mentions a license, ask the business for the number and check it with the issuing authority yourself.',
         ],
       },
       {
-        heading: 'Step 3 — Badge with a date',
+        heading: 'There is no Verified badge',
         body: [
-          'Approved listings show the badge and the date it was granted, for example "Verified Christian-owned · Aug 2026." Badges are re-checked periodically; owners re-attest yearly. If a business is sold or a license lapses, the badge comes off.',
+          'CrossLinkd does not publish a generic Verified badge, a credential-verified badge, or a Christian-ownership-confirmed badge. Owner claimed means someone showed control of a contact channel. It does not mean the business was investigated.',
         ],
       },
       {
-        heading: 'What verification is not',
+        heading: 'Do your own diligence',
         body: [
-          'It is not a doctrine test, a character guarantee, or a promise of future conduct. It is an identity and evidence check at a point in time, published with the date so you can judge how fresh it is. Paying for a premium listing does not skip any step — the two are separate, on purpose.',
+          'Read the profile as owner-submitted information. Contact the business. Check licenses, insurance, and references before you hire or support the organization. Listing on CrossLinkd is not an endorsement.',
         ],
       },
     ],
-    relatedListingSlugs: ['mercy-well-counseling', 'cornerstone-plumbing', 'sola-gratia-realty'],
-    relatedCategory: { label: 'Verification & badges', href: '/verification' },
+    relatedListingSlugs: [],
+    relatedCategory: { label: 'Listing Statuses', href: '/listing-statuses' },
   },
 ];
 

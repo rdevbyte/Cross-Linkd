@@ -1,20 +1,40 @@
 ---
 import BaseLayout from '@/layouts/BaseLayout.astro';
 const user = Astro.locals.user;
+const seo = {
+  title: 'Community Guidelines | CrossLinkd',
+  description: 'Behavior rules for listings, reviews, and messages on CrossLinkd. Following the guidelines is not a verification.',
+  path: '/guidelines',
+};
 ---
-<BaseLayout user={user} seo={{ title: 'Community Guidelines — CrossLinkd', description: 'How we keep CrossLinkd respectful, honest, and welcoming across traditions.', path: '/guidelines' }}>
+<BaseLayout user={user} seo={seo}>
   <div class="mx-auto max-w-3xl px-4 py-12">
-    <h1 class="text-3xl font-extrabold">Community Guidelines</h1>
-    <div class="mt-6 space-y-4 text-[15px] leading-relaxed" style="color:var(--text-soft)">
-      <p>“Let your speech always be gracious.” — Col. 4:6. Across every tradition, we ask everyone to:</p>
-      <ul class="list-disc space-y-2 pl-5">
-        <li><strong style="color:var(--text)">Speak of others’ traditions with respect</strong> — describe your own convictions without disparaging others’.</li>
-        <li><strong style="color:var(--text)">Review experiences, not theology</strong> — rate service, professionalism, and responsiveness.</li>
-        <li><strong style="color:var(--text)">Be honest</strong> — no fake reviews, no incentivized ratings, no impersonation.</li>
-        <li><strong style="color:var(--text)">Protect privacy & safety</strong> — no doxxing, no accusations of serious misconduct without evidence and process.</li>
-        <li><strong style="color:var(--text)">Keep youth spaces safe</strong> — extra care in youth-organization listings and reviews.</li>
-      </ul>
-      <p>Violations lead to content removal, warnings, or account suspension — always with a right of <a href="/appeals" class="underline">appeal</a>.</p>
+    <h1 class="text-3xl font-extrabold">Community guidelines</h1>
+    <p class="section-sub">These are behavior rules for people using the directory. They are not a verification of faith, ownership, licenses, or service quality.</p>
+
+    <div class="mt-8 space-y-4 text-[15px] leading-relaxed" style="color:var(--text-soft)">
+      <div class="card p-5">
+        <h2 class="font-extrabold" style="color:var(--text)">Listings</h2>
+        <ul class="mt-2 list-disc space-y-1.5 pl-5">
+          <li>Submit a listing only if you are allowed to speak for that organization. A published listing is owner-submitted.</li>
+          <li>Use the organization's real public name, and do not copy another listing.</li>
+          <li>Do not present a license, credential, or faith claim as something CrossLinkd checked. CrossLinkd does not independently confirm those.</li>
+          <li>Incomplete or contradictory listings can be removed. Removal is a directory decision, not a finding about the people involved.</li>
+        </ul>
+      </div>
+      <div class="card p-5">
+        <h2 class="font-extrabold" style="color:var(--text)">Reviews and messages</h2>
+        <ul class="mt-2 list-disc space-y-1.5 pl-5">
+          <li>Reviews should describe a real customer experience. Owners do not review their own business.</li>
+          <li>No harassment, impersonation, private information, or illegal content.</li>
+          <li>Do not use a review or a message to demand a verification badge. CrossLinkd does not issue one.</li>
+        </ul>
+      </div>
+      <div class="card p-5">
+        <h2 class="font-extrabold" style="color:var(--text)">If something breaks these rules</h2>
+        <p class="mt-2">Use the contact form to report a listing, a review, or spam. A report is saved for a person to read. It is not an automatic takedown, and it is not a verification of the remaining listings.</p>
+        <p class="mt-3"><a href="/contact?topic=report" class="underline">Report a listing</a> · <a href="/submission-policy" class="underline">Submission policy</a> · <a href="/reviews-policy" class="underline">Review policy</a> · <a href="/appeals" class="underline">Appeals</a></p>
+      </div>
     </div>
   </div>
 </BaseLayout>

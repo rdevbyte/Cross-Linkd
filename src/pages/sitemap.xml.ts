@@ -8,11 +8,12 @@ import { DENOMINATIONS } from '@/data/denominations';
 
 /** GET /sitemap.xml — only substantive pages (no thin/duplicate URLs). Merges live DB listings with curated samples. */
 export const GET: APIRoute = async ({ site }) => {
-  const base = site?.toString().replace(/\/$/, '') ?? 'https://crosslinkd.example.com';
+  const base = site?.toString().replace(/\/$/, '') ?? 'https://cross-linkd.vercel.app';
   const listings = await getPublicListings();
   const urls: string[] = [
     '', '/search', '/events', '/about', '/trust', '/help', '/contact',
-    '/how-it-works', '/verification', '/articles', '/claim-listing', '/add-listing',
+    '/guidelines', '/appeals', '/feedback',
+    '/how-it-works', '/listing-statuses', '/articles', '/claim-listing', '/add-listing',
     '/browse/industries', '/browse/professions', '/browse/denominations', '/browse/locations',
     // Focus-state pages (only states with real listings):
     ...FOCUS_STATES.filter((s) => listings.some((l) => l.region === s.abbr)).map((s) => `/states/${s.slug}`),

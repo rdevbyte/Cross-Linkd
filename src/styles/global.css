@@ -412,3 +412,25 @@ html:not([data-theme='dark']) .dark-only { display: none; }
 @media (prefers-reduced-motion: reduce) {
   .sdd-chevron, .sdd-option, .sdd-clear { transition: none !important; }
 }
+
+@media (prefers-reduced-motion: reduce) {
+  .card,
+  .card-hover:hover,
+  .btn,
+  .input {
+    transition: none;
+    transform: none;
+  }
+}
+.input:user-invalid,
+.input[aria-invalid="true"] {
+  border-color: #9f2d2d;
+  box-shadow: 0 0 0 3px rgba(159, 45, 45, 0.18);
+}
+.hp-field {
+  position: absolute;
+  left: -10000px;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+}

@@ -3,23 +3,16 @@ import BaseLayout from '@/layouts/BaseLayout.astro';
 import Section from '@/components/Section.astro';
 import ListingCard from '@/components/ListingCard.astro';
 import SearchBar from '@/components/SearchBar';
-import { includeSamples } from '@/lib/sampleGate';
 import { getPublicListings } from '@/lib/publicListings';
-import { getPublicTestimonials } from '@/lib/publicReviews';
 import { ARTICLES } from '@/data/articles';
-import { SAMPLE_EVENTS, eventDate } from '@/data/events';
+import { industryBySlug } from '@/data/industries';
+import { LISTING_TYPES } from '@/data/listing-types';
 import { slugify } from '@/lib/slug';
+import { isUsRegion } from '@/lib/trustCopy';
 
 const user = Astro.locals.user;
-
-// ---- Real metrics, computed from the public corpus (no inflated numbers) ----
 const corpus = await getPublicListings();
-const testimonials = await getPublicTestimonials();
-const samplesOn = includeSamples();
-const verified = corpus.filter((l) => l.verified).length;
-const recent = corpus.filter((l) => l.addedDaysAgo <= 30).length;
 
-// ---- Compute dynamic locations from published listings only (no empty or hardcoded cards) ----
 interface ActiveLocation {
   city: string;
   region: string;
@@ -32,9 +25,8 @@ for (const item of corpus) {
   if (!item.isOnlineOnly && item.city && item.region) {
     const key = `${item.city.trim().toLowerCase()}-${item.region.trim().toLowerCase()}`;
     const existing = locationMap.get(key);
-    if (existing) {
-      existing.count += 1;
-    } else {
+    if (existing) existing.count += 1;
+    else {
       locationMap.set(key, {
         city: item.city.trim(),
         region: item.region.trim().toUpperCase(),
@@ -46,55 +38,82 @@ for (const item of corpus) {
 }
 const activeLocations = Array.from(locationMap.values()).sort((a, b) => b.count - a.count);
 const onlineOnlyCount = corpus.filter((l) => l.isOnlineOnly).length;
-const hasLocations = activeLocations.length > 0 || onlineOnlyCount > 0;
-
-// ---- Featured & verified first, then recent, then community picks ----
-const featured = corpus.filter((l) => l.featured && l.verified).slice(0, 6);
-const newest = [...corpus].sort((a, b) => a.addedDaysAgo - b.addedDaysAgo).slice(0, 4);
-const upcoming = samplesOn ? [...SAMPLE_EVENTS].sort((a, b) => a.startsInDays - b.startsInDays).slice(0, 3) : [];
-
-// ---- Popular categories with real counts ----
-const categoryDefs: { label: string; q: string }[] = [
-  { label: 'Plumbers & Electricians', q: 'plumber electrician' },
-  { label: 'Contractors & Remodels', q: 'contractor remodeling' },
-  { label: 'Auto Repair', q: 'auto repair' },
-  { label: 'Accountants & Bookkeepers', q: 'accountant bookkeeping cpa' },
-  { label: 'Counselors & Therapists', q: 'counselor therapy' },
-  { label: 'Food, Bakeries & Coffee', q: 'bakery coffee catering restaurant' },
-  { label: 'Real Estate & Insurance', q: 'realtor insurance' },
-  { label: 'Photographers & Media', q: 'photographer media' },
-  { label: 'Salons, Barbers & Fitness', q: 'salon barber fitness' },
-  { label: 'Schools & Lessons', q: 'school lessons' },
-  { label: 'Churches', q: 'church' },
-  { label: 'Ministries & Nonprofits', q: 'ministry nonprofit' },
+const hasInternational = activeLocations.some((loc) => !isUsRegion(loc.region));
+const locationChoices = [
+  ...(onlineOnlyCount > 0 ? [{ label: 'Online', value: 'Online', kind: 'online' }] : []),
+  ...activeLocations.map((loc) => ({
+    label: `${loc.city}, ${loc.region}`,
+    value: `${loc.city}, ${loc.region}`,
+    kind: isUsRegion(loc.region) ? 'city' : 'outside the U.S.',
+  })),
 ];
-const categoryCount = (q: string) => {
-  const terms = q.toLowerCase().split(' ');
-  return corpus.filter((l) =>
-    terms.some((t) =>
-      l.professions.some((p) => p.includes(t)) ||
-      l.services.some((s) => s.toLowerCase().includes(t)) ||
-      l.typeSlug === t ||
-      l.industries.some((i) => i.includes(t)),
-    ),
-  ).length;
-};
 
-const guides = ARTICLES.slice(0, 3);
+const available = [...corpus].sort((a, b) => a.addedDaysAgo - b.addedDaysAgo).slice(0, 6);
 
+const industryCounts = new Map<string, { label: string; count: number; href: string }>();
+for (const listing of corpus) {
+  const slug = listing.industrySlug || listing.industries[0];
+  const industry = slug ? industryBySlug(slug) : undefined;
+  if (industry) {
+    const existing = industryCounts.get(industry.slug);
+    if (existing) existing.count += 1;
+    else industryCounts.set(industry.slug, {
+      label: industry.name,
+      count: 1,
+      href: `/industries/${industry.slug}`,
+    });
+    continue;
+  }
+  const type = LISTING_TYPES.find((t) => t.slug === listing.typeSlug);
+  if (!type) continue;
+  const existing = industryCounts.get(`type:${type.slug}`);
+  if (existing) existing.count += 1;
+  else industryCounts.set(`type:${type.slug}`, {
+    label: type.plural,
+    count: 1,
+    href: `/search?type=${encodeURIComponent(type.slug)}`,
+  });
+}
+const populatedCategories = Array.from(industryCounts.values()).sort((a, b) => b.count - a.count || a.label.localeCompare(b.label));
+
+const preferredGuides = [
+  'questions-before-trusting-christian-label',
+  'vetting-a-contractor-who-shares-your-values',
+  'how-crosslinkd-verifies-a-business',
+];
+const guides = preferredGuides
+  .map((slug) => ARTICLES.find((article) => article.slug === slug))
+  .filter((article): article is (typeof ARTICLES)[number] => Boolean(article))
+  .map((article) => ({
+    ...article,
+    linkedListings: article.relatedListingSlugs
+      .map((slug) => corpus.find((listing) => listing.slug === slug))
+      .filter((listing): listing is (typeof corpus)[number] => Boolean(listing)),
+  }));
+
+const ownerSteps = [
+  ['Submit a basic listing', 'Name, contact, and what you offer. The basic listing is free.'],
+  ['Provide accurate information', 'You are responsible for what the profile says, including any faith or credential statement.'],
+  ['Receive a completeness review', 'Missing fields may be flagged. This is not a check of licenses, beliefs, or service quality.'],
+  ['Claim or confirm the listing', 'Show control of a contact channel, then confirm the profile when details change.'],
+  ['Keep information current', 'Update hours, service area, and contact details when they change.'],
+  ['Respond to corrections or reports', 'Readers can flag a problem. You can correct the profile or reply through the contact process.'],
+];
+
+const siteUrl = (Astro.site ?? Astro.url).toString().replace(/\/$/, '');
 const seo = {
-  title: 'CrossLinkd — Find Christian-Owned Businesses You Can Trust',
-  description: 'A hand-reviewed national directory of Christian-owned businesses, churches, and ministries across the United States. Verification dates on every profile.',
+  title: 'CrossLinkd — Community-listed Christian businesses',
+  description: 'Discover community-listed Christian businesses, churches, and ministries. Browse owner-submitted listings and decide for yourself. CrossLinkd does not independently verify faith, licenses, or service quality.',
   path: '/',
   schema: [
     {
       '@context': 'https://schema.org',
       '@type': 'WebSite',
       name: 'CrossLinkd',
-      url: 'https://crosslinkd.example.com/',
+      url: `${siteUrl}/`,
       potentialAction: {
         '@type': 'SearchAction',
-        target: 'https://crosslinkd.example.com/search?q={search_term_string}',
+        target: `${siteUrl}/search?q={search_term_string}`,
         'query-input': 'required name=search_term_string',
       },
     },
@@ -102,219 +121,185 @@ const seo = {
       '@context': 'https://schema.org',
       '@type': 'Organization',
       name: 'CrossLinkd',
-      url: 'https://crosslinkd.example.com/',
-      logo: 'https://crosslinkd.example.com/favicon.svg',
+      url: `${siteUrl}/`,
+      logo: `${siteUrl}/favicon.svg`,
     },
   ],
 };
 ---
 <BaseLayout seo={seo} user={user}>
-  <!-- ============ HERO — search first ============ -->
-  <div class="relative overflow-hidden">
-    <div class="relative mx-auto max-w-5xl px-4 pb-10 pt-12 text-center sm:pt-16">
-      <h1 data-animate="hero" class="mx-auto max-w-3xl text-4xl font-extrabold leading-[1.08] sm:text-6xl">
-        Find Christian-owned businesses you can trust.
+  <section class="home-hero" aria-labelledby="home-heading">
+    <div class="mx-auto max-w-3xl px-4 pb-4 pt-8 sm:pt-14">
+      <p class="text-sm font-semibold" style="color:var(--accent)">Community directory</p>
+      <h1 id="home-heading" class="mt-2 text-[2rem] font-extrabold leading-[1.12] sm:text-5xl">
+        Discover community-listed Christian businesses, churches, and ministries.
       </h1>
-      <p data-animate="hero" class="mx-auto mt-4 max-w-2xl text-[15px] sm:text-lg" style="color:var(--text-soft)">
-        CrossLinkd is a hand-reviewed national directory of Christian-owned businesses, churches, and
-        ministries across the United States. Every listing is checked by a person, and every badge shows its verification date.
+      <p class="mt-4 max-w-2xl text-base leading-relaxed sm:text-lg" style="color:var(--text-soft)">
+        Browse owner-submitted listings, learn how each profile was added or updated, and make informed decisions for yourself.
       </p>
 
-      <div data-animate="hero" class="mx-auto mt-7 max-w-4xl text-left">
-        <SearchBar client:load />
-        <div class="mt-3 flex flex-wrap items-center justify-center gap-2 text-[13px]">
-          <span style="color:var(--text-mute)">Popular:</span>
-          {['plumber', 'counselor #Tricare', 'contractor', 'accountant'].map((s) => (
-            <a href={`/search?q=${encodeURIComponent(s)}`} class="chip hover:border-[var(--accent)]">{s}</a>
-          ))}
-        </div>
-      </div>
-
-      <div data-animate="hero" class="mt-6 flex flex-wrap items-center justify-center gap-2.5">
-        <a href="/search" class="btn btn-primary" data-animate="cta">Search Businesses</a>
-        <a href="/add-listing" class="btn btn-teal">List Your Business</a>
-      </div>
-
-      <!-- Real numbers from the current dataset -->
-      <dl data-animate="hero" class="mx-auto mt-9 grid max-w-4xl grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
-        {[
-          [`${corpus.length}`, 'Businesses & churches listed'],
-          [`${verified}`, 'Verified & credentialed'],
-          ['National', 'Growing coverage across the United States'],
-          [`+${recent}`, 'Added in the last 30 days'],
-        ].map(([n, l]) => (
-          <div class="card flex h-full flex-col items-center justify-center p-4 text-center sm:p-5">
-            <dd class="text-xl font-extrabold sm:text-2xl">{n}</dd>
-            <dt class="mt-1 text-xs leading-snug" style="color:var(--text-mute)">{l}</dt>
+      <div class="card mt-6 p-4 sm:p-6">
+        <SearchBar client:load labeled locationChoices={locationChoices} />
+        <p class="mt-3 text-sm" style="color:var(--text-soft)">
+          Search looks through published listings only.
+          {corpus.length > 0
+            ? ` ${corpus.length} ${corpus.length === 1 ? 'listing is' : 'listings are'} published right now.`
+            : ' None are published yet.'}
+        </p>
+        {populatedCategories.length > 0 && (
+          <div class="mt-3 flex flex-wrap gap-2">
+            <span class="sr-only">Categories that currently have listings</span>
+            {populatedCategories.slice(0, 4).map((category) => (
+              <a href={category.href} class="chip hover:border-[var(--accent)]">{category.label}</a>
+            ))}
           </div>
-        ))}
-      </dl>
-      <p class="mt-3 text-xs" style="color:var(--text-mute)">
-        A hand-reviewed national directory connecting Christian-owned businesses and communities across the country.
-      </p>
-    </div>
-  </div>
-
-  <!-- ============ FEATURED & VERIFIED ============ -->
-  <Section title="Featured & verified businesses" sub="Hand-picked by our team — every one individually checked, the same way as every other listing." href="/search?sort=featured" linkLabel="See all featured →">
-    <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3" data-animate="grid">
-      {featured.map((l) => <ListingCard listing={l} />)}
-    </div>
-  </Section>
-
-  <!-- ============ POPULAR CATEGORIES ============ -->
-  <Section title="Popular categories" sub="Real counts from the directory — no empty pages." href="/browse/industries" linkLabel="All categories →">
-    <div class="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4" data-animate="grid">
-      {categoryDefs.map((c) => (
-        <a href={`/search?q=${encodeURIComponent(c.q)}`} class="card card-hover flex items-center justify-between gap-3 p-4">
-          <span class="text-sm font-bold leading-snug">{c.label}</span>
-          <span class="chip shrink-0 !py-0.5 !text-[11px] font-bold">{categoryCount(c.q)}</span>
-        </a>
-      ))}
-    </div>
-  </Section>
-
-  <!-- ============ WHERE WE SERVE (Dynamic, no 0-listing or hardcoded cards) ============ -->
-  <Section
-    title="Where we serve"
-    sub={hasLocations ? "Featured locations and growing coverage across the United States." : "Nationwide coverage is growing as new listings are added."}
-    href={activeLocations.length > 0 ? "/browse/locations" : undefined}
-    linkLabel={activeLocations.length > 0 ? "Browse by state →" : undefined}
-  >
-    {hasLocations ? (
-      <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3" data-animate="grid">
-        {activeLocations.map((loc) => (
-          <a href={`/locations/${loc.slug}`} class="card card-hover p-5">
-            <div class="flex items-baseline justify-between">
-              <p class="font-extrabold">{loc.city}, {loc.region}</p>
-              <span class="chip !py-0.5 !text-[11px] font-bold">{loc.count} {loc.count === 1 ? 'listing' : 'listings'}</span>
-            </div>
-            <p class="mt-1 text-[13px]" style="color:var(--text-soft)">Verified Christian-owned businesses and organizations.</p>
-          </a>
-        ))}
-        {onlineOnlyCount > 0 && (
-          <a href="/search?onlineOnly=1" class="card card-hover p-5">
-            <div class="flex items-baseline justify-between">
-              <p class="font-extrabold">Online-only businesses</p>
-              <span class="chip !py-0.5 !text-[11px] font-bold">{onlineOnlyCount} {onlineOnlyCount === 1 ? 'listing' : 'listings'}</span>
-            </div>
-            <p class="mt-1 text-[13px]" style="color:var(--text-soft)">Web, media, and services that work from anywhere.</p>
-          </a>
         )}
       </div>
+
+    </div>
+  </section>
+
+  <section class="mx-auto mt-8 max-w-3xl px-4" aria-labelledby="trust-heading">
+    <div class="card p-5 sm:p-6" style="border-left:4px solid var(--teal)">
+      <h2 id="trust-heading" class="text-lg font-extrabold">How to read a listing</h2>
+      <p class="mt-2 text-[15px] leading-relaxed" style="color:var(--text-soft)">
+        Listings are submitted by businesses, churches, ministries, and community members. CrossLinkd reviews submissions for completeness but does not guarantee quality, credentials, licensing, outcomes, or theological agreement.
+      </p>
+    </div>
+  </section>
+
+  <Section
+    title="Available listings"
+    sub={corpus.length > 0
+      ? (available.length === corpus.length
+        ? `Every published listing is shown. ${corpus.length} ${corpus.length === 1 ? 'listing is' : 'listings are'} in the directory right now.`
+        : `Showing the ${available.length} newest of ${corpus.length} published listings.`)
+      : 'No listings are published yet.'}
+    href={corpus.length > available.length ? '/search?sort=newest' : undefined}
+    linkLabel="See all listings"
+  >
+    {available.length > 0 ? (
+      <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        {available.map((listing) => <ListingCard listing={listing} />)}
+      </div>
     ) : (
-      <div class="card flex flex-col items-center justify-center p-8 text-center sm:p-12">
-        <div class="flex h-12 w-12 items-center justify-center rounded-2xl" style="background:var(--surface-2);color:var(--teal)">
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/>
-            <circle cx="12" cy="10" r="3"/>
-          </svg>
-        </div>
-        <h3 class="mt-4 text-lg font-bold">Locations coming soon</h3>
-        <p class="mt-2 max-w-md text-sm leading-relaxed" style="color:var(--text-soft)">
-          We’re building a nationwide directory. Browse back soon as businesses and organizations are added.
+      <div class="card p-6 text-center sm:p-10">
+        <h3 class="text-xl font-extrabold">Help grow the directory by adding a business or organization.</h3>
+        <p class="mx-auto mt-2 max-w-lg text-sm leading-relaxed" style="color:var(--text-soft)">
+          There is nothing to browse yet. A free listing is owner-submitted. Publishing it does not verify the organization.
         </p>
-        <div class="mt-5 flex flex-wrap justify-center gap-3">
-          <a href="/add-listing" class="btn btn-primary !py-2 !text-sm">List Your Business</a>
-          <a href="/search" class="btn btn-secondary !py-2 !text-sm">Search Directory</a>
-        </div>
       </div>
     )}
   </Section>
 
-  <!-- ============ RECENTLY ADDED ============ -->
-  <Section title="Recently added" sub={`The newest reviewed listings — ${recent} joined in the last 30 days.`} href="/search?sort=newest" linkLabel="See all new →">
-    <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4" data-animate="grid">
-      {newest.map((l) => <ListingCard listing={l} />)}
-    </div>
+  <Section title="Browse what is published" sub={hasInternational
+    ? 'Categories and places appear only when a published listing uses them. Some places are outside the United States. This is not a coverage map or a verification.'
+    : 'Categories and places appear only when a published listing uses them. This is not a national network or a verification.'}
+  >
+    {populatedCategories.length === 0 && activeLocations.length === 0 && onlineOnlyCount === 0 ? (
+      <div class="card p-6 text-sm leading-relaxed" style="color:var(--text-soft)">
+        No categories or places to browse yet. Help grow the directory by adding a business or organization.
+      </div>
+    ) : (
+      <div class="space-y-8">
+        {populatedCategories.length > 0 && (
+          <div>
+            <h3 class="text-base font-extrabold">Categories with listings</h3>
+            <div class="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {populatedCategories.map((category) => (
+                <a href={category.href} class="card card-hover flex items-center justify-between gap-3 p-4">
+                  <span class="font-bold">{category.label}</span>
+                  <span class="chip shrink-0">{category.count} {category.count === 1 ? 'listing' : 'listings'}</span>
+                </a>
+              ))}
+            </div>
+          </div>
+        )}
+        {(activeLocations.length > 0 || onlineOnlyCount > 0) && (
+          <div>
+            <h3 class="text-base font-extrabold">Places with listings</h3>
+            {hasInternational && (
+              <p class="mt-1 text-sm" style="color:var(--text-soft)">Includes locations outside the United States. A city name is where the listing says it is based.</p>
+            )}
+            <div class="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {activeLocations.map((loc) => (
+                <a href={`/locations/${loc.slug}`} class="card card-hover p-4">
+                  <span class="flex items-center justify-between gap-3">
+                    <span class="font-bold">{loc.city}, {loc.region}</span>
+                    <span class="chip shrink-0">{loc.count}</span>
+                  </span>
+                  <span class="mt-1 block text-sm" style="color:var(--text-soft)">{isUsRegion(loc.region) ? 'Owner-submitted' : 'Owner-submitted, outside the U.S.'}</span>
+                </a>
+              ))}
+              {onlineOnlyCount > 0 && (
+                <a href="/search?onlineOnly=1" class="card card-hover p-4">
+                  <span class="flex items-center justify-between gap-3">
+                    <span class="font-bold">Online</span>
+                    <span class="chip shrink-0">{onlineOnlyCount}</span>
+                  </span>
+                  <span class="mt-1 block text-sm" style="color:var(--text-soft)">Listings that say they work without a storefront.</span>
+                </a>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+    )}
   </Section>
 
-  <!-- ============ TESTIMONIALS (Dynamically populated from real reviews) ============ -->
-  {testimonials.length > 0 && (
-    <Section title="What people say" sub="From directory users and listed owners alike.">
-      <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3" data-animate="grid">
-        {testimonials.map((t) => (
-          <figure class="card flex flex-col p-6">
-            <blockquote class="flex-1 text-[15px] leading-relaxed" style="color:var(--text-soft)">“{t.quote}”</blockquote>
-            <figcaption class="mt-4 flex items-center gap-3">
-              <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-extrabold text-white" style={`background:hsl(${t.hue},45%,55%)`} aria-hidden="true">{t.name.charAt(0)}</span>
-              <div class="text-sm">
-                <p class="font-bold">{t.name}</p>
-                <p style="color:var(--text-mute)">{t.listingName ? `Review for ${t.listingName}` : t.role}</p>
-                {t.listingSlug && <a href={`/directory/${t.listingSlug}`} class="text-xs text-[var(--teal)] hover:underline">View the listing →</a>}
-              </div>
-            </figcaption>
-          </figure>
+  <Section title="For business owners" sub="Free forever for the basic listing. No credit card required.">
+    <div class="card p-6 sm:p-8">
+      <ol class="grid gap-4 sm:grid-cols-2">
+        {ownerSteps.map(([title, body], index) => (
+          <li class="flex gap-3">
+            <span class="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-sm font-bold" style="background:var(--surface-2);border:1px solid var(--border-strong)" aria-hidden="true">{index + 1}</span>
+            <span>
+              <span class="block font-bold">{title}</span>
+              <span class="mt-0.5 block text-sm leading-relaxed" style="color:var(--text-soft)">{body}</span>
+            </span>
+          </li>
         ))}
-      </div>
-    </Section>
-  )}
-
-  <!-- ============ HOW IT WORKS ============ -->
-  <Section title="How CrossLinkd works" id="how-it-works">
-    <div class="grid gap-4 md:grid-cols-3" data-animate="grid">
-      {[
-        ['1. Businesses submit or are found', 'Owners submit a free listing, or we add a business after checking its public information. Nothing is published until a person reviews it.'],
-        ['2. A person checks the claims', 'We confirm contact details, licenses where applicable, and — for the Christian-owned badge — a signed attestation plus evidence. Badges show the date.'],
-        ['3. You search with confidence', 'Filter by category, city, and verification. Call with confidence, then leave a review — moderated under our published policy.'],
-      ].map(([title, body]) => (
-        <div class="card p-6">
-          <h3 class="font-bold">{title}</h3>
-          <p class="mt-1.5 text-sm leading-relaxed" style="color:var(--text-soft)">{body}</p>
-        </div>
-      ))}
-    </div>
-    <p class="mt-3 text-center text-sm"><a href="/how-it-works" class="text-[var(--teal)] hover:underline">More detail — including how businesses qualify →</a></p>
-  </Section>
-
-  <!-- ============ OWNERS CTA ============ -->
-  <Section>
-    <div class="card flex flex-col items-start justify-between gap-4 p-6 sm:flex-row sm:items-center" style="background:var(--accent-soft)" data-animate="reveal">
-      <div>
-        <h3 class="text-lg font-extrabold">Own a Christian-owned business?</h3>
-        <p class="mt-1 text-sm" style="color:var(--text-soft)">A free listing takes about 10 minutes. A person reviews every submission before it goes live.</p>
-      </div>
-      <div class="flex gap-2">
-        <a href="/add-listing" class="btn btn-primary" data-animate="cta">List Your Business</a>
-        <a href="/how-it-works" class="btn btn-secondary">How it works</a>
-      </div>
+      </ol>
+      <p class="mt-6">
+        <a href="/submission-policy" class="text-sm font-semibold underline" style="color:var(--teal)">Read the submission policy</a>
+      </p>
     </div>
   </Section>
 
-  <!-- ============ RESOURCE CENTER PREVIEW ============ -->
-  <Section title="Guides & resources" sub="Practical help for finding and evaluating Christian-owned businesses — every guide links to real listings." href="/articles" linkLabel="Resource center →">
-    <div class="grid gap-4 md:grid-cols-3" data-animate="grid">
-      {guides.map((a) => (
-        <a href={`/articles/${a.slug}`} class="card card-hover overflow-hidden">
-          <div class="h-24" style={`background:hsl(${a.hue},26%,80%)`}></div>
-          <div class="p-4">
-            <p class="text-xs font-bold uppercase tracking-wide" style="color:var(--teal)">{a.category}</p>
-            <p class="mt-1 font-bold leading-snug">{a.title}</p>
-            <p class="mt-1 line-clamp-2 text-sm" style="color:var(--text-soft)">{a.excerpt}</p>
-          </div>
-        </a>
+  <Section title="Guides" sub="Practical questions to ask yourself. These articles are secondary to search, and they do not confirm that a business was verified." href="/articles" linkLabel="All guides">
+    <div class="grid gap-3 md:grid-cols-3">
+      {guides.map((article) => (
+        <article class="card p-5">
+          <p class="text-xs font-bold uppercase tracking-wide" style="color:var(--text-mute)">{article.category}</p>
+          <h3 class="mt-2 font-extrabold leading-snug">
+            <a href={`/articles/${article.slug}`} class="hover:underline">{article.title}</a>
+          </h3>
+          <p class="mt-2 text-sm leading-relaxed" style="color:var(--text-soft)">{article.excerpt}</p>
+          {article.linkedListings.length > 0 && (
+            <ul class="mt-3 space-y-1 text-sm">
+              {article.linkedListings.map((listing) => (
+                <li><a href={`/directory/${listing.slug}`} class="underline" style="color:var(--teal)">Published listing: {listing.name}</a></li>
+              ))}
+            </ul>
+          )}
+          {article.relatedCategory && (
+            <a href={article.relatedCategory.href} class="mt-3 inline-block text-sm font-semibold underline" style="color:var(--teal)">Related: {article.relatedCategory.label}</a>
+          )}
+        </article>
       ))}
     </div>
   </Section>
 
-  <!-- ============ EVENTS (supporting content) ============ -->
-  <Section title="Community events" sub="Worship nights, conferences, and serve days hosted by listed churches and ministries." href="/events">
-    <div class="grid gap-4 md:grid-cols-3" data-animate="grid">
-      {upcoming.map((e) => (
-        <a href={`/events/${e.slug}`} class="card card-hover overflow-hidden">
-          <div class="h-24" style={`background:hsl(${e.hue},26%,80%)`}></div>
-          <div class="p-4">
-            <p class="text-xs font-bold uppercase tracking-wide" style="color:var(--teal)">
-              {eventDate(e.startsInDays).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })} • {e.city}{e.region ? `, ${e.region}` : ''}
-            </p>
-            <p class="mt-1 font-bold">{e.title}</p>
-            <p class="mt-1 line-clamp-2 text-sm" style="color:var(--text-soft)">{e.description}</p>
-          </div>
-        </a>
-      ))}
+  <section class="mx-auto mt-16 max-w-3xl px-4 pb-8 text-center" aria-labelledby="close-heading">
+    <div class="card px-5 py-10 sm:px-10">
+      <h2 id="close-heading" class="text-2xl font-extrabold leading-snug sm:text-3xl">Help build a clearer, more transparent directory for your community.</h2>
+      <p class="mx-auto mt-3 max-w-xl text-sm leading-relaxed" style="color:var(--text-soft)">
+        Add an accurate listing, or browse what is already published. CrossLinkd does not independently verify the organizations you find here.
+      </p>
     </div>
-  </Section>
+  </section>
 </BaseLayout>
 <style>
-  .line-clamp-2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .home-hero { background: var(--bg-soft); border-bottom: 1px solid var(--border); }
+  .min-h-11 { min-height: 44px; }
 </style>

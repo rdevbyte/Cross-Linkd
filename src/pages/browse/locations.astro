@@ -3,6 +3,7 @@ import BaseLayout from '@/layouts/BaseLayout.astro';
 import { getPublicListings } from '@/lib/publicListings';
 import { FOCUS_STATES } from '@/data/locations';
 import { slugify } from '@/lib/slug';
+import { isUsRegion } from '@/lib/trustCopy';
 
 const corpus = await getPublicListings();
 const user = Astro.locals.user;
@@ -62,19 +63,22 @@ for (const item of corpus) {
 const activeStates = Array.from(stateMap.values()).sort((a, b) => b.count - a.count);
 activeStates.forEach((s) => s.cities.sort((a, b) => b.count - a.count));
 
+const hasInternational = activeStates.some((s) => !isUsRegion(s.abbr));
 const seo = {
-  title: 'Browse by State — Locations | CrossLinkd',
-  description: 'Browse Christian-owned businesses, churches, and ministries across the United States. Only active locations with verified listings are displayed.',
+  title: 'Browse locations | CrossLinkd',
+  description: hasInternational
+    ? 'Owner-submitted listings by place, including locations outside the United States. A place is not a verification.'
+    : 'Owner-submitted listings by place. A place is shown only when it has a published listing. That is not a verification.',
   path: '/browse/locations',
 };
 ---
 <BaseLayout user={user} seo={seo}>
   <div class="mx-auto max-w-5xl px-4 py-10">
-    <h1 class="text-3xl font-extrabold">Browse by state</h1>
+    <h1 class="text-3xl font-extrabold">Browse by location</h1>
     <p class="section-sub">
       {activeStates.length > 0
-        ? 'A state or city is listed once it has verified businesses — no empty pages or placeholder listings.'
-        : 'Nationwide coverage is expanding. States and cities will appear here as soon as verified listings are published.'}
+        ? 'A place is listed only when it has a published, owner-submitted listing. That is not a verification, and it is not limited to U.S. states.'
+        : 'No places are listed yet. A city appears here after an owner submits a listing with a location.'}
     </p>
 
     {activeStates.length > 0 ? (
@@ -82,7 +86,7 @@ const seo = {
         <section class="mt-8" aria-label={state.name}>
           <div class="flex items-baseline justify-between">
             <h2 class="text-xl font-extrabold">
-              <a href={`/states/${state.slug}`} class="hover:underline">{state.name}</a>
+              <a href={isUsRegion(state.abbr) ? `/states/${state.slug}` : (state.cities[0] ? `/locations/${state.cities[0].slug}` : '/search')} class="hover:underline">{state.name}</a>
             </h2>
             <span class="chip">{state.count} {state.count === 1 ? 'listing' : 'listings'}</span>
           </div>
@@ -93,12 +97,12 @@ const seo = {
                   <p class="font-bold">{c.city}, {c.region}</p>
                   <span class="chip !py-0.5 !text-[11px] font-bold">{c.count}</span>
                 </div>
-                <p class="mt-1 text-[13px]" style="color:var(--text-soft)">Verified listings in {c.city}.</p>
+                <p class="mt-1 text-[13px]" style="color:var(--text-soft)">{isUsRegion(c.region) ? 'Owner-submitted listings. Not independently verified.' : 'Owner-submitted listing outside the United States.'}</p>
               </a>
             ))}
             <a href={`/search?near=${encodeURIComponent(state.name)}`} class="card card-hover p-4">
               <p class="font-bold">All of {state.name}</p>
-              <p class="mt-1 text-[13px]" style="color:var(--text-soft)">Search all verified listings statewide.</p>
+              <p class="mt-1 text-[13px]" style="color:var(--text-soft)">{isUsRegion(state.abbr) ? 'Search owner-submitted listings in this state.' : 'This is not a U.S. state. Search owner-submitted listings in this place.'}</p>
             </a>
           </div>
         </section>
@@ -111,22 +115,17 @@ const seo = {
             <circle cx="12" cy="10" r="3"/>
           </svg>
         </div>
-        <h2 class="mt-4 text-lg font-bold">Locations coming soon</h2>
+        <h2 class="mt-4 text-lg font-bold">No places listed yet</h2>
         <p class="mt-2 max-w-md text-sm leading-relaxed" style="color:var(--text-soft)">
-          We’re building a nationwide directory. Browse back soon as businesses and organizations are added across the country.
+          CrossLinkd is not a nationwide verified directory. A location card appears only after a listing is published.
         </p>
-        <div class="mt-5 flex flex-wrap justify-center gap-3">
-          <a href="/add-listing" class="btn btn-primary !py-2 !text-sm">List Your Business</a>
-          <a href="/search" class="btn btn-secondary !py-2 !text-sm">Search Directory</a>
-        </div>
       </div>
     )}
 
     <div class="card mt-10 p-6">
       <h2 class="font-extrabold">Online-only & nationwide services</h2>
       <p class="mt-1 text-sm" style="color:var(--text-soft)">
-        Online-only businesses serve customers nationwide — <a href="/search?onlineOnly=1" class="underline">browse them here</a>. If you own a
-        Christian-owned business anywhere in the US, you can <a href="/add-listing" class="underline">submit a free listing</a> today.
+        Online-only businesses say they serve customers without a storefront — <a href="/search?onlineOnly=1" class="underline">browse them here</a>. A listing is owner-submitted, not verified.
       </p>
     </div>
   </div>

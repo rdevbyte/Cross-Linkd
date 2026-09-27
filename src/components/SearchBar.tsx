@@ -1,14 +1,21 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { popoverMotion } from '@/lib/motion';
 import { parseQuery, suggestHashtags, applyTagSuggestion } from '@/lib/hashtags';
 import { getHistory, pushHistory } from '@/lib/store';
 import { FOCUS_CITIES, FOCUS_STATES } from '@/data/locations';
+
+interface LocationChoice { label: string; value: string; kind?: string }
 
 interface Props {
   initialQuery?: string;
   initialLocation?: string;
   size?: 'hero' | 'compact';
   autofocus?: boolean;
+  /** Visible field labels and a separate Search button. Used on the homepage. */
+  labeled?: boolean;
+  /** Suggestions drawn from published listings. Omitting this keeps the compact bar's built-in list. */
+  locationChoices?: LocationChoice[];
 }
 
 interface SuggestItem { label: string; kind: string; value: string; isTag?: boolean }
@@ -30,7 +37,18 @@ const LOCATION_ITEMS: SuggestItem[] = [
  * Two-field search: WHAT (service, category, or business name — supports
  * hashtags) and WHERE (city, state, or ZIP). Submits to /search?q=&near=.
  */
-export default function SearchBar({ initialQuery = '', initialLocation = '', size = 'hero', autofocus = false }: Props) {
+function isOnlineQuery(value: string) {
+  return /^(online|online only|online-only)$/i.test(value.trim());
+}
+
+export default function SearchBar({
+  initialQuery = '',
+  initialLocation = '',
+  size = 'hero',
+  autofocus = false,
+  labeled = false,
+  locationChoices,
+}: Props) {
   const [value, setValue] = useState(initialQuery);
   const [locValue, setLocValue] = useState(initialLocation);
   const [open, setOpen] = useState(false);
@@ -44,12 +62,19 @@ export default function SearchBar({ initialQuery = '', initialLocation = '', siz
 
   const parsed = useMemo(() => parseQuery(value), [value]);
 
+  const locationSource = useMemo(() => {
+    // A provided list, even an empty one, means "only suggest published places."
+    if (locationChoices) return locationChoices;
+    if (labeled) return [{ label: 'Online', value: 'Online', kind: 'online' }];
+    return LOCATION_ITEMS;
+  }, [labeled, locationChoices]);
+
   // Location options filtered by what the user typed.
   const locItems = useMemo(() => {
     const t = locValue.trim().toLowerCase();
-    if (!t) return LOCATION_ITEMS;
-    return LOCATION_ITEMS.filter((i) => i.label.toLowerCase().includes(t.replace(/,\s*$/, '')));
-  }, [locValue]);
+    if (!t) return locationSource;
+    return locationSource.filter((i) => i.label.toLowerCase().includes(t.replace(/,\s*$/, '')));
+  }, [locValue, locationSource]);
 
   // Fetch entity autocomplete for the text portion.
   useEffect(() => {
@@ -93,14 +118,16 @@ export default function SearchBar({ initialQuery = '', initialLocation = '', siz
 
   const submit = (q: string = value, near: string = locValue) => {
     const query = q.trim();
-    if (!query && !near.trim()) {
+    const where = near.trim();
+    if (!query && !where) {
       window.location.href = '/search';
       return;
     }
     if (query) pushHistory(query);
     const sp = new URLSearchParams();
     if (query) sp.set('q', query);
-    if (near.trim()) sp.set('near', near.trim());
+    if (isOnlineQuery(where)) sp.set('onlineOnly', '1');
+    else if (where) sp.set('near', where);
     window.location.href = `/search?${sp.toString()}`;
   };
 
@@ -132,16 +159,17 @@ export default function SearchBar({ initialQuery = '', initialLocation = '', siz
   const inputPad = hero ? 'py-3 text-[16px]' : 'py-1.5 text-sm';
 
   return (
-    <div className="w-full">
+    <form className="w-full" data-motion="react" role="search" aria-label="Search the directory" onSubmit={(e) => { e.preventDefault(); submit(); }}>
       {parsed.tags.length > 0 && (
         <div className="mb-2 flex flex-wrap gap-1.5" aria-label="Active hashtag filters">
           <AnimatePresence>
             {parsed.tags.map((t) => (
               <motion.span
                 key={t}
-                initial={{ opacity: 0, scale: 0.85 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.85 }}
+                initial={popoverMotion.initial}
+                animate={popoverMotion.animate}
+                exit={popoverMotion.exit}
+                transition={popoverMotion.transition}
                 className="chip chip-active"
               >
                 #{t}
@@ -156,11 +184,14 @@ export default function SearchBar({ initialQuery = '', initialLocation = '', siz
         </div>
       )}
 
-      <div className={`flex flex-col gap-2 sm:flex-row ${hero ? '' : 'gap-1.5'}`}>
+      <div className={labeled ? 'grid gap-4 sm:grid-cols-2' : `flex flex-col gap-2 sm:flex-row ${hero ? '' : 'gap-1.5'}`}>
         {/* WHAT field */}
         <div ref={boxRef} className="relative flex-1">
+          {labeled && (
+            <label htmlFor="cl-q" className="mb-1.5 block text-sm font-semibold">What are you looking for?</label>
+          )}
           <div
-            className={`flex items-center gap-2 rounded-2xl border bg-[var(--surface)] transition-shadow focus-within:shadow-lg ${hero ? 'p-2 pl-5 shadow-card' : 'px-3 py-1.5 shadow-sm'}`}
+            className={`flex items-center gap-2 rounded-2xl border bg-[var(--surface)] transition-shadow focus-within:shadow-lg ${hero ? 'p-2 pl-4 shadow-card' : 'px-3 py-1.5 shadow-sm'}`}
             style={{ borderColor: 'var(--border-strong)' }}
           >
             <svg aria-hidden="true" className={hero ? 'text-xl' : 'text-base'} width={hero ? 20 : 16} height={hero ? 20 : 16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></svg>
@@ -178,20 +209,23 @@ export default function SearchBar({ initialQuery = '', initialLocation = '', siz
                   else submit();
                 } else if (e.key === 'Escape') setOpen(false);
               }}
+              id="cl-q"
               role="combobox"
               aria-expanded={open && items.length > 0}
               aria-controls="cl-search-listbox"
-              aria-label="Service, category, or business name"
+              aria-label={labeled ? undefined : 'Service, category, or business name'}
               aria-autocomplete="list"
-              placeholder="Service, category, or business name"
-              className={`w-full bg-transparent outline-none placeholder:text-[var(--text-mute)] ${inputPad}`}
+              placeholder={labeled ? 'Plumber, church, bakery, or a name' : 'Service, category, or business name'}
+              className={`w-full bg-transparent placeholder:text-[var(--text-mute)] ${inputPad}`}
             />
             {value && (
               <button type="button" onClick={() => setValue('')} aria-label="Clear search" className="rounded-full px-2 text-[var(--text-mute)] hover:text-[var(--text)]">×</button>
             )}
-            <button type="button" onClick={() => submit()} className={`btn btn-primary shrink-0 ${hero ? '' : '!px-4 !py-1.5 !text-[13px]'}`}>
-              Search Businesses
-            </button>
+            {!labeled && (
+              <button type="submit" className={`btn btn-primary shrink-0 ${hero ? '' : '!px-4 !py-1.5 !text-[13px]'}`}>
+                Search Businesses
+              </button>
+            )}
           </div>
 
           <AnimatePresence>
@@ -199,10 +233,7 @@ export default function SearchBar({ initialQuery = '', initialLocation = '', siz
               <motion.ul
                 id="cl-search-listbox"
                 role="listbox"
-                initial={{ opacity: 0, y: -6 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -6 }}
-                transition={{ duration: 0.15 }}
+                {...popoverMotion}
                 className="card absolute z-50 mt-2 max-h-80 w-full overflow-auto p-1.5"
               >
                 {items.map((item, i) => (
@@ -227,9 +258,12 @@ export default function SearchBar({ initialQuery = '', initialLocation = '', siz
         </div>
 
         {/* WHERE field */}
-        <div ref={locBoxRef} className={`relative sm:w-64`}>
+        <div ref={locBoxRef} className={labeled ? 'relative' : 'relative sm:w-64'}>
+          {labeled && (
+            <label htmlFor="cl-near" className="mb-1.5 block text-sm font-semibold">City, state, ZIP code, or online</label>
+          )}
           <div
-            className={`flex items-center gap-2 rounded-2xl border bg-[var(--surface)] transition-shadow focus-within:shadow-lg ${hero ? 'p-2 shadow-card' : 'px-3 py-1.5 shadow-sm'}`}
+            className={`flex items-center gap-2 rounded-2xl border bg-[var(--surface)] transition-shadow focus-within:shadow-lg ${hero ? 'p-2 pl-4 shadow-card' : 'px-3 py-1.5 shadow-sm'}`}
             style={{ borderColor: 'var(--border-strong)' }}
           >
             <svg aria-hidden="true" className={hero ? 'text-xl' : 'text-base'} width={hero ? 20 : 16} height={hero ? 20 : 16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 10c0 6-8 12-8 12S4 16 4 10a8 8 0 1 1 16 0Z" /><circle cx="12" cy="10" r="2.8" /></svg>
@@ -246,13 +280,14 @@ export default function SearchBar({ initialQuery = '', initialLocation = '', siz
                   else submit();
                 } else if (e.key === 'Escape') setLocOpen(false);
               }}
+              id="cl-near"
               role="combobox"
               aria-expanded={locOpen && locItems.length > 0}
               aria-controls="cl-location-listbox"
-              aria-label="City, state, or ZIP code"
+              aria-label={labeled ? undefined : 'City, state, or ZIP code'}
               aria-autocomplete="list"
-              placeholder="City, state, or ZIP"
-              className={`w-full bg-transparent outline-none placeholder:text-[var(--text-mute)] ${hero ? 'py-3 text-[16px]' : 'py-1.5 text-sm'}`}
+              placeholder={labeled ? 'City, state, ZIP code, or online' : 'City, state, ZIP, or country'}
+              className={`w-full bg-transparent placeholder:text-[var(--text-mute)] ${hero ? 'py-3 text-[16px]' : 'py-1.5 text-sm'}`}
             />
             {locValue && (
               <button type="button" onClick={() => setLocValue('')} aria-label="Clear location" className="rounded-full px-2 text-[var(--text-mute)] hover:text-[var(--text)]">×</button>
@@ -264,10 +299,7 @@ export default function SearchBar({ initialQuery = '', initialLocation = '', siz
               <motion.ul
                 id="cl-location-listbox"
                 role="listbox"
-                initial={{ opacity: 0, y: -6 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -6 }}
-                transition={{ duration: 0.15 }}
+                {...popoverMotion}
                 className="card absolute z-50 mt-2 max-h-72 w-full overflow-auto p-1.5"
               >
                 {locItems.map((item, i) => (
@@ -288,6 +320,11 @@ export default function SearchBar({ initialQuery = '', initialLocation = '', siz
           </AnimatePresence>
         </div>
       </div>
-    </div>
+      {labeled && (
+        <button type="submit" className="btn btn-primary mt-4 w-full !py-3 !text-base sm:w-auto sm:!px-8">
+          Search
+        </button>
+      )}
+    </form>
   );
 }

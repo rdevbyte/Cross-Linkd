@@ -1,10 +1,12 @@
 import { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
+import { dialogMotion, overlayMotion } from '@/lib/motion';
 import QRCode from 'react-qr-code';
 
 export default function QRShare({ url, name }: { url: string; name: string }) {
   const [open, setOpen] = useState(false);
   const [copied, setCopied] = useState(false);
+  const reduce = useReducedMotion();
 
   const copy = async () => {
     try {
@@ -22,13 +24,14 @@ export default function QRShare({ url, name }: { url: string; name: string }) {
       <AnimatePresence>
         {open && (
           <motion.div
-            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            {...(reduce ? { initial: false } : overlayMotion)}
             className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
             onClick={() => setOpen(false)}
             role="dialog" aria-modal="true" aria-label={`Share ${name}`}
           >
             <motion.div
-              initial={{ scale: 0.92, y: 12 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.92, y: 12 }}
+              {...(reduce ? { initial: false } : dialogMotion)}
+              data-motion="react"
               className="card w-full max-w-xs p-6 text-center"
               onClick={(e) => e.stopPropagation()}
             >

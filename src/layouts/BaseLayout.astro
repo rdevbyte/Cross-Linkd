@@ -6,8 +6,8 @@ import Navbar from '@/components/Navbar.astro';
 import Footer from '@/components/Footer.astro';
 import { buildSeo, type SeoInput } from '@/lib/seo';
 
-interface Props { seo: SeoInput; user?: { displayName: string; role: string } | null; wide?: boolean }
-const { seo, user = null } = Astro.props;
+interface Props { seo: SeoInput; user?: { displayName: string; role: string } | null; wide?: boolean; mobileActions?: boolean }
+const { seo, user = null, mobileActions = false } = Astro.props;
 const s = buildSeo(seo);
 ---
 <!doctype html>
@@ -46,10 +46,54 @@ const s = buildSeo(seo);
       <slot />
     </main>
     <Footer />
+    {mobileActions && (
+      <nav class="mobile-action-bar md:hidden" hidden aria-label="Quick actions">
+        <a href="/search" class="btn btn-secondary">Browse businesses</a>
+        <a href="/add-listing" class="btn btn-primary">List your business free</a>
+      </nav>
+    )}
     <script>
       import { initPageAnimations, pulseCta } from '@/components/HeroAnimations';
       initPageAnimations();
       pulseCta();
+      const bar = document.querySelector('.mobile-action-bar');
+      const hero = document.querySelector('[data-mobile-hero]');
+      if (bar && hero && 'IntersectionObserver' in window) {
+        const showBar = (show) => {
+          bar.toggleAttribute('hidden', !show);
+          document.body.classList.toggle('has-mobile-actions', show);
+        };
+        const observer = new IntersectionObserver(
+          ([entry]) => showBar(!entry.isIntersecting),
+          { threshold: 0.2 },
+        );
+        observer.observe(hero);
+      }
     </script>
+    <style>
+      .mobile-action-bar {
+        position: fixed;
+        right: 0;
+        bottom: 0;
+        left: 0;
+        z-index: 30;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 0.5rem;
+        padding: 0.75rem 1rem calc(0.75rem + env(safe-area-inset-bottom));
+        background: var(--bg);
+        border-top: 1px solid var(--border);
+      }
+      .mobile-action-bar .btn {
+        min-height: 44px;
+        padding-left: 0.7rem;
+        padding-right: 0.7rem;
+        text-align: center;
+        line-height: 1.2;
+      }
+      @media (max-width: 767px) {
+        body.has-mobile-actions { padding-bottom: 8rem; }
+      }
+    </style>
   </body>
 </html>

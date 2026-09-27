@@ -13,7 +13,7 @@ if (!industry) return Astro.redirect('/browse/industries', 302);
 const user = Astro.locals.user;
 const matches = corpus.filter((l) => l.industries.includes(industry.slug));
 ---
-<BaseLayout user={user} seo={{ title: `${industry.name} — CrossLinkd`, description: industry.description, path: `/industries/${industry.slug}` }}>
+<BaseLayout user={user} seo={{ title: `${industry.name} — CrossLinkd`, description: industry.description, path: `/industries/${industry.slug}`, noindex: matches.length === 0 }}>
   <div class="mx-auto max-w-7xl px-4 py-10">
     <nav class="text-[13px]" style="color:var(--text-mute)"><a href="/browse/industries" class="hover:underline">Industries</a> / <span style="color:var(--text)">{industry.name}</span></nav>
     <h1 class="mt-2 text-3xl font-extrabold">{industry.name}</h1>
@@ -25,7 +25,7 @@ const matches = corpus.filter((l) => l.industries.includes(industry.slug));
     </div>
     <h2 class="mt-8 text-xl font-extrabold">Listings ({matches.length})</h2>
     {matches.length === 0 ? (
-      <div class="mt-4"><EmptyState title="No listings yet" body="Be the first in this industry — it takes two minutes." actionHref="/add-listing" actionLabel="List Your Business" /></div>
+      <div class="mt-4"><EmptyState title="No listings yet" body="No published listings use this industry yet." /></div>
     ) : (
       <div class="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">{matches.map((l) => <ListingCard listing={l} />)}</div>
     )}

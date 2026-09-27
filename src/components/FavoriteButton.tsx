@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react';
-import { motion } from 'framer-motion';
+import { motion, useReducedMotion } from 'framer-motion';
+import { tapScale } from '@/lib/motion';
 import { isFavorite, toggleFavorite } from '@/lib/store';
 
 export default function FavoriteButton({ id, label = false }: { id: string; label?: boolean }) {
   const [fav, setFav] = useState(false);
+  const reduce = useReducedMotion();
 
   useEffect(() => {
     setFav(isFavorite(id));
@@ -15,7 +17,8 @@ export default function FavoriteButton({ id, label = false }: { id: string; labe
   return (
     <motion.button
       type="button"
-      whileTap={{ scale: 0.85 }}
+      data-motion="react"
+      whileTap={reduce ? undefined : tapScale}
       onClick={(e) => { e.preventDefault(); e.stopPropagation(); setFav(toggleFavorite(id)); }}
       aria-pressed={fav}
       aria-label={fav ? 'Remove from favorites' : 'Save to favorites'}

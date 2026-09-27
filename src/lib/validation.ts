@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { careersUrlError } from './hiringUrl.mjs';
 
 /** Operating-hours presets expanded into the profile's day-map shape (see seed samples). */
 const HOUR_PRESETS: Record<string, Record<string, string>> = {
@@ -56,6 +57,8 @@ export const listingInputSchema = z.object({
   postalCode: z.string().max(24).optional(),
   country: z.string().max(120).default('United States'),
   isOnlineOnly: z.boolean().default(false),
+  isHiring: z.boolean().default(false),
+  careersUrl: z.string().max(2000).optional().or(z.literal('')),
   priceRange: z.enum(['$', '$$', '$$$', '$$$$', '']).default(''),
   yearFounded: z.coerce.number().int().min(1800).max(new Date().getFullYear()).optional(),
   employeeCount: z
@@ -93,6 +96,9 @@ export const listingInputSchema = z.object({
   hashtags: z.array(z.string().max(80)).default([]),
   languages: z.array(z.string()).default(['English']),
   accessibility: z.array(z.string()).default([]),
+}).superRefine((data, ctx) => {
+  const message = careersUrlError(data.careersUrl ?? '');
+  if (message) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['careersUrl'], message });
 });
 
 export const reviewInputSchema = z.object({

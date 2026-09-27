@@ -94,9 +94,9 @@ if (dbReady) {
 
 const notice = Astro.url.searchParams.get('notice') ?? '';
 const notices: Record<string, { title: string; body: string; tone: string }> = {
-  'verify-email': { title: 'Verify your email', body: 'We sent a verification link to your inbox.', tone: 'var(--accent)' },
-  'email-verified': { title: 'Email verified — thank you!', body: 'Your email address is confirmed.', tone: 'var(--teal)' },
-  'listing-published': { title: 'Listing published!', body: 'Your business profile is now live in the CrossLinkd directory.', tone: 'var(--teal)' },
+  'verify-email': { title: 'Confirm your email', body: 'We sent an account confirmation link to your inbox. This does not verify a business.', tone: 'var(--accent)' },
+  'email-verified': { title: 'Email confirmed — thank you!', body: 'Your account email address is confirmed. This does not verify a business.', tone: 'var(--teal)' },
+  'listing-published': { title: 'Listing published!', body: 'Your profile is now live as an owner-submitted listing. Publishing is not a verification.', tone: 'var(--teal)' },
   'listing-saved': { title: 'Changes saved', body: 'Your listing updates have been saved.', tone: 'var(--teal)' },
 };
 const banner = notices[notice];

@@ -1,24 +1,30 @@
 ---
 import BaseLayout from '@/layouts/BaseLayout.astro';
+import { LONG_DISCLAIMER, SHORT_DISCLAIMER } from '@/lib/trustCopy';
 const user = Astro.locals.user;
 const seo = {
   title: 'Trust Center — CrossLinkd',
-  description: 'Every trust policy in one place: how businesses qualify, what badges mean, how reviews are moderated, and how to report or appeal.',
+  description: 'How CrossLinkd handles listings, reviews, and reports. CrossLinkd does not independently verify faith, ownership, licenses, or service quality.',
   path: '/trust',
 };
 const cards: [string, string, string, string][] = [
-  ['Verification & badges', 'What each badge means, how businesses qualify, and why badges carry dates.', '/verification', 'Read the requirements'],
+  ['Listing Statuses', 'What owner-submitted, owner claimed, and community reported mean — and what they do not mean.', '/listing-statuses', 'Read the statuses'],
   ['Review & moderation policy', 'Who can review, what gets removed, and how decisions are appealed.', '/reviews-policy', 'Read the policy'],
   ['Submission policy', 'What we accept, what we reject, and what gets a listing removed.', '/submission-policy', 'See the standards'],
   ['Editorial policy', 'How our guides are written and how to request a correction.', '/editorial-policy', 'How we write'],
   ['Community guidelines', 'Behavior rules across listings, reviews, and events.', '/guidelines', 'Read guidelines'],
-  ['Appeals', 'A separate reviewer hears every appeal, and decisions are explained.', '/appeals', 'Start an appeal'],
+  ['Appeals', 'How to ask for another look at a moderation decision. An appeal is not a verification.', '/appeals', 'Start an appeal'],
 ];
 ---
 <BaseLayout user={user} seo={seo}>
   <div class="mx-auto max-w-3xl px-4 py-12">
     <h1 class="text-3xl font-extrabold">Trust center</h1>
-    <p class="section-sub">Everything about how we earn your trust, in plain language. No badge implies denominational endorsement — verification is an identity and evidence check, with dates.</p>
+    <p class="section-sub">CrossLinkd is a community directory. It does not independently verify faith, ownership, licenses, certifications, credentials, or service quality. Read the policies below before you rely on a listing.</p>
+    <div class="card mt-6 space-y-3 p-5 text-sm leading-relaxed" style="color:var(--text-soft)">
+      <h2 class="text-base font-extrabold" style="color:var(--text)">Disclaimer</h2>
+      <p>{LONG_DISCLAIMER}</p>
+      <p>{SHORT_DISCLAIMER}</p>
+    </div>
 
     <div class="mt-8 grid gap-3 sm:grid-cols-2">
       {cards.map(([t, b, href, cta]) => (
@@ -32,7 +38,7 @@ const cards: [string, string, string, string][] = [
 
     <div class="card mt-8 p-6" style="background:rgba(216,149,34,.08)">
       <h2 class="font-extrabold">Report something</h2>
-      <p class="mt-1 text-sm" style="color:var(--text-soft)">Impersonation, duplicates, expired badges, or safety concerns — every report is reviewed by a human moderator.</p>
+      <p class="mt-1 text-sm" style="color:var(--text-soft)">Impersonation, duplicates, outdated information, or safety concerns can be reported. A report is community reported. It is not proof that CrossLinkd has already investigated the business.</p>
       <div class="mt-3 flex flex-wrap gap-2">
         <a href="/contact?topic=report" class="btn btn-primary !py-2 !text-sm">File a report</a>
       </div>

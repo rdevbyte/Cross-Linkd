@@ -37,6 +37,8 @@ export interface SampleListing {
   lat?: number;
   lng?: number;
   isOnlineOnly?: boolean;
+  isHiring?: boolean;
+  careersUrl?: string;
   phone?: string;
   email?: string;
   website?: string;

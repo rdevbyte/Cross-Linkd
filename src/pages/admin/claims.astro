@@ -1,77 +1,72 @@
 ---
 import DashboardLayout from '@/layouts/DashboardLayout.astro';
-import { requireAdminPage } from '@/lib/guards';
+import { desc, eq } from 'drizzle-orm';
 import { getDb, hasDatabase } from '@/db/client';
-import { listingClaims, listings, users } from '@/db/schema';
-import { eq, desc } from 'drizzle-orm';
+import { listingClaims, listings } from '@/db/schema';
+import { requireAdminPage } from '@/lib/guards';
 
-const __adminGate = requireAdminPage(Astro);
-if (__adminGate) return __adminGate;
+const gate = requireAdminPage(Astro);
+if (gate) return gate;
 const user = Astro.locals.user;
 
-let rows: Array<{
-  id: string;
-  listingName: string;
-  who: string;
-  evidence: string;
-  when: string;
-}> = [];
-
+let rows: Array<{ id: string; name: string; email: string; relationship: string; evidence: string; status: string; listing: string; created: string }> = [];
+let unavailable = !hasDatabase();
 if (hasDatabase()) {
   const db = getDb();
-  if (db) {
+  if (!db) unavailable = true;
+  else {
     try {
       const records = await db
         .select({
           id: listingClaims.id,
+          name: listingClaims.claimantName,
+          email: listingClaims.claimantEmail,
+          relationship: listingClaims.relationship,
+          evidence: listingClaims.evidence,
+          status: listingClaims.status,
           createdAt: listingClaims.createdAt,
-          evidenceNotes: listingClaims.evidence,
           listingName: listings.name,
-          claimantEmail: users.email,
         })
         .from(listingClaims)
         .leftJoin(listings, eq(listingClaims.listingId, listings.id))
-        .leftJoin(users, eq(listingClaims.claimantId, users.id))
-        .where(eq(listingClaims.status, 'pending'))
-        .orderBy(desc(listingClaims.createdAt));
-
-      rows = records.map((r) => ({
-        id: r.id,
-        listingName: r.listingName ?? 'Unknown listing',
-        who: r.claimantEmail ?? 'Claimant',
-        evidence: r.evidenceNotes ?? 'No notes provided',
-        when: new Date(r.createdAt).toLocaleDateString(),
+        .orderBy(desc(listingClaims.createdAt))
+        .limit(100);
+      rows = records.map((row) => ({
+        id: row.id,
+        name: row.name ?? 'Unnamed claimant',
+        email: row.email ?? '',
+        relationship: row.relationship ?? '',
+        evidence: row.evidence ?? '',
+        status: row.status,
+        listing: row.listingName ?? 'Listing not linked',
+        created: row.createdAt ? row.createdAt.toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' }) : '',
       }));
     } catch (err) {
-      console.error('[admin/claims] query failed:', err);
+      console.error('[admin/claims] query failed', err instanceof Error ? err.name : 'error');
+      unavailable = true;
     }
   }
 }
 ---
-<DashboardLayout user={user} admin active="claims" seo={{ title: 'Admin: Claims', description: 'Review claims.', path: '/admin/claims', noindex: true }}>
+<DashboardLayout user={user} admin active="claims" seo={{ title: 'Admin: Claims', description: 'Saved listing claim requests.', path: '/admin/claims', noindex: true }}>
   <h1 class="text-2xl font-extrabold">Listing claims</h1>
-  <p class="mt-1 text-sm" style="color:var(--text-soft)">Review ownership claims for directory listings.</p>
-
-  {rows.length === 0 ? (
-    <div class="card mt-6 p-8 text-center sm:p-12">
-      <div class="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl" style="background:var(--surface-2);color:var(--teal)">
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-      </div>
-      <h2 class="mt-4 text-base font-bold">No pending claims</h2>
-      <p class="mt-1 text-sm" style="color:var(--text-soft)">When members submit proof of business ownership, they will appear here for review.</p>
-    </div>
+  <p class="section-sub">A saved claim is not an ownership verification. Claims for listings that are not in the database are stored with the other reports.</p>
+  {unavailable ? (
+    <p class="card mt-6 p-5 text-sm" role="status" style="color:var(--text-soft)">The directory database is not connected, so claims cannot be listed.</p>
+  ) : rows.length === 0 ? (
+    <p class="card mt-6 p-5 text-sm" role="status" style="color:var(--text-soft)">No claim rows yet. Check <a href="/admin/reports" class="underline">reports</a> for requests that could not be tied to a database listing.</p>
   ) : (
     <div class="mt-4 space-y-3">
-      {rows.map((r) => (
-        <div class="card p-4">
-          <p class="font-bold">{r.listingName}</p>
-          <p class="mt-1 text-sm" style="color:var(--text-soft)">{r.who} • {r.when}</p>
-          <p class="mt-1 text-sm">Evidence: {r.evidence}</p>
-          <div class="mt-3 flex gap-2">
-            <button class="btn btn-primary !py-1.5 !text-sm" type="button" onclick={`alert('Claim ${r.id} approved.')`}>Approve & transfer</button>
-            <button class="btn btn-ghost !py-1.5 !text-sm" type="button" onclick={`alert('Claim ${r.id} rejected.')`}>Reject</button>
+      {rows.map((row) => (
+        <article class="card p-4">
+          <div class="flex flex-wrap items-center justify-between gap-2">
+            <h2 class="font-bold">{row.listing}</h2>
+            <span class="chip !text-[11px]">{row.status}</span>
           </div>
-        </div>
+          <p class="mt-1 text-sm" style="color:var(--text-soft)">{row.name} · {row.email} · {row.relationship}</p>
+          <p class="mt-1 text-xs" style="color:var(--text-mute)">{row.created}</p>
+          <p class="mt-3 whitespace-pre-wrap text-sm leading-relaxed" style="color:var(--text-soft)">{row.evidence}</p>
+        </article>
       ))}
     </div>
   )}

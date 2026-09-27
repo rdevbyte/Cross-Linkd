@@ -5,6 +5,7 @@ import SearchBar from '@/components/SearchBar';
 import EmptyState from '@/components/EmptyState.astro';
 import { searchListings } from '@/lib/search';
 import { getDbListings } from '@/lib/publicListings';
+import { isUsRegion } from '@/lib/trustCopy';
 import { LISTING_TYPES } from '@/data/listing-types';
 import { DENOMINATIONS, TRADITIONS } from '@/data/denominations';
 import { INDUSTRIES } from '@/data/industries';
@@ -79,6 +80,24 @@ const filters = {
 const selectedDenom = filters.denomination[0] ?? '';
 const selectedDenomLabel = denomData.flatMap((g) => g.items).find((d) => d.value === selectedDenom)?.label ?? '';
 const dbListings = await getDbListings();
+const locationSeen = new Map<string, { label: string; value: string; kind: string }>();
+for (const listing of dbListings) {
+  if (listing.isOnlineOnly || !listing.city || !listing.region) continue;
+  const label = `${listing.city.trim()}, ${listing.region.trim().toUpperCase()}`;
+  const key = label.toLowerCase();
+  if (!locationSeen.has(key)) {
+    locationSeen.set(key, {
+      label,
+      value: label,
+      kind: isUsRegion(listing.region) ? 'city' : 'outside the U.S.',
+    });
+  }
+}
+const onlineCount = dbListings.filter((listing) => listing.isOnlineOnly).length;
+const locationChoices = [
+  ...(onlineCount > 0 ? [{ label: 'Online', value: 'Online', kind: 'online' }] : []),
+  ...locationSeen.values(),
+];
 const result = searchListings(filters, dbListings);
 const pageUrl = (p: number) => {
   const sp = new URLSearchParams(params);
@@ -87,7 +106,7 @@ const pageUrl = (p: number) => {
 };
 const sortOptions: [string, string][] = [
   ['relevance', 'Relevance'], ['distance', 'Distance'], ['rating', 'Rating'],
-  ['newest', 'Newest'], ['recommended', 'Recommended'], ['popular', 'Popular'],
+  ['newest', 'Newest'], ['recommended', 'Recommendation count'], ['popular', 'Most viewed'],
 ];
 
 const seo = {
@@ -100,8 +119,9 @@ const seo = {
   <div class="mx-auto max-w-7xl px-4 py-8">
     <div class="max-w-3xl">
       <h1 class="text-2xl font-extrabold sm:text-3xl">Search the directory</h1>
+      <p class="mt-1 text-sm" style="color:var(--text-soft)">Results are owner-submitted listings. A search result is not a verification or an endorsement.</p>
       <p class="mt-1 text-sm" style="color:var(--text-soft)">Try <code class="rounded bg-[var(--surface-2)] px-1.5 py-0.5 text-[13px]">bakery #Baptist</code>, <code class="rounded bg-[var(--surface-2)] px-1.5 py-0.5 text-[13px]">counselor near me</code>, or <code class="rounded bg-[var(--surface-2)] px-1.5 py-0.5 text-[13px]">churches with wheelchair access</code></p>
-      <div class="mt-4"><SearchBar client:load initialQuery={filters.q} size="compact" /></div>
+      <div class="mt-4"><SearchBar client:load initialQuery={filters.q} initialLocation={filters.onlineOnly ? 'Online' : (filters.near ?? '')} locationChoices={locationChoices} size="compact" /></div>
       {result.appliedTags.length > 0 && (
         <div class="mt-2 flex flex-wrap gap-1.5" aria-label="Applied hashtag filters">
           {result.appliedTags.map((t) => <span class="chip chip-active">#{t}</span>)}
@@ -148,7 +168,6 @@ const seo = {
             </div>
           </div>
           <div class="space-y-1.5 border-t pt-3" style="border-color:var(--border)">
-            <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="verifiedOnly" value="1" checked={filters.verifiedOnly} class="h-4 w-4 accent-[var(--accent)]" /> Verified only</label>
             <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="openNow" value="1" checked={filters.openNow} class="h-4 w-4 accent-[var(--accent)]" /> Open now</label>
             <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="onlineOnly" value="1" checked={filters.onlineOnly} class="h-4 w-4 accent-[var(--accent)]" /> Online services</label>
           </div>
@@ -192,13 +211,12 @@ const seo = {
 
         {result.hits.length === 0 ? (
           <div class="mt-6">
-            <EmptyState title="No results found" body="Try fewer filters, a different spelling, or a nearby city. You can also suggest a listing we’re missing.">
+            <EmptyState title="No published listings match" body="Nothing published matches this search. CrossLinkd does not add sample businesses to fill an empty page. Try fewer filters, a different spelling, or a nearby city.">
               <div class="mt-4 flex flex-wrap justify-center gap-2">
                 {result.suggestions.map((s) => (
                   <a href={`/search?q=${encodeURIComponent(s)}`} class="chip hover:border-[var(--accent)]">{s}</a>
                 ))}
               </div>
-              <div class="mt-5"><a href="/add-listing" class="btn btn-primary">Suggest a listing</a></div>
             </EmptyState>
           </div>
         ) : (

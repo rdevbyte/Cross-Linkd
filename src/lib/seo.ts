@@ -1,7 +1,7 @@
 const SITE = () =>
   (import.meta.env.PUBLIC_SITE_URL as string | undefined) ??
   process.env.PUBLIC_SITE_URL ??
-  'https://crosslinkd.example.com';
+  'https://cross-linkd.vercel.app';
 
 export interface SeoInput {
   title: string;
@@ -39,9 +39,9 @@ export function localBusinessSchema(l: {
     ...(l.lat && l.lng ? { geo: { '@type': 'GeoCoordinates', latitude: l.lat, longitude: l.lng } } : {}),
     ...(l.sameAs?.length ? { sameAs: l.sameAs } : {}),
     ...(l.openingHours?.length ? { openingHoursSpecification: l.openingHours } : {}),
-    aggregateRating: l.rating ? {
-      '@type': 'AggregateRating', ratingValue: l.rating, reviewCount: l.reviewCount ?? 1,
-    } : undefined,
+    ...((l.reviewCount ?? 0) > 0 && l.rating ? {
+      aggregateRating: { '@type': 'AggregateRating', ratingValue: l.rating, reviewCount: l.reviewCount },
+    } : {}),
   };
 }
 

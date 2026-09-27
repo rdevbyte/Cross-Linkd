@@ -13,16 +13,18 @@ const user = Astro.locals.user;
 const siteUrl = Astro.url.origin;
 const allPublic = await getPublicListings();
 const stateListings = allPublic.filter((l) => l.region === state.abbr && !l.isOnlineOnly);
-const verified = stateListings.filter((l) => l.verified).length;
-const cities = FOCUS_CITIES.filter((c) => c.region === state.abbr);
+const citiesWithListings = FOCUS_CITIES.filter((c) => c.region === state.abbr && allPublic.some((l) => l.city === c.city && !l.isOnlineOnly));
 
 const seo = {
-  title: `Christian-Owned Businesses in ${state.name} (${state.abbr}) | CrossLinkd`,
-  description: `${stateListings.length} reviewed Christian-owned businesses, churches, and ministries across ${cities.map((c) => c.city).join(' and ')}, ${state.name}. ${verified} verified with dates on every profile.`,
+  title: `Owner-submitted listings in ${state.name} | CrossLinkd`,
+  description: stateListings.length > 0
+    ? `${stateListings.length} owner-submitted listing${stateListings.length === 1 ? '' : 's'} in ${state.name}. CrossLinkd has not independently verified them.`
+    : `No published listings in ${state.name} yet.`,
   path: `/states/${state.slug}`,
+  noindex: stateListings.length === 0,
   schema: breadcrumbSchema([
     { name: 'Home', url: siteUrl },
-    { name: 'Browse by State', url: `${siteUrl}/browse/locations` },
+    { name: 'Browse by location', url: `${siteUrl}/browse/locations` },
     { name: state.name, url: `${siteUrl}/states/${state.slug}` },
   ]),
 };
@@ -30,18 +32,17 @@ const seo = {
 <BaseLayout user={user} seo={seo}>
   <div class="mx-auto max-w-7xl px-4 py-10">
     <nav class="text-[13px]" style="color:var(--text-mute)" aria-label="Breadcrumb">
-      <a href="/browse/locations" class="hover:underline">Browse by State</a> / <span style="color:var(--text)">{state.name}</span>
+      <a href="/browse/locations" class="hover:underline">Browse by location</a> / <span style="color:var(--text)">{state.name}</span>
     </nav>
 
-    <h1 class="mt-2 text-3xl font-extrabold">Christian-owned businesses in {state.name}</h1>
+    <h1 class="mt-2 text-3xl font-extrabold">Listings in {state.name}</h1>
     <p class="section-sub">
-      {stateListings.length} reviewed listings · {verified} verified · {cities.map((c) => c.city).join(', ')}.
-      We list only what we have personally checked.
+      {stateListings.length} owner-submitted listing{stateListings.length === 1 ? '' : 's'}. CrossLinkd has not independently verified faith, ownership, licenses, or service quality.
     </p>
 
     <div class="mt-6 flex flex-wrap gap-2">
-      {cities.map((c) => (
-        <a href={`/locations/${c.slug}`} class="chip !px-4 !py-2 !text-[13px] hover:border-[var(--accent)]">{c.city}, {c.region} ({allPublic.filter((l) => l.city === c.city).length})</a>
+      {citiesWithListings.map((c) => (
+        <a href={`/locations/${c.slug}`} class="chip !px-4 !py-2 !text-[13px] hover:border-[var(--accent)]">{c.city}, {c.region} ({allPublic.filter((l) => l.city === c.city && !l.isOnlineOnly).length})</a>
       ))}
       <a href={`/search?near=${encodeURIComponent(state.name)}`} class="chip !px-4 !py-2 !text-[13px] hover:border-[var(--accent)]">Search all of {state.name}</a>
     </div>

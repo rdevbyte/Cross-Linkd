@@ -61,6 +61,8 @@ export interface ListingFormValues {
   region?: string;
   postalCode?: string;
   isOnlineOnly?: boolean;
+  isHiring?: boolean;
+  careersUrl?: string;
   priceRange?: string;
   industries?: string[];
   professions?: string[];
@@ -133,6 +135,8 @@ export async function saveListing(
   if (values.serviceArea !== undefined) base.serviceArea = values.serviceArea;
   if (values.hours !== undefined) base.hours = values.hours;
   if (values.contactPreference !== undefined) base.contactPreference = values.contactPreference || null;
+  if (values.isHiring !== undefined) base.isHiring = values.isHiring;
+  if (values.careersUrl !== undefined) base.careersUrl = values.careersUrl.trim() || null;
 
   let listingId = opts.listingId;
   let slug: string;
@@ -289,6 +293,8 @@ export function mapListingRow(
       return undefined;
     })(),
     statementOfFaith: row.statementOfFaith ?? undefined,
+    isHiring: row.isHiring,
+    careersUrl: row.careersUrl ?? undefined,
     addedDaysAgo: 0,
     imageHue: hue,
   };
