@@ -10,7 +10,7 @@ const publishedCount = INDUSTRIES.reduce((sum, industry) => sum + countFor(indus
 ---
 <BaseLayout user={user} seo={{ title: 'Browse Industries — CrossLinkd', description: 'Explore every industry in the directory, from skilled trades to healthcare to creative services.', path: '/browse/industries' }}>
   <div class="mx-auto max-w-7xl px-4 py-10">
-    <h1 class="text-3xl font-extrabold">Browse industries</h1>
+    <h1 class="text-3xl font-bold">Browse industries</h1>
     <p class="section-sub">Industry → Category → Profession → Service. Listings can belong to multiple industries.</p>
     {publishedCount === 0 && (
       <p class="card mt-6 p-4 text-sm leading-relaxed" style="color:var(--text-soft)" role="status">No published listings are in these industries yet. A category with zero listings is not a coverage claim, and this page does not invent businesses to fill it.</p>

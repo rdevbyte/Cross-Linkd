@@ -6,7 +6,7 @@ interface Props {
 const { title, body } = Astro.props;
 ---
 <div class="card p-8 text-center" role="status">
-  <h2 class="text-lg font-extrabold">{title}</h2>
+  <h2 class="text-lg font-semibold">{title}</h2>
   <p class="mx-auto mt-2 max-w-md text-sm leading-relaxed" style="color:var(--text-soft)">{body}</p>
   <div class="mt-4 flex flex-wrap justify-center gap-2"><slot /></div>
 </div>

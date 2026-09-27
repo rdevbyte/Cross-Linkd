@@ -23,7 +23,7 @@ else {
 ---
 <BaseLayout seo={{ title: 'Administrator setup — CrossLinkd', description: 'One-time administrator setup.', path: '/admin/setup', noindex: true }}>
   <div class="mx-auto max-w-lg px-4 py-16">
-    <h1 class="text-2xl font-extrabold">Administrator setup</h1>
+    <h1 class="text-2xl font-bold">Administrator setup</h1>
     {enabled ? (
       <>
         <p class="mt-2 text-sm" style="color:var(--text-soft)">
@@ -31,7 +31,7 @@ else {
           It requires the deployment's <code class="rounded bg-[var(--surface-2)] px-1.5 py-0.5 text-[13px]">ADMIN_SETUP_KEY</code> and closes forever once an admin exists.
         </p>
         <form id="setup-form" class="card mt-5 space-y-4 p-5">
-          <label class="block text-sm font-semibold" for="setup-key">Setup key
+          <label class="block text-sm font-medium" for="setup-key">Setup key
             <input id="setup-key" name="key" type="password" required autocomplete="off" class="input mt-1 w-full" placeholder="Enter your admin setup key" />
           </label>
           <p id="setup-status" class="hidden text-sm font-bold" role="alert"></p>

@@ -11,7 +11,7 @@ const publishedCount = profs.reduce((sum, profession) => sum + countFor(professi
 ---
 <BaseLayout user={user} seo={{ title: 'Browse Professions — CrossLinkd', description: 'Find Christian professionals: counselors, attorneys, realtors, photographers, contractors, and more.', path: '/browse/professions' }}>
   <div class="mx-auto max-w-7xl px-4 py-10">
-    <h1 class="text-3xl font-extrabold">Browse professions</h1>
+    <h1 class="text-3xl font-bold">Browse professions</h1>
     <p class="section-sub">Some professions are regulated. A “Regulated profession” label means the field often requires a license. CrossLinkd does not confirm that license.</p>
     {publishedCount === 0 && (
       <p class="card mt-6 p-4 text-sm leading-relaxed" style="color:var(--text-soft)" role="status">No published listings use these professions yet. A profession with zero listings is not a coverage claim.</p>

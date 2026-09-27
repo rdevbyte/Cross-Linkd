@@ -3,6 +3,7 @@ import BaseLayout from '@/layouts/BaseLayout.astro';
 import ListingCard from '@/components/ListingCard.astro';
 import FavoriteButton from '@/components/FavoriteButton';
 import StatusBadge from '@/components/StatusBadge.astro';
+import TypeGlyph from '@/components/TypeGlyph.astro';
 import QRShare from '@/components/QRShare';
 import { type SampleListing, type SampleReview } from '@/data/listings';
 import { getPublicListings, findPublicListing } from '@/lib/publicListings';
@@ -74,27 +75,30 @@ const displayCategory = listing.customCategory || categoryMatch?.category?.name;
 ---
 <BaseLayout seo={seo} user={user}>
   <div class="mx-auto max-w-7xl px-4 py-6">
-    <nav class="text-[13px]" style="color:var(--text-mute)" aria-label="Breadcrumb">
-      <a href="/" class="hover:underline">Home</a> /
-      <a href={`/search?type=${type.slug}`} class="hover:underline">{type.plural}</a> /
-      <a href={`/locations/${listing.city.toLowerCase().replace(/\s+/g, '-')}-${listing.region.toLowerCase()}`} class="hover:underline">{listing.city}, {listing.region}</a> /
-      <span style="color:var(--text)">{listing.name}</span>
+    <nav aria-label="Breadcrumb">
+      <ol class="breadcrumb">
+        <li><a href="/">Home</a></li>
+        <li><a href={`/search?type=${type.slug}`}>{type.plural}</a></li>
+        <li><a href={`/locations/${listing.city.toLowerCase().replace(/\s+/g, '-')}-${listing.region.toLowerCase()}`}>{listing.city}, {listing.region}</a></li>
+        <li aria-current="page">{listing.name}</li>
+      </ol>
     </nav>
 
-    <!-- Header -->
-    <div class="card mt-4 overflow-hidden">
-      <div class="relative h-44 sm:h-56" style={`background:hsl(${listing.imageHue},28%,48%)`}>
-        <div class="absolute inset-0" style="background:linear-gradient(to top, rgba(10,11,14,.38), transparent 58%)"></div>
-        <div class="absolute bottom-4 left-4 flex items-end gap-4 sm:left-6">
-          <span class="flex h-20 w-20 items-center justify-center rounded-3xl bg-white text-4xl font-extrabold shadow-card" style="color:#3a3325" aria-hidden="true">{listing.name.charAt(0)}</span>
-          <div class="pb-1 text-white">
-            <p class="text-xs font-bold uppercase tracking-widest opacity-90">{type.label} {listing.featured ? '• ★ Featured' : ''}</p>
-            <h1 class="text-2xl font-extrabold sm:text-3xl">{listing.name}</h1>
-          </div>
+    <!-- Header: a short tinted band, then the identity block on the surface -->
+    <div class="card mt-4 overflow-hidden" style={`--hue:${listing.imageHue}`}>
+      <div class="listing-band relative h-24 sm:h-28">
+        <span class="absolute right-4 top-4 opacity-40" style="color:var(--navy)"><TypeGlyph name={type.icon} size={28} /></span>
+      </div>
+      <div class="flex flex-col gap-3 px-4 sm:flex-row sm:items-start sm:gap-5 sm:px-6">
+        <span class="listing-monogram -mt-8 sm:-mt-10" aria-hidden="true">{listing.name.trim().charAt(0).toUpperCase()}</span>
+        <div class="min-w-0 flex-1 pb-1 sm:pt-3">
+          <p class="flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] font-semibold uppercase tracking-[0.12em]" style="color:var(--teal)">
+            <span>{type.label}</span>
+            {listing.featured && <span class="chip chip-featured !py-0 !text-[11px] normal-case tracking-normal">Highlighted</span>}
+            {listing.foundedYear && <span class="normal-case tracking-normal" style="color:var(--text-mute)">· Est. {listing.foundedYear}</span>}
+          </p>
+          <h1 class="mt-1 text-2xl font-bold leading-tight sm:text-3xl">{listing.name}</h1>
         </div>
-        {listing.foundedYear && (
-          <span class="absolute right-4 top-4 rounded-xl bg-white/85 px-3 py-1 text-xs font-bold" style="color:#3a3325">Est. {listing.foundedYear}</span>
-        )}
       </div>
       <div class="flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-6">
         <div class="space-y-2">
@@ -125,7 +129,7 @@ const displayCategory = listing.customCategory || categoryMatch?.category?.name;
           </div>
         </div>
         <div class="flex flex-wrap gap-2">
-          {listing.phone && <a href={`tel:${listing.phone}`} class="btn btn-primary" data-animate="cta">Call now</a>}
+          {listing.phone && <a href={`tel:${listing.phone}`} class="btn btn-primary">Call now</a>}
           {listing.email && <a href={`mailto:${listing.email}`} class="btn btn-secondary">Email</a>}
           {listing.website && <a href={listing.website} target="_blank" rel="noopener" class="btn btn-secondary">Website</a>}
           <FavoriteButton id={listing.id} label client:load />
@@ -141,10 +145,9 @@ const displayCategory = listing.customCategory || categoryMatch?.category?.name;
           <section aria-label="Photos">
             <div class="grid grid-cols-3 gap-2">
               {listing.photos.map((p) => (
-                <figure class="overflow-hidden rounded-2xl">
-                  <div class="relative h-28 sm:h-36" style={`background:hsl(${p.hue},24%,78%)`}>
-                    <figcaption class="absolute bottom-2 left-2 rounded-lg bg-white/85 px-2 py-0.5 text-[11px] font-bold" style="color:#3a3325">{p.caption}</figcaption>
-                  </div>
+                <figure class="photo-tile relative h-28 overflow-hidden rounded-2xl sm:h-36" style={`--hue:${p.hue}`} title="No photo uploaded yet">
+                  <svg class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 opacity-40" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>
+                  <figcaption class="absolute bottom-2 left-2 right-2 truncate text-[11px] font-medium" style="color:var(--text-soft)">{p.caption}</figcaption>
                 </figure>
               ))}
             </div>
@@ -152,7 +155,7 @@ const displayCategory = listing.customCategory || categoryMatch?.category?.name;
         )}
 
         <section class="card p-6" aria-label="About">
-          <h2 class="text-lg font-extrabold">About</h2>
+          <h2 class="text-lg font-semibold">About</h2>
           <p class="mt-1 text-xs" style="color:var(--text-mute)">Profile text, credentials, and faith statements below are provided by the listing. CrossLinkd has not independently checked them.</p>
           <p class="mt-2 text-[15px] leading-relaxed" style="color:var(--text-soft)">{listing.description}</p>
           {listing.statementOfFaith && (
@@ -167,7 +170,7 @@ const displayCategory = listing.customCategory || categoryMatch?.category?.name;
         </section>
 
         <section class="card p-6" aria-label="Services">
-          <h2 class="text-lg font-extrabold">{isChurch ? 'Ministries & gatherings' : isPro ? 'Services & expertise' : 'Products & services'}</h2>
+          <h2 class="text-lg font-semibold">{isChurch ? 'Ministries & gatherings' : isPro ? 'Services & expertise' : 'Products & services'}</h2>
           <div class="mt-3 flex flex-wrap gap-2">
             {listing.services.map((s) => <a href={`/search?q=${encodeURIComponent(s)}`} class="chip !px-3.5 !py-1.5 !text-[13px] hover:border-[var(--accent)]">{s}</a>)}
           </div>
@@ -178,7 +181,7 @@ const displayCategory = listing.customCategory || categoryMatch?.category?.name;
 
         {listing.hours && (
           <section class="card p-6" aria-label="Hours">
-            <h2 class="text-lg font-extrabold">Hours</h2>
+            <h2 class="text-lg font-semibold">Hours</h2>
             <dl class="mt-3 grid max-w-md grid-cols-2 gap-x-6 gap-y-1.5 text-sm">
               {Object.entries(listing.hours).map(([d, h]) => (
                 <><dt style="color:var(--text-mute)">{d}</dt><dd class="text-right font-medium">{h}</dd></>
@@ -189,7 +192,7 @@ const displayCategory = listing.customCategory || categoryMatch?.category?.name;
         )}
 
         <section class="card p-6" aria-label="Contact">
-          <h2 class="text-lg font-extrabold">Contact {listing.name.split(' ')[0].length > 24 ? 'them' : listing.name.split(',')[0]}</h2>
+          <h2 class="text-lg font-semibold">Contact {listing.name.split(' ')[0].length > 24 ? 'them' : listing.name.split(',')[0]}</h2>
           {sent && <p class="mt-3 rounded-xl p-3 text-sm" style="background:rgba(46,146,131,.12)" role="status">Message saved. CrossLinkd does not automatically email the listing owner, and sending a message does not verify the listing.</p>}
           {formError && <p class="mt-3 rounded-xl bg-red-500/10 p-3 text-sm font-medium text-red-700" role="alert">{formError}</p>}
           <form method="POST" action="/api/contact" class="mt-3 space-y-3">
@@ -209,7 +212,7 @@ const displayCategory = listing.customCategory || categoryMatch?.category?.name;
 
         <section class="card p-6" aria-label="Reviews" id="reviews">
           <div class="flex items-center justify-between">
-            <h2 class="text-lg font-extrabold">Reviews & recommendations</h2>
+            <h2 class="text-lg font-semibold">Reviews & recommendations</h2>
             <a href="#write-review" class="btn btn-secondary !py-1.5 !text-sm">Write a review</a>
           </div>
           <div class="mt-4 space-y-4">
@@ -234,7 +237,7 @@ const displayCategory = listing.customCategory || categoryMatch?.category?.name;
             ))}
           </div>
           <form id="write-review" method="POST" action="/api/reviews" class="surface-soft mt-4 rounded-2xl p-4">
-            <h3 class="font-bold">Share your experience</h3>
+            <h3 class="font-semibold">Share your experience</h3>
             <p class="mt-1 text-[13px]" style="color:var(--text-soft)">Reviews are moderated. Please review your experience — not theology. <a href="/reviews-policy" class="underline">Review policy</a></p>
             <input type="hidden" name="listingId" value={listing.id} />
             <div class="mt-3 grid gap-3 sm:grid-cols-2">
@@ -250,7 +253,7 @@ const displayCategory = listing.customCategory || categoryMatch?.category?.name;
 
         {related.length > 0 && (
           <section aria-label="Related listings">
-            <h2 class="text-lg font-extrabold">Related listings</h2>
+            <h2 class="text-lg font-semibold">Related listings</h2>
             <div class="mt-3 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {related.map((l) => <ListingCard listing={l} />)}
             </div>
@@ -262,7 +265,7 @@ const displayCategory = listing.customCategory || categoryMatch?.category?.name;
       <aside class="space-y-4">
         {listing.isHiring && (
           <div class="card p-5">
-            <h2 class="font-extrabold">Hiring</h2>
+            <h2 class="font-semibold">Hiring</h2>
             <p class="mt-2 text-sm" style="color:var(--text-soft)">This company says it is hiring. That statement was provided by the listing.</p>
             {careersHref && (
               <a href={careersHref} class="btn btn-secondary mt-3 !min-h-11" target="_blank" rel="noopener noreferrer">View open positions</a>
@@ -271,12 +274,12 @@ const displayCategory = listing.customCategory || categoryMatch?.category?.name;
         )}
         {!listing.isOnlineOnly && (
           <div class="card p-5">
-            <h2 class="font-extrabold">Location</h2>
+            <h2 class="font-semibold">Location</h2>
             <p class="mt-2 text-sm" style="color:var(--text-soft)">{listing.city}, {listing.region}{listing.postalCode ? ` ${listing.postalCode}` : ''}</p>
           </div>
         )}
         <div class="card p-5">
-          <h2 class="font-extrabold">Listing status</h2>
+          <h2 class="font-semibold">Listing status</h2>
           <ul class="mt-3 space-y-2 text-sm" style="color:var(--text-soft)">
             <li class="flex flex-wrap items-center gap-2"><StatusBadge name="Owner-submitted" /> The business provided the listing information.</li>
             <li class="flex flex-wrap items-center gap-2">
@@ -290,7 +293,7 @@ const displayCategory = listing.customCategory || categoryMatch?.category?.name;
           <a href="/contact?topic=inaccurate" class="mt-1 block text-sm font-semibold underline" style="color:var(--teal)">Report inaccurate information</a>
         </div>
         <div class="card p-5">
-          <h2 class="font-extrabold">Details</h2>
+          <h2 class="font-semibold">Details</h2>
           <dl class="mt-3 space-y-2 text-sm">
             {listing.showDenomination !== false && (listing.customDenomination || (listing.denominations && listing.denominations.length > 0)) && (
               <div>
@@ -322,7 +325,7 @@ const displayCategory = listing.customCategory || categoryMatch?.category?.name;
           </dl>
           {socialLinks.length > 0 && (
             <>
-              <h3 class="mt-4 text-sm font-bold">Follow</h3>
+              <h3 class="mt-4 text-sm font-semibold">Follow</h3>
               <div class="mt-2 flex flex-wrap gap-2">
                 {socialLinks.map(([k, v]) => (
                   <a
@@ -348,3 +351,27 @@ const displayCategory = listing.customCategory || categoryMatch?.category?.name;
     </div>
   </div>
 </BaseLayout>
+<style>
+  .listing-band {
+    background:
+      repeating-linear-gradient(135deg, rgba(255,255,255,0.18) 0 1px, transparent 1px 14px),
+      hsl(var(--hue, 40) 26% 78%);
+  }
+  [data-theme='dark'] .listing-band {
+    background:
+      repeating-linear-gradient(135deg, rgba(255,255,255,0.05) 0 1px, transparent 1px 14px),
+      hsl(var(--hue, 40) 18% 26%);
+  }
+  .listing-monogram {
+    position: relative; z-index: 1; /* paints above the (positioned) band it overlaps */
+    display: flex; align-items: center; justify-content: center; flex: none;
+    width: 4.5rem; height: 4.5rem; border-radius: 1.25rem;
+    background: var(--surface); color: var(--navy);
+    border: 3px solid var(--surface);
+    box-shadow: 0 1px 2px rgba(15,16,20,.06), 0 6px 16px -10px rgba(15,16,20,.2);
+    font-family: var(--font-display); font-size: 2rem; font-weight: 700;
+  }
+  [data-theme='dark'] .listing-monogram { color: var(--text); }
+  .photo-tile { background: hsl(var(--hue, 40) 20% 90%); color: var(--navy); }
+  [data-theme='dark'] .photo-tile { background: hsl(var(--hue, 40) 14% 22%); color: var(--text); }
+</style>

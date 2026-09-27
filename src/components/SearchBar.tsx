@@ -184,11 +184,11 @@ export default function SearchBar({
         </div>
       )}
 
-      <div className={labeled ? 'grid gap-4 sm:grid-cols-2' : `flex flex-col gap-2 sm:flex-row ${hero ? '' : 'gap-1.5'}`}>
+      <div className={labeled ? 'grid gap-3 sm:grid-cols-2 sm:items-end lg:grid-cols-[1fr_1fr_auto]' : `flex flex-col gap-2 sm:flex-row ${hero ? '' : 'gap-1.5'}`}>
         {/* WHAT field */}
         <div ref={boxRef} className="relative flex-1">
           {labeled && (
-            <label htmlFor="cl-q" className="mb-1.5 block text-sm font-semibold">What are you looking for?</label>
+            <label htmlFor="cl-q" className="mb-1.5 block text-sm font-medium">What are you looking for?</label>
           )}
           <div
             className={`flex items-center gap-2 rounded-2xl border bg-[var(--surface)] transition-shadow focus-within:shadow-lg ${hero ? 'p-2 pl-4 shadow-card' : 'px-3 py-1.5 shadow-sm'}`}
@@ -260,7 +260,7 @@ export default function SearchBar({
         {/* WHERE field */}
         <div ref={locBoxRef} className={labeled ? 'relative' : 'relative sm:w-64'}>
           {labeled && (
-            <label htmlFor="cl-near" className="mb-1.5 block text-sm font-semibold">City, state, ZIP code, or online</label>
+            <label htmlFor="cl-near" className="mb-1.5 block text-sm font-medium">City, state, ZIP code, or online</label>
           )}
           <div
             className={`flex items-center gap-2 rounded-2xl border bg-[var(--surface)] transition-shadow focus-within:shadow-lg ${hero ? 'p-2 pl-4 shadow-card' : 'px-3 py-1.5 shadow-sm'}`}
@@ -319,12 +319,13 @@ export default function SearchBar({
             )}
           </AnimatePresence>
         </div>
+
+        {labeled && (
+          <button type="submit" className="btn btn-primary w-full !py-3.5 !text-base sm:col-span-2 lg:col-span-1 lg:h-[66px] lg:w-auto lg:!px-8 lg:!py-0">
+            Search
+          </button>
+        )}
       </div>
-      {labeled && (
-        <button type="submit" className="btn btn-primary mt-4 w-full !py-3 !text-base sm:w-auto sm:!px-8">
-          Search
-        </button>
-      )}
     </form>
   );
 }

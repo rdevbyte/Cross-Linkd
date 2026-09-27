@@ -35,7 +35,7 @@ if (hasDatabase()) {
 }
 ---
 <DashboardLayout user={user} admin active="analytics" seo={{ title: 'Admin: Analytics', description: 'Platform analytics.', path: '/admin/analytics', noindex: true }}>
-  <h1 class="text-2xl font-extrabold">Platform analytics</h1>
+  <h1 class="text-2xl font-bold">Platform analytics</h1>
   <p class="mt-1 text-sm" style="color:var(--text-soft)">Live database records and platform usage metrics.</p>
 
   <div class="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -47,13 +47,13 @@ if (hasDatabase()) {
     ].map(([l, v]) => (
       <div class="card p-4">
         <p class="text-[13px]" style="color:var(--text-mute)">{l}</p>
-        <p class="text-2xl font-extrabold">{v}</p>
+        <p class="text-2xl font-bold">{v}</p>
       </div>
     ))}
   </div>
 
   <div class="card mt-6 p-6">
-    <h2 class="font-extrabold">Search & discovery insights</h2>
+    <h2 class="font-semibold">Search & discovery insights</h2>
     <p class="mt-2 text-sm leading-relaxed" style="color:var(--text-soft)">
       Search telemetry is aggregated as visitors explore categories, denominations, and regional directories. Search queries yielding zero matches are monitored to inform category expansion.
     </p>

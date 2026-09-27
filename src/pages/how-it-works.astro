@@ -65,7 +65,7 @@ const seo = {
       <div class="grid items-start gap-5 lg:grid-cols-[1.15fr_.85fr] lg:gap-8">
         <div>
           <p class="hiw-kicker">Two ways to use the directory</p>
-          <h1 id="hiw-heading" class="mt-2 text-3xl font-extrabold leading-tight sm:text-5xl">How CrossLinkd works</h1>
+          <h1 id="hiw-heading" class="mt-2 text-3xl font-bold leading-tight sm:text-5xl">How CrossLinkd works</h1>
           <p class="mt-4 max-w-xl text-base leading-relaxed sm:text-lg" style="color:var(--text-soft)">
             Discover community-listed businesses and organizations, or create a free listing for your own business.
           </p>
@@ -76,7 +76,7 @@ const seo = {
           <figcaption class="text-xs font-bold uppercase tracking-wide" style="color:var(--text-mute)">Example only · not a published listing</figcaption>
           <div class="mt-3 flex items-start justify-between gap-3">
             <div>
-              <p class="text-lg font-extrabold leading-snug">Example profile</p>
+              <p class="text-lg font-bold leading-snug">Example profile</p>
               <p class="mt-1 text-sm leading-relaxed" style="color:var(--text-soft)">Category and place appear when an owner provides them.</p>
             </div>
             <span class="chip shrink-0">No reviews yet</span>
@@ -99,7 +99,7 @@ const seo = {
         {steps.map(([title, body], index) => (
           <li class="hiw-item">
             <p class="hiw-kicker">Step {index + 1} of 5</p>
-            <h3 class="mt-1 text-lg font-extrabold leading-snug">{title}</h3>
+            <h3 class="mt-1 text-lg font-semibold leading-snug">{title}</h3>
             <p class="mt-2 text-sm leading-relaxed" style="color:var(--text-soft)">{body}</p>
           </li>
         ))}
@@ -114,7 +114,7 @@ const seo = {
       <div class="hiw-profile">
         <article class="hiw-item" aria-label="Annotated example listing. Not a real business.">
           <p class="text-xs font-bold uppercase tracking-wide" style="color:var(--text-mute)">Illustration · not in the directory</p>
-          <h3 class="mt-2 text-2xl font-extrabold leading-snug">Example profile</h3>
+          <h3 class="mt-2 text-2xl font-semibold leading-snug">Example profile</h3>
           <p class="mt-1 text-sm leading-relaxed" style="color:var(--text-soft)">Category: shown when the owner chooses one</p>
           <p class="text-sm leading-relaxed" style="color:var(--text-soft)">Location: shown when the owner provides a place, or marked Online</p>
           <div class="mt-4 flex flex-wrap gap-1.5">
@@ -177,7 +177,7 @@ const seo = {
           <li class="hiw-item hiw-owner">
             <span class="hiw-num" aria-hidden="true">{index + 1}</span>
             <span>
-              <h3 class="text-base font-extrabold leading-snug">{title}</h3>
+              <h3 class="text-base font-semibold leading-snug">{title}</h3>
               <p class="mt-1 text-sm leading-relaxed" style="color:var(--text-soft)">{body}</p>
             </span>
           </li>
@@ -206,13 +206,13 @@ const seo = {
           ['Community reported', LISTING_STATUSES[4].definition],
         ].map(([title, body]) => (
           <li class="hiw-item">
-            <h3 class="text-base font-extrabold"><StatusBadge name={title} /></h3>
+            <h3 class="text-base font-semibold"><StatusBadge name={title} /></h3>
             <p class="mt-2 text-sm leading-relaxed" style="color:var(--text-soft)">{body}</p>
           </li>
         ))}
       </ul>
       <div class="hiw-foot">
-        <h3 class="text-lg font-extrabold">Report or request a change</h3>
+        <h3 class="text-lg font-semibold">Report or request a change</h3>
         <div class="mt-3 grid gap-2 sm:flex sm:flex-wrap">
           {reports.map(([label, href]) => (
             <a href={href} class="btn btn-secondary min-h-11 w-full justify-center sm:w-auto">{label}</a>
@@ -242,7 +242,7 @@ const seo = {
     </section>
 
     <section class="card hiw-section hiw-close" aria-labelledby="hiw-close-heading">
-      <h2 id="hiw-close-heading" class="text-2xl font-extrabold leading-snug sm:text-3xl">Help build a clearer, more transparent directory for your community.</h2>
+      <h2 id="hiw-close-heading" class="text-2xl font-semibold leading-snug sm:text-3xl">Help build a clearer, more transparent directory for your community.</h2>
     </section>
   </div>
 </BaseLayout>

@@ -53,9 +53,8 @@ const s = buildSeo(seo);
       </nav>
     )}
     <script>
-      import { initPageAnimations, pulseCta } from '@/components/HeroAnimations';
+      import { initPageAnimations } from '@/components/HeroAnimations';
       initPageAnimations();
-      pulseCta();
       const bar = document.querySelector('.mobile-action-bar');
       const hero = document.querySelector('[data-mobile-hero]');
       if (bar && hero && 'IntersectionObserver' in window) {

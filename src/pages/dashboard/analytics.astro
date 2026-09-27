@@ -37,7 +37,7 @@ const hasActivity = totalViews > 0 || totalReviews > 0 || totalRecommendations >
 <DashboardLayout user={user} active="analytics" seo={{ title: 'Analytics — Dashboard', description: 'Listing analytics.', path: '/dashboard/analytics', noindex: true }}>
   <div class="flex flex-wrap items-center justify-between gap-3">
     <div>
-      <h1 class="text-2xl font-extrabold">Analytics</h1>
+      <h1 class="text-2xl font-bold">Analytics</h1>
       <p class="text-sm" style="color:var(--text-soft)">Performance metrics across your published listings.</p>
     </div>
     {publishedCount > 0 && <a href="/api/listings/export" class="btn btn-secondary !py-2 !text-sm">Export data (CSV)</a>}
@@ -48,7 +48,7 @@ const hasActivity = totalViews > 0 || totalReviews > 0 || totalRecommendations >
       <div class="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl" style="background:var(--surface-2);color:var(--teal)">
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg>
       </div>
-      <h2 class="mt-4 text-lg font-bold">No analytics recorded yet</h2>
+      <h2 class="mt-4 text-lg font-semibold">No analytics recorded yet</h2>
       <p class="mt-2 max-w-md mx-auto text-sm leading-relaxed" style="color:var(--text-soft)">
         Metrics like profile views, search visits, and recommendations will update here once your listings are published and visitors interact with them.
       </p>
@@ -60,17 +60,17 @@ const hasActivity = totalViews > 0 || totalReviews > 0 || totalRecommendations >
     <div class="mt-6 grid gap-4 md:grid-cols-3">
       <div class="card p-6">
         <p class="text-xs uppercase font-bold tracking-wide" style="color:var(--text-mute)">Profile Views</p>
-        <p class="mt-2 text-3xl font-extrabold">{totalViews.toLocaleString()}</p>
+        <p class="mt-2 text-3xl font-bold">{totalViews.toLocaleString()}</p>
         <p class="mt-1 text-xs" style="color:var(--text-soft)">Visits to your directory profiles</p>
       </div>
       <div class="card p-6">
         <p class="text-xs uppercase font-bold tracking-wide" style="color:var(--text-mute)">Customer Reviews</p>
-        <p class="mt-2 text-3xl font-extrabold">{totalReviews.toLocaleString()}</p>
+        <p class="mt-2 text-3xl font-bold">{totalReviews.toLocaleString()}</p>
         <p class="mt-1 text-xs" style="color:var(--text-soft)">Submitted and approved reviews</p>
       </div>
       <div class="card p-6">
         <p class="text-xs uppercase font-bold tracking-wide" style="color:var(--text-mute)">Recommendations</p>
-        <p class="mt-2 text-3xl font-extrabold">{totalRecommendations.toLocaleString()}</p>
+        <p class="mt-2 text-3xl font-bold">{totalRecommendations.toLocaleString()}</p>
         <p class="mt-1 text-xs" style="color:var(--text-soft)">Direct member endorsements</p>
       </div>
     </div>

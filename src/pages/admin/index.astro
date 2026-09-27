@@ -69,7 +69,7 @@ const queue = [
 <DashboardLayout user={user} admin active="overview" seo={{ title: 'Admin — CrossLinkd', description: 'Admin moderation console.', path: '/admin', noindex: true }}>
   <div class="flex flex-wrap items-center justify-between gap-3">
     <div>
-      <h1 class="text-2xl font-extrabold">Moderation overview</h1>
+      <h1 class="text-2xl font-bold">Moderation overview</h1>
       <p class="text-sm" style="color:var(--text-soft)">Live counts from the directory queue.</p>
     </div>
   </div>
@@ -78,13 +78,13 @@ const queue = [
     {queue.map(([label, n, href]) => (
       <a href={href} class="card card-hover p-4">
         <p class="text-[13px]" style="color:var(--text-mute)">{label}</p>
-        <p class="mt-1 text-3xl font-extrabold">{n}</p>
+        <p class="mt-1 text-3xl font-bold">{n}</p>
       </a>
     ))}
   </div>
 
   <div class="card mt-6 p-5">
-    <h2 class="font-extrabold">Recent activity</h2>
+    <h2 class="font-semibold">Recent activity</h2>
     {recentActivity.length === 0 ? (
       <p class="mt-2 text-sm" style="color:var(--text-mute)">No administrative actions logged yet.</p>
     ) : (

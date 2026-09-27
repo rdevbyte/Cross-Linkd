@@ -1,13 +1,13 @@
 /**
  * Shared motion tokens.
- * Framer Motion uses the numeric ease and durations for component interactions.
- * GSAP uses gsapEase and the same durations for page and scroll timelines.
- * Do not animate the same property on the same element in both libraries.
+ * Framer Motion uses the numeric ease and durations for component interactions;
+ * page-level reveals (HeroAnimations.ts + [data-reveal] CSS) and the Web
+ * Animations API use the same curve and durations. One easing vocabulary.
  */
 export const MOTION = {
   duration: { fast: 0.16, base: 0.4, slow: 0.55 },
   ease: [0.22, 1, 0.36, 1] as const,
-  gsapEase: 'power2.out',
+  cssEase: 'cubic-bezier(0.22, 1, 0.36, 1)',
   stagger: 0.06,
   distance: 12,
 } as const;

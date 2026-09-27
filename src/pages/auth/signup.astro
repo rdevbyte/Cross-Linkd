@@ -5,7 +5,7 @@ const error = Astro.url.searchParams.get('error');
 <BaseLayout seo={{ title: 'Create Account — CrossLinkd', description: 'Join CrossLinkd to save favorites, follow ministries, and manage listings.', path: '/auth/signup', noindex: true }}>
   <div class="mx-auto max-w-md px-4 py-14">
     <div class="card p-8">
-      <h1 class="text-2xl font-extrabold">Join the directory</h1>
+      <h1 class="text-2xl font-bold">Join the directory</h1>
       <p class="mt-1 text-sm" style="color:var(--text-soft)">Create a free account to save favorites, review businesses, and manage listings.</p>
       {error && <p class="mt-4 rounded-xl bg-red-500/10 p-3 text-sm font-medium text-red-600" role="alert">{error}</p>}
       <form method="POST" action="/api/auth/signup" class="mt-5 space-y-4">

@@ -15,23 +15,30 @@ const cols = [
   {
     title: 'For Business Owners',
     links: [
+      ['List Your Business', '/add-listing'],
       ['Claim a Listing', '/claim-listing'],
       ['How It Works', '/how-it-works'],
       ['Owner Dashboard', '/dashboard'],
     ],
   },
   {
-    title: 'Trust & Policies',
+    title: 'Trust',
     links: [
       ['How listings work', '/how-it-works'],
       ['Listing-status definitions', '/listing-statuses'],
-      ['Submission policy', '/submission-policy'],
-      ['Correction and removal policy', '/submission-policy#removal'],
       ['Community guidelines', '/guidelines'],
-      ['Disclaimer', '/trust'],
-      ['Contact', '/contact'],
       ['Review policy', '/reviews-policy'],
+      ['Disclaimer', '/trust'],
+    ],
+  },
+  {
+    title: 'Policies',
+    links: [
+      ['Submission policy', '/submission-policy'],
+      ['Correction and removal', '/submission-policy#removal'],
       ['Appeals', '/appeals'],
+      ['Terms of Service', '/terms'],
+      ['Privacy Policy', '/privacy'],
     ],
   },
   {
@@ -42,24 +49,25 @@ const cols = [
       ['Suggest an Improvement', '/feedback'],
       ['Help Center', '/help'],
       ['Resource Center', '/articles'],
-      ['Terms of Service', '/terms'],
-      ['Privacy Policy', '/privacy'],
     ],
   },
 ];
----
+------
 <footer class="mt-20 border-t" style="border-color:var(--border);background:var(--bg-soft)">
   <div class="mx-auto max-w-7xl px-4 py-12">
-    <div class="grid gap-10 md:grid-cols-[1.3fr_repeat(4,1fr)]">
+    <div class="flex flex-col gap-4 border-b pb-8 sm:flex-row sm:items-start sm:justify-between" style="border-color:var(--border)">
       <div>
         <Logo />
-        <p class="mt-4 max-w-xs text-sm leading-relaxed" style="color:var(--text-soft)">
+        <p class="mt-4 max-w-md text-sm leading-relaxed" style="color:var(--text-soft)">
           A community directory of owner-submitted Christian businesses, churches, and ministries. Listings may be in the United States or elsewhere.
         </p>
       </div>
+      <a href="/add-listing" class="btn btn-primary shrink-0 self-start">List your business free</a>
+    </div>
+    <div class="mt-8 grid gap-8 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-5">
       {cols.map((c) => (
         <nav aria-label={c.title}>
-          <h3 class="text-sm font-bold uppercase tracking-wide" style="color:var(--text-mute)">{c.title}</h3>
+          <h3 class="text-[12px] font-semibold uppercase tracking-[0.08em]" style="color:var(--text-mute)">{c.title}</h3>
           <ul class="mt-3 space-y-2">
             {c.links.map(([label, href]) => (
               <li><a href={href} class="text-sm hover:underline" style="color:var(--text-soft)">{label}</a></li>
@@ -71,8 +79,8 @@ const cols = [
     <div class="mt-10 flex flex-col items-start justify-between gap-3 border-t pt-6 sm:flex-row sm:items-center" style="border-color:var(--border)">
       <p class="max-w-3xl text-xs leading-relaxed" style="color:var(--text-mute)">© {year} CrossLinkd LLC. Listing on CrossLinkd does not constitute an endorsement. Please independently evaluate each business, church, ministry, or organization before engaging with it.</p>
       <div class="flex gap-2">
-        <a href="/listing-statuses" class="chip hover:border-[var(--teal)]">Listing Statuses</a>
-        <a href="/privacy" class="chip hover:border-[var(--teal)]">Privacy</a>
+        <a href="/listing-statuses" class="chip">Listing Statuses</a>
+        <a href="/privacy" class="chip">Privacy</a>
       </div>
     </div>
   </div>

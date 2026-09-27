@@ -35,7 +35,7 @@ export default function QRShare({ url, name }: { url: string; name: string }) {
               className="card w-full max-w-xs p-6 text-center"
               onClick={(e) => e.stopPropagation()}
             >
-              <h3 className="font-bold">Share {name}</h3>
+              <h3 className="font-semibold">Share {name}</h3>
               <div className="mx-auto mt-4 w-fit rounded-2xl bg-white p-3">
                 <QRCode value={url} size={160} aria-label={`QR code linking to ${name}`} />
               </div>

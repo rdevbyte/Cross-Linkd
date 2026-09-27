@@ -55,7 +55,7 @@ if (hasDatabase()) {
 }
 ---
 <DashboardLayout user={user} active="reviews" seo={{ title: 'Reviews — Dashboard', description: 'Respond to reviews.', path: '/dashboard/reviews', noindex: true }}>
-  <h1 class="text-2xl font-extrabold">Reviews & recommendations</h1>
+  <h1 class="text-2xl font-bold">Reviews & recommendations</h1>
   <p class="mt-1 text-sm" style="color:var(--text-soft)">Customer reviews for your listings. Respond with grace — one response per review.</p>
 
   {userReviews.length === 0 ? (
@@ -63,7 +63,7 @@ if (hasDatabase()) {
       <div class="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl" style="background:var(--surface-2);color:var(--teal)">
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
       </div>
-      <h2 class="mt-4 text-lg font-bold">No reviews received yet</h2>
+      <h2 class="mt-4 text-lg font-semibold">No reviews received yet</h2>
       <p class="mt-2 max-w-md mx-auto text-sm leading-relaxed" style="color:var(--text-soft)">
         When customers review your published listings, their feedback will appear here so you can post a response.
       </p>

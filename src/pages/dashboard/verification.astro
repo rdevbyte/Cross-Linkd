@@ -11,7 +11,7 @@ const __userGate = requireUserPage(Astro);
 if (__userGate) return __userGate;
 ---
 <DashboardLayout user={user} active="verification" seo={{ title: 'Listing status — Dashboard', description: 'What your listing status does and does not mean.', path: '/dashboard/verification', noindex: true }}>
-  <h1 class="text-2xl font-extrabold">Listing status</h1>
+  <h1 class="text-2xl font-bold">Listing status</h1>
   <p class="mt-1 text-sm leading-relaxed" style="color:var(--text-soft)">{LONG_DISCLAIMER}</p>
   {submitted && <p class="card mt-4 border-l-4 p-3 text-sm font-medium" style="border-left-color:var(--teal)" role="status">We received your note. A reply is not a verification of the business.</p>}
   <div class="card mt-4 p-4 text-sm leading-relaxed" style="color:var(--text-soft)">

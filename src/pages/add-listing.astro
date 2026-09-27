@@ -119,30 +119,32 @@ const CONTACT_PREF_OPTIONS = ['Email', 'Phone call', 'Text message', 'Any is fin
 ---
 <BaseLayout user={user} seo={{ title: 'List Your Business — Free Directory Listing | CrossLinkd', description: 'Submit an owner-submitted listing for your business, church, ministry, or practice. CrossLinkd does not independently verify faith, ownership, licenses, or service quality.', path: '/add-listing' }}>
   <div class="mx-auto max-w-5xl px-4 py-8 pb-32" data-motion="static">
-    <h1 class="text-3xl font-extrabold tracking-tight">List your business</h1>
+    <h1 class="text-3xl font-bold tracking-tight">List your business</h1>
     <p class="section-sub">Free to list. Your profile is owner-submitted. Publishing it does not verify faith, ownership, licenses, or service quality. Fields marked * are required. Everything else can wait.</p>
     <details class="disclose mt-4">
-      <summary>What a listing does not confirm</summary>
+      <summary>What a listing does — and does not — confirm</summary>
       <p class="mt-2 text-sm leading-relaxed" style="color:var(--text-soft)">CrossLinkd is a community directory. Business owners submit information about their business and may identify it as Christian-owned. CrossLinkd reviews submissions for completeness and obvious inconsistencies but does not independently verify faith, ownership, licenses, certifications, credentials, or service quality. Please perform your own due diligence before hiring or supporting a listed organization.</p>
+      <dl class="mt-3 grid gap-x-6 gap-y-2 text-sm leading-relaxed sm:grid-cols-2" style="color:var(--text-soft)">
+        <div><dt class="inline font-semibold" style="color:var(--text)">Required.</dt> <dd class="inline">Organization type, listing name, and the accuracy attestation. No identity documents, licenses, or private religious records.</dd></div>
+        <div><dt class="inline font-semibold" style="color:var(--text)">Public.</dt> <dd class="inline">Only the contact fields you turn on appear on the profile. A faith statement is optional and self-reported.</dd></div>
+        <div><dt class="inline font-semibold" style="color:var(--text)">Review.</dt> <dd class="inline">A complete form may publish as owner-submitted. Missing required fields are not published. A completeness check is not a license or faith check.</dd></div>
+        <div><dt class="inline font-semibold" style="color:var(--text)">Afterward.</dt> <dd class="inline">Claim the listing to edit it. <a href="/contact?topic=correction" class="underline">Request a correction</a> or <a href="/contact?topic=removal" class="underline">removal</a>. A listing is not an endorsement.</dd></div>
+      </dl>
     </details>
-    <nav class="form-jump mt-4" aria-label="Form sections">
-      <a href="#section-basics">Basics</a>
-      <a href="#section-category">Category</a>
-      <a href="#section-faith">Faith</a>
-      <a href="#section-contact">Contact</a>
-      <a href="#section-review">Review</a>
-    </nav>
-    <div class="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-      <div class="card p-4 text-sm leading-relaxed" style="color:var(--text-soft)"><strong style="color:var(--text)">Required.</strong> Organization type, listing name, and the accuracy attestation. No identity documents, licenses, or private religious records.</div>
-      <div class="card p-4 text-sm leading-relaxed" style="color:var(--text-soft)"><strong style="color:var(--text)">Public.</strong> Only the contact fields you turn on appear on the profile. A faith statement is optional and self-reported.</div>
-      <div class="card p-4 text-sm leading-relaxed" style="color:var(--text-soft)"><strong style="color:var(--text)">Review.</strong> A complete form may publish as owner-submitted. Missing required fields are not published. A completeness check is not a license or faith check.</div>
-      <div class="card p-4 text-sm leading-relaxed" style="color:var(--text-soft)"><strong style="color:var(--text)">Afterward.</strong> Claim the listing to edit it. <a href="/contact?topic=correction" class="underline">Request a correction</a> or <a href="/contact?topic=removal" class="underline">removal</a>. A listing is not an endorsement.</div>
+    <div class="mt-4 flex flex-wrap items-center justify-between gap-3">
+      <nav class="form-jump" aria-label="Form sections">
+        <a href="#section-basics" data-step="basics">Basics</a>
+        <a href="#section-category" data-step="category">Category</a>
+        <a href="#section-faith" data-step="faith">Faith</a>
+        <a href="#section-contact" data-step="contact">Contact</a>
+        <a href="#section-review" data-step="review">Review</a>
+      </nav>
+      <p class="text-sm font-medium" style="color:var(--text-soft)">Free forever for the basic listing. No credit card required.</p>
     </div>
-    <p class="mt-3 text-sm font-semibold">Free forever for the basic listing. No credit card required.</p>
 
     {success ? (
       <div class="card mt-6 border-l-4 p-6" style="border-left-color:var(--teal)" role="status">
-        <h2 class="text-lg font-extrabold">{pendingReview ? 'Your listing was submitted for review' : 'Your listing is now live'}</h2>
+        <h2 class="text-lg font-semibold">{pendingReview ? 'Your listing was submitted for review' : 'Your listing is now live'}</h2>
         <p class="mt-1 text-sm" style="color:var(--text-soft)">
           {pendingReview
             ? 'Guest submissions are checked by a person before they appear in the directory. Create an account to manage the listing and see its status.'
@@ -165,7 +167,7 @@ const CONTACT_PREF_OPTIONS = ['Email', 'Phone call', 'Text message', 'Any is fin
           <div class="flex items-baseline gap-3">
             <span class="section-num" aria-hidden="true">01</span>
             <div>
-              <h2 id="section-basics-heading" class="text-lg font-extrabold leading-tight">Organization basics</h2>
+              <h2 id="section-basics-heading" class="text-lg font-semibold leading-tight">Organization basics</h2>
             </div>
           </div>
           <p class="mt-1 text-sm" style="color:var(--text-soft)">Listing type — what you're offering or listing. Choose it first: it shapes which industry categories you can pick next.</p>
@@ -196,15 +198,15 @@ const CONTACT_PREF_OPTIONS = ['Email', 'Phone call', 'Text message', 'Any is fin
           </fieldset>
 
           <div class="mt-5 grid gap-4 sm:grid-cols-2">
-            <label class="text-sm font-semibold" for="input-name">Listing name <span class="req" aria-hidden="true">*</span><span class="sr-only"> required</span>
+            <label class="text-sm font-medium" for="input-name">Listing name <span class="req" aria-hidden="true">*</span><span class="sr-only"> required</span>
               <input name="name" id="input-name" required minlength="2" maxlength="240" class="input mt-1.5" placeholder="Grace Community Church" aria-required="true" />
             </label>
-            <label class="text-sm font-semibold">Tagline <span class="opt">Optional</span>
+            <label class="text-sm font-medium">Tagline <span class="opt">Optional</span>
               <input name="tagline" maxlength="280" class="input mt-1.5" placeholder="Brief summary of what your business does" />
             </label>
           </div>
 
-          <label class="mt-4 block text-sm font-semibold">Description <span class="opt">Optional</span>
+          <label class="mt-4 block text-sm font-medium">Description <span class="opt">Optional</span>
             <textarea name="description" rows="4" maxlength="8000" class="input mt-1.5" placeholder="Describe what your business offers, who you serve, and what makes your business distinct..."></textarea>
             <span class="mt-1 block text-xs" style="color:var(--text-mute)">Shown on your public profile — a sentence or two about what you do and who you serve.</span>
           </label>
@@ -212,38 +214,38 @@ const CONTACT_PREF_OPTIONS = ['Email', 'Phone call', 'Text message', 'Any is fin
           <details class="disclose org-card mt-5" data-open-if>
             <summary>
               <span>
-                <span class="block text-sm font-extrabold">About your organization</span>
+                <span class="block text-sm font-bold">About your organization</span>
                 <span class="mt-0.5 block text-xs font-medium" style="color:var(--text-mute)">Optional. Year, size, hours, service area, and price.</span>
               </span>
               <span class="opt">Optional</span>
             </summary>
             <div class="mt-4 grid gap-4 sm:grid-cols-2">
-              <label class="text-sm font-semibold">Year founded
+              <label class="text-sm font-medium">Year founded
                 <input name="yearFounded" type="number" inputmode="numeric" min="1800" max={thisYear} class="input mt-1.5" placeholder="e.g. 1998" />
               </label>
-              <label class="text-sm font-semibold">Organization size
+              <label class="text-sm font-medium">Organization size
                 <select name="employeeCount" class="input mt-1.5">
                   <option value="">Select size (optional)</option>
                   {SIZE_OPTIONS.map((s) => <option value={s}>{s}</option>)}
                 </select>
               </label>
-              <label class="text-sm font-semibold">Ownership type
+              <label class="text-sm font-medium">Ownership type
                 <select name="ownershipType" class="input mt-1.5">
                   <option value="">Select ownership (optional)</option>
                   {OWNERSHIP_OPTIONS.map((o) => <option value={o}>{o}</option>)}
                 </select>
               </label>
-              <label class="text-sm font-semibold">Operating hours
+              <label class="text-sm font-medium">Operating hours
                 <select name="hours" class="input mt-1.5">
                   <option value="">Select typical hours (optional)</option>
                   {HOURS_OPTIONS.map((h) => <option value={h.value}>{h.label}</option>)}
                 </select>
               </label>
-              <label class="text-sm font-semibold">Service area <span class="opt">Optional</span>
+              <label class="text-sm font-medium">Service area <span class="opt">Optional</span>
                 <input name="serviceArea" maxlength="300" class="input mt-1.5" placeholder="e.g. Austin metro; delivery within 25 miles" />
                 <span class="mt-1 block text-xs" style="color:var(--text-mute)">Cities, counties, or regions you serve.</span>
               </label>
-              <label class="text-sm font-semibold">Price range <span class="opt">Optional</span>
+              <label class="text-sm font-medium">Price range <span class="opt">Optional</span>
                 <select name="priceRange" class="input mt-1.5 block w-full">
                   <option value="">Select price range</option>
                   <option value="$">$ (Inexpensive / Budget-friendly)</option>
@@ -263,7 +265,7 @@ const CONTACT_PREF_OPTIONS = ['Email', 'Phone call', 'Text message', 'Any is fin
             <div class="flex items-baseline gap-3">
               <span class="section-num" aria-hidden="true">02</span>
               <div>
-                <h2 id="section-category-heading" class="text-lg font-extrabold leading-tight">Industry &amp; business category</h2>
+                <h2 id="section-category-heading" class="text-lg font-semibold leading-tight">Industry &amp; business category</h2>
               </div>
             </div>
             <span id="category-type-context" class="chip hidden !text-[11px]"></span>
@@ -276,7 +278,7 @@ const CONTACT_PREF_OPTIONS = ['Email', 'Phone call', 'Text message', 'Any is fin
 
           <!-- Single searchable category picker (filtered by selected type) -->
           <div class="mt-4">
-            <label for="category-search-input" class="text-sm font-semibold">Search &amp; pick a category</label>
+            <label for="category-search-input" class="text-sm font-medium">Search &amp; pick a category</label>
             <p id="category-filter-help" class="mt-0.5 text-xs" style="color:var(--text-mute)">Please select an organization type first.</p>
             <div class="relative mt-2">
               <input
@@ -303,7 +305,7 @@ const CONTACT_PREF_OPTIONS = ['Email', 'Phone call', 'Text message', 'Any is fin
 
           <!-- Custom Category Input when 'Other' category is chosen -->
           <div id="custom-category-wrap" class="hidden mt-3 rounded-xl p-3.5 border border-[var(--border)] bg-[var(--surface-2)]">
-            <label class="block text-xs font-semibold">Custom category name *
+            <label class="block text-xs font-medium">Custom category name *
               <input name="customCategory" id="input-custom-category" class="input mt-1.5 w-full" placeholder="e.g. Specialty Gluten-Free Bakery, Stained Glass Restoration, etc." maxlength="180" />
             </label>
             <p class="text-[11px] mt-1" style="color:var(--text-mute)">Please specify your business's exact trade or service.</p>
@@ -318,7 +320,7 @@ const CONTACT_PREF_OPTIONS = ['Email', 'Phone call', 'Text message', 'Any is fin
             <div class="flex items-baseline gap-3">
               <span class="section-num" aria-hidden="true">03</span>
               <div>
-                <h2 id="section-faith-heading" class="text-lg font-extrabold leading-tight">Faith identity &amp; denomination</h2>
+                <h2 id="section-faith-heading" class="text-lg font-semibold leading-tight">Faith identity &amp; denomination</h2>
               </div>
             </div>
             <span id="denom-counter" class="chip !text-[11px]">0 of 2 selected</span>
@@ -335,7 +337,7 @@ const CONTACT_PREF_OPTIONS = ['Email', 'Phone call', 'Text message', 'Any is fin
 
           <!-- Selection Controls: searchable denomination typeahead (same interaction as the category search) -->
           <div class="mt-4">
-            <label for="denom-search-input" class="text-sm font-semibold">Search denominations</label>
+            <label for="denom-search-input" class="text-sm font-medium">Search denominations</label>
             <div class="relative mt-2">
               <input
                 type="search"
@@ -353,7 +355,7 @@ const CONTACT_PREF_OPTIONS = ['Email', 'Phone call', 'Text message', 'Any is fin
 
           <!-- Custom Denomination Input when 'Other' is chosen -->
           <div id="custom-denom-wrap" class="hidden mt-3 rounded-xl p-3 border border-[var(--border)] bg-[var(--surface-2)]">
-            <label class="block text-xs font-semibold">Custom denomination or movement name *
+            <label class="block text-xs font-medium">Custom denomination or movement name *
               <input
                 name="customDenomination"
                 id="custom-denom-input"
@@ -364,7 +366,7 @@ const CONTACT_PREF_OPTIONS = ['Email', 'Phone call', 'Text message', 'Any is fin
             </label>
           </div>
 
-          <label class="mt-4 flex flex-wrap items-center gap-2.5 text-xs font-semibold cursor-pointer">
+          <label class="mt-4 flex flex-wrap items-center gap-2.5 text-xs font-medium cursor-pointer">
             <input type="checkbox" name="showDenomination" value="1" checked class="peer sr-only" />
             <span class="relative inline-block h-6 w-11 shrink-0 rounded-full bg-gray-200 transition-colors after:absolute after:left-0.5 after:top-0.5 after:h-5 after:w-5 after:rounded-full after:bg-white after:shadow after:transition-transform after:content-[''] peer-checked:bg-[var(--accent)] peer-checked:after:translate-x-5 peer-focus-visible:ring-2 peer-focus-visible:ring-[var(--ring)] peer-focus-visible:ring-offset-2 peer-focus-visible:ring-offset-[var(--surface)]" aria-hidden="true"></span>
             <span>Display faith affiliation publicly on listing</span>
@@ -375,10 +377,10 @@ const CONTACT_PREF_OPTIONS = ['Email', 'Phone call', 'Text message', 'Any is fin
 
           <details class="disclose mt-5" data-open-if>
             <summary>
-              <span class="text-sm font-extrabold">Statement of faith</span>
+              <span class="text-sm font-bold">Statement of faith</span>
               <span class="opt">Optional</span>
             </summary>
-            <label class="mt-3 block text-sm font-semibold" for="input-statement">Shown on your profile if you add one
+            <label class="mt-3 block text-sm font-medium" for="input-statement">Shown on your profile if you add one
               <textarea name="statementOfFaith" id="input-statement" rows="3" maxlength="8000" class="input mt-1.5" placeholder="Brief statement of faith, mission, or Christian core values..."></textarea>
             </label>
           </details>
@@ -389,7 +391,7 @@ const CONTACT_PREF_OPTIONS = ['Email', 'Phone call', 'Text message', 'Any is fin
           <div class="flex items-baseline gap-3">
             <span class="section-num" aria-hidden="true">04</span>
             <div>
-              <h2 id="section-contact-heading" class="text-lg font-extrabold leading-tight">Contact and visibility</h2>
+              <h2 id="section-contact-heading" class="text-lg font-semibold leading-tight">Contact and visibility</h2>
             </div>
           </div>
           <p class="mt-1 text-sm" style="color:var(--text-soft)">Choose exactly which contact details appear publicly on your listing profile.</p>
@@ -398,7 +400,7 @@ const CONTACT_PREF_OPTIONS = ['Email', 'Phone call', 'Text message', 'Any is fin
             <strong>Privacy note:</strong> Information you keep private is used for account administration and listing review. Private fields are not shown on public cards or in search. Keeping a field private is not a verification of that field.
           </div>
 
-          <label class="mt-4 block text-sm font-semibold">Preferred contact method <span class="opt">Optional</span>
+          <label class="mt-4 block text-sm font-medium">Preferred contact method <span class="opt">Optional</span>
             <select name="contactPreference" class="input mt-1.5 block w-full">
               <option value="">Select preference</option>
               {CONTACT_PREF_OPTIONS.map((c) => <option value={c}>{c}</option>)}
@@ -461,18 +463,18 @@ const CONTACT_PREF_OPTIONS = ['Email', 'Phone call', 'Text message', 'Any is fin
           <!-- Physical Location -->
           <div id="location-fields" class="mt-4 space-y-2">
             <div class="grid gap-4 sm:grid-cols-3">
-              <label class="text-sm font-semibold">City
+              <label class="text-sm font-medium">City
                 <input name="city" id="input-city" maxlength="120" class="input mt-1.5" placeholder="Enter city" />
               </label>
-              <label class="text-sm font-semibold">State / region
+              <label class="text-sm font-medium">State / region
                 <input name="region" id="input-region" maxlength="120" class="input mt-1.5" placeholder="Enter state or region" />
               </label>
-              <label class="text-sm font-semibold">ZIP / Postal code
+              <label class="text-sm font-medium">ZIP / Postal code
                 <input name="postalCode" maxlength="24" class="input mt-1.5" placeholder="Enter postal code" />
               </label>
             </div>
 
-            <label class="flex flex-wrap items-center gap-2.5 text-xs font-semibold cursor-pointer pt-1">
+            <label class="flex flex-wrap items-center gap-2.5 text-xs font-medium cursor-pointer pt-1">
               <input type="checkbox" name="showAddress" value="1" class="peer sr-only" />
               <span class="relative inline-block h-6 w-11 shrink-0 rounded-full bg-gray-200 transition-colors after:absolute after:left-0.5 after:top-0.5 after:h-5 after:w-5 after:rounded-full after:bg-white after:shadow after:transition-transform after:content-[''] peer-checked:bg-[var(--accent)] peer-checked:after:translate-x-5 peer-focus-visible:ring-2 peer-focus-visible:ring-[var(--ring)] peer-focus-visible:ring-offset-2 peer-focus-visible:ring-offset-[var(--surface)]" aria-hidden="true"></span>
               <span>Display postal code / full address publicly on listing</span>
@@ -484,7 +486,7 @@ const CONTACT_PREF_OPTIONS = ['Email', 'Phone call', 'Text message', 'Any is fin
           <p id="location-disabled-note" class="hidden mt-3 rounded-xl border p-3 text-xs font-semibold" style="border-color:var(--border); background:var(--surface-2); color:var(--text-soft)">Location fields are hidden for online-only listings — you serve customers nationwide.</p>
 
           <div class="mt-5 rounded-2xl border p-4 sm:p-5" style="border-color:var(--border); background:var(--surface-2)">
-            <h3 class="text-sm font-extrabold">What the public sees</h3>
+            <h3 class="text-sm font-semibold">What the public sees</h3>
             <p class="mt-1 text-xs" style="color:var(--text-mute)">Each detail stays private until you switch its toggle on.</p>
             <div class="public-grid mt-4">
               <article class="public-card">
@@ -543,7 +545,7 @@ const CONTACT_PREF_OPTIONS = ['Email', 'Phone call', 'Text message', 'Any is fin
           <div class="flex items-baseline gap-3">
             <span class="section-num" aria-hidden="true">05</span>
             <div>
-              <h2 id="section-review-heading" class="text-lg font-extrabold leading-tight">Review and publish</h2>
+              <h2 id="section-review-heading" class="text-lg font-semibold leading-tight">Review and publish</h2>
             </div>
           </div>
           <p class="mt-1 text-sm" style="color:var(--text-soft)">Check the summary, confirm the required statements, then publish. Publishing creates an owner-submitted listing. It does not verify faith, ownership, licenses, credentials, or service quality.</p>
@@ -551,7 +553,7 @@ const CONTACT_PREF_OPTIONS = ['Email', 'Phone call', 'Text message', 'Any is fin
           <div class="review-layout mt-5">
             <article class="review-card" aria-labelledby="review-summary-heading">
               <div class="review-card-head">
-                <h3 id="review-summary-heading" class="text-sm font-extrabold">Listing summary</h3>
+                <h3 id="review-summary-heading" class="text-sm font-semibold">Listing summary</h3>
                 <span class="opt">Preview</span>
               </div>
               <p class="text-xs leading-relaxed" style="color:var(--text-soft)">Preview only. A published profile is labeled Owner-submitted. That is not a verification.</p>
@@ -559,7 +561,7 @@ const CONTACT_PREF_OPTIONS = ['Email', 'Phone call', 'Text message', 'Any is fin
                 <div class="flex items-start gap-4">
                   <div class="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl border text-[10px] font-bold uppercase tracking-wide" style="border-color:var(--border); background:var(--surface-2); color:var(--text-mute)">Logo</div>
                   <div class="min-w-0">
-                    <p id="preview-name" class="truncate font-extrabold" style="color:var(--text-mute)">Your listing name</p>
+                    <p id="preview-name" class="truncate font-bold" style="color:var(--text-mute)">Your listing name</p>
                     <p id="preview-type" class="mt-0.5 text-xs font-semibold" style="color:var(--text-mute)">No type selected yet</p>
                     <p id="preview-category" class="mt-0.5 text-xs" style="color:var(--text-soft)">No category selected</p>
                     <p id="preview-location" class="mt-0.5 text-xs" style="color:var(--text-mute)">Location not set</p>
@@ -576,7 +578,7 @@ const CONTACT_PREF_OPTIONS = ['Email', 'Phone call', 'Text message', 'Any is fin
 
             <article class="review-card" aria-labelledby="review-required-heading">
               <div class="review-card-head">
-                <h3 id="review-required-heading" class="text-sm font-extrabold">Required before publishing</h3>
+                <h3 id="review-required-heading" class="text-sm font-semibold">Required before publishing</h3>
                 <span class="req-pill">Required</span>
               </div>
               <ul id="review-checklist" class="review-checklist">
@@ -598,10 +600,10 @@ const CONTACT_PREF_OPTIONS = ['Email', 'Phone call', 'Text message', 'Any is fin
 
           <details class="disclose mt-4" data-open-if>
             <summary>
-              <span class="text-sm font-extrabold">Discovery tags</span>
+              <span class="text-sm font-bold">Discovery tags</span>
               <span class="opt">Optional</span>
             </summary>
-            <label class="mt-3 block text-sm font-semibold">Hashtags <span class="opt">Optional</span>
+            <label class="mt-3 block text-sm font-medium">Hashtags <span class="opt">Optional</span>
               <input name="hashtags" class="input mt-1.5" placeholder="e.g. ChristianOwned, FamilyOwned, VeteranOwned" />
               <span class="mt-1 block text-xs font-medium" style="color:var(--text-mute)">Comma-separated. These help search. They are not a verification.</span>
             </label>
@@ -609,7 +611,7 @@ const CONTACT_PREF_OPTIONS = ['Email', 'Phone call', 'Text message', 'Any is fin
 
           <article class="review-card review-publish mt-4" aria-labelledby="review-publish-heading">
             <div class="review-card-head">
-              <h3 id="review-publish-heading" class="text-sm font-extrabold">Publish this listing</h3>
+              <h3 id="review-publish-heading" class="text-sm font-semibold">Publish this listing</h3>
               <span class="req-pill">Final step</span>
             </div>
             <p id="publish-help" class="text-sm leading-relaxed" style="color:var(--text-soft)">Publishing submits this form. If the required fields are valid, the listing goes live as owner-submitted. It does not start a verification, charge a fee, or endorse the organization. You can still save a draft instead.</p>
@@ -630,10 +632,10 @@ const CONTACT_PREF_OPTIONS = ['Email', 'Phone call', 'Text message', 'Any is fin
         <div id="sticky-bar" class="fixed inset-x-0 bottom-0 z-40 border-t backdrop-blur" style="border-color:var(--border); background:color-mix(in srgb, var(--surface) 94%, transparent)">
           <div class="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-3 px-4 py-3">
             <div class="min-w-[180px] flex-1">
-              <div class="h-2 w-full max-w-[240px] overflow-hidden rounded-full" style="background:var(--surface-2)">
-                <div id="progress-bar" class="h-2 rounded-full transition-all duration-300" style="background: var(--accent); width: 0%"></div>
+              <div class="h-2.5 w-full max-w-[240px] overflow-hidden rounded-full border" style="background:var(--surface-2);border-color:var(--border-strong)">
+                <div id="progress-bar" class="h-full rounded-full transition-all duration-300" style="background: var(--accent); width: 0%"></div>
               </div>
-              <p id="progress-text" class="mt-1 text-xs font-semibold" style="color:var(--text-mute)" aria-live="polite">0 of 4 sections complete</p>
+              <p id="progress-text" class="mt-1 text-xs font-medium" style="color:var(--text-soft)" aria-live="polite">0 of 4 sections complete</p>
             </div>
             <p id="sticky-status" class="form-status hidden w-full" aria-hidden="true"></p>
             <div class="flex w-full gap-2 sm:w-auto sm:flex-wrap sm:justify-end sm:gap-2">
@@ -1264,7 +1266,36 @@ const CONTACT_PREF_OPTIONS = ['Email', 'Phone call', 'Text message', 'Any is fin
       const done = [s1, s2, s3, s4].filter(Boolean).length;
       if (progressText) progressText.textContent = `${done} of 4 sections complete`;
       if (progressBar) progressBar.style.width = `${(done / 4) * 100}%`;
+      const stepState = { basics: s1, category: s2, faith: s3, contact: s4 };
+      Object.entries(stepState).forEach(([step, complete]) => {
+        const link = document.querySelector(`.form-jump a[data-step="${step}"]`);
+        if (link) link.setAttribute('data-complete', complete ? 'true' : 'false');
+      });
       updateReviewChecklist();
+    }
+
+    // Step pills: mark the section currently in view
+    if ('IntersectionObserver' in window) {
+      const jumpLinks = Array.from(document.querySelectorAll('.form-jump a[href^="#section-"]'));
+      const sections = jumpLinks
+        .map((a) => document.querySelector(a.getAttribute('href') || ''))
+        .filter(Boolean);
+      const setCurrent = (id) => {
+        jumpLinks.forEach((a) => {
+          if (a.getAttribute('href') === `#${id}`) a.setAttribute('aria-current', 'step');
+          else a.removeAttribute('aria-current');
+        });
+      };
+      const visible = new Map();
+      if (sections[0]) setCurrent(sections[0].id);
+      const sectionObserver = new IntersectionObserver((entries) => {
+        entries.forEach((entry) => visible.set(entry.target.id, entry.isIntersecting ? entry.intersectionRatio : 0));
+        let best = null;
+        let bestRatio = 0;
+        visible.forEach((ratio, id) => { if (ratio > bestRatio) { best = id; bestRatio = ratio; } });
+        if (best) setCurrent(best);
+      }, { rootMargin: '-25% 0px -55% 0px', threshold: [0, 0.1, 0.25, 0.5, 0.75, 1] });
+      sections.forEach((section) => sectionObserver.observe(section));
     }
 
     let reviewAttempted = false;
@@ -1886,19 +1917,40 @@ const CONTACT_PREF_OPTIONS = ['Email', 'Phone call', 'Text message', 'Any is fin
       gap: 0.4rem;
     }
     .form-section { scroll-margin-top: 5.5rem; }
+    .form-jump { counter-reset: step; }
     .form-jump a {
       display: inline-flex;
-      min-height: 44px;
+      min-height: 40px;
       align-items: center;
+      gap: 0.45rem;
       border: 1px solid var(--border);
       border-radius: 999px;
-      padding: 0.2rem 0.75rem;
+      padding: 0.2rem 0.8rem 0.2rem 0.45rem;
       background: var(--surface);
-      color: var(--text);
-      font-size: 0.75rem;
-      font-weight: 700;
+      color: var(--text-soft);
+      font-size: 0.78rem;
+      font-weight: 500;
+      transition: border-color 0.18s ease, background-color 0.18s ease, color 0.18s ease;
     }
-    .form-jump a:hover { border-color: var(--accent); }
+    .form-jump a::before {
+      counter-increment: step;
+      content: counter(step);
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 1.35rem; height: 1.35rem; border-radius: 999px;
+      background: var(--surface-2); border: 1px solid var(--border-strong);
+      font-size: 0.68rem; font-weight: 600; color: var(--text-soft);
+    }
+    .form-jump a[data-complete='true']::before {
+      content: '✓';
+      background: var(--accent); border-color: var(--accent); color: var(--accent-ink);
+    }
+    .form-jump a[aria-current='step'] {
+      border-color: var(--accent);
+      background: var(--accent-soft);
+      color: var(--text);
+      font-weight: 600;
+    }
+    .form-jump a:hover { border-color: var(--accent); color: var(--text); }
     details.disclose {
       border: 1px solid var(--border);
       border-radius: 1rem;

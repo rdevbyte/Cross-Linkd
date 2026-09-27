@@ -86,20 +86,6 @@ export default function ListingStatuses({ disclaimer, statuses, terms, recommend
   return (
     <div data-motion="react">
       <style>{`
-        .status-pill {
-          display: inline-flex;
-          align-items: center;
-          gap: 0.35rem;
-          max-width: 100%;
-          border: 1px solid var(--border-strong);
-          background: var(--surface-2);
-          color: var(--text);
-          border-radius: 999px;
-          padding: 0.28rem 0.65rem;
-          font-size: 0.75rem;
-          font-weight: 700;
-          line-height: 1.35;
-        }
         .status-grid {
           display: grid;
           gap: 1rem;
@@ -148,7 +134,7 @@ export default function ListingStatuses({ disclaimer, statuses, terms, recommend
           );
         })}
         <StatusCard index={statuses.length}>
-          <h2 id="status-title-highlighted" className="text-sm font-extrabold">Highlighted is not a recommendation</h2>
+          <h2 id="status-title-highlighted" className="text-sm font-semibold">Highlighted is not a recommendation</h2>
           <p className="text-sm leading-relaxed" style={{ color: 'var(--text-soft)' }}>
             “Highlighted” only means a listing is called out in the directory. It is not an endorsement, a quality rating, or a check of anything the owner wrote.
           </p>
@@ -156,12 +142,12 @@ export default function ListingStatuses({ disclaimer, statuses, terms, recommend
       </div>
 
       <section className="card mt-5 p-5 sm:p-7" aria-labelledby="terms-heading">
-        <h2 id="terms-heading" className="text-2xl font-extrabold">What the words mean</h2>
+        <h2 id="terms-heading" className="text-2xl font-semibold">What the words mean</h2>
         <p className="mt-2 max-w-3xl text-[15px] leading-relaxed" style={{ color: 'var(--text-soft)' }}>{recommendation}</p>
         <div className="status-grid mt-5">
           {terms.map((term) => (
             <article key={term.title} className="status-grid-card card status-inset">
-              <h3 className="text-sm font-bold">{term.title}</h3>
+              <h3 className="text-sm font-semibold">{term.title}</h3>
               <p className="text-sm leading-relaxed" style={{ color: 'var(--text-soft)' }}>{term.body}</p>
             </article>
           ))}
@@ -169,7 +155,7 @@ export default function ListingStatuses({ disclaimer, statuses, terms, recommend
       </section>
 
       <article className="card mt-5 p-5 sm:p-7">
-        <h2 className="font-extrabold">Saw something wrong?</h2>
+        <h2 className="font-semibold">Saw something wrong?</h2>
         <p className="mt-1 text-sm leading-relaxed" style={{ color: 'var(--text-soft)' }}>
           A report is community reported. It asks a person to look at the listing. It does not mean CrossLinkd has already confirmed or rejected the business.
         </p>

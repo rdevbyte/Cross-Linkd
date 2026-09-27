@@ -104,6 +104,27 @@ const pageUrl = (p: number) => {
   sp.set('page', String(p));
   return `/search?${sp.toString()}`;
 };
+/** Same search minus one or more params — powers the removable "active filter" chips. */
+const urlWithout = (...drop: Array<[key: string, value?: string]>) => {
+  const sp = new URLSearchParams(params);
+  for (const [key, value] of drop) {
+    if (value === undefined) sp.delete(key);
+    else sp.delete(key, value);
+  }
+  sp.delete('page');
+  const qs = sp.toString();
+  return qs ? `/search?${qs}` : '/search';
+};
+const activeFilters: { label: string; href: string }[] = [
+  ...(ltypeLabel ? [{ label: ltypeLabel, href: urlWithout(['ltype']) }] : []),
+  ...(selectedDenomLabel ? [{ label: selectedDenomLabel, href: urlWithout(['denomination']) }] : []),
+  ...(filters.city ? [{ label: `City: ${filters.city}`, href: urlWithout(['city']) }] : []),
+  ...(filters.near && !filters.onlineOnly ? [{ label: `Near ${filters.near}`, href: urlWithout(['near']) }] : []),
+  ...(filters.lat !== undefined && filters.lng !== undefined ? [{ label: `Within ${filters.radiusMi} mi of me`, href: urlWithout(['lat'], ['lng'], ['radiusMi']) }] : []),
+  ...(filters.openNow ? [{ label: 'Open now', href: urlWithout(['openNow']) }] : []),
+  ...(filters.onlineOnly ? [{ label: 'Online services', href: urlWithout(['onlineOnly'], ['near']) }] : []),
+  ...(filters.minRating > 0 ? [{ label: `${filters.minRating}+ stars`, href: urlWithout(['minRating']) }] : []),
+];
 const sortOptions: [string, string][] = [
   ['relevance', 'Relevance'], ['distance', 'Distance'], ['rating', 'Rating'],
   ['newest', 'Newest'], ['recommended', 'Recommendation count'], ['popular', 'Most viewed'],
@@ -118,7 +139,7 @@ const seo = {
 <BaseLayout seo={seo} user={user}>
   <div class="mx-auto max-w-7xl px-4 py-8">
     <div class="max-w-3xl">
-      <h1 class="text-2xl font-extrabold sm:text-3xl">Search the directory</h1>
+      <h1 class="text-2xl font-bold sm:text-3xl">Search the directory</h1>
       <p class="mt-1 text-sm" style="color:var(--text-soft)">Results are owner-submitted listings. A search result is not a verification or an endorsement.</p>
       <p class="mt-1 text-sm" style="color:var(--text-soft)">Try <code class="rounded bg-[var(--surface-2)] px-1.5 py-0.5 text-[13px]">bakery #Baptist</code>, <code class="rounded bg-[var(--surface-2)] px-1.5 py-0.5 text-[13px]">counselor near me</code>, or <code class="rounded bg-[var(--surface-2)] px-1.5 py-0.5 text-[13px]">churches with wheelchair access</code></p>
       <div class="mt-4"><SearchBar client:load initialQuery={filters.q} initialLocation={filters.onlineOnly ? 'Online' : (filters.near ?? '')} locationChoices={locationChoices} size="compact" /></div>
@@ -135,10 +156,11 @@ const seo = {
         <form method="GET" action="/search" class="space-y-4">
           <input type="hidden" name="q" value={filters.q} />
           <input type="hidden" name="sort" value={filters.sort} />
+          <h2 class="text-[12px] font-semibold uppercase tracking-[0.08em]" style="color:var(--text-mute)">Filters</h2>
           <StructuredSelect
             name="ltype"
             label="Listing type"
-            helper="Search or browse — grouped by industry and sub-industry, A–Z"
+            helper="Grouped by industry, A–Z"
             placeholder="All listing types"
             searchPlaceholder="Search industries…"
             groups={ltypeGroups}
@@ -148,7 +170,7 @@ const seo = {
           <StructuredSelect
             name="denomination"
             label="Denomination"
-            helper="Search or browse — grouped by tradition, A–Z"
+            helper="Grouped by tradition, A–Z"
             placeholder="Any tradition"
             searchPlaceholder="Search traditions…"
             groups={denomData}
@@ -156,26 +178,26 @@ const seo = {
             selectedLabel={selectedDenomLabel}
           />
           <div class="grid grid-cols-2 gap-2">
-            <div>
-              <h2 class="text-sm font-bold">City</h2>
-              <input name="city" value={filters.city ?? ''} placeholder="Enter city" class="input mt-2" />
+            <div class="space-y-1">
+              <label class="field-label" for="filter-city">City</label>
+              <input id="filter-city" name="city" value={filters.city ?? ''} placeholder="Enter city" class="input mt-1" />
             </div>
-            <div>
-              <h2 class="text-sm font-bold">Radius</h2>
-              <select name="radiusMi" class="input mt-2" aria-label="Search radius">
+            <div class="space-y-1">
+              <label class="field-label" for="filter-radius">Radius</label>
+              <select id="filter-radius" name="radiusMi" class="input mt-1">
                 {[10, 25, 50, 100].map((r) => <option value={r} selected={filters.radiusMi === r}>{r} mi</option>)}
               </select>
             </div>
           </div>
-          <div class="space-y-1.5 border-t pt-3" style="border-color:var(--border)">
-            <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="openNow" value="1" checked={filters.openNow} class="h-4 w-4 accent-[var(--accent)]" /> Open now</label>
-            <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="onlineOnly" value="1" checked={filters.onlineOnly} class="h-4 w-4 accent-[var(--accent)]" /> Online services</label>
-          </div>
-          <div>
-            <h2 class="text-sm font-bold">Min rating</h2>
-            <select name="minRating" class="input mt-2" aria-label="Minimum rating">
+          <div class="space-y-1">
+            <label class="field-label" for="filter-rating">Minimum rating</label>
+            <select id="filter-rating" name="minRating" class="input mt-1">
               {[0, 3, 4, 4.5].map((r) => <option value={r} selected={filters.minRating === r}>{r === 0 ? 'Any' : `${r}+ stars`}</option>)}
             </select>
+          </div>
+          <div class="space-y-2 border-t pt-3" style="border-color:var(--border)">
+            <label class="flex items-center gap-2.5 text-sm font-medium"><input type="checkbox" name="openNow" value="1" checked={filters.openNow} class="h-4 w-4 rounded accent-[var(--accent)]" /> Open now</label>
+            <label class="flex items-center gap-2.5 text-sm font-medium"><input type="checkbox" name="onlineOnly" value="1" checked={filters.onlineOnly} class="h-4 w-4 rounded accent-[var(--accent)]" /> Online services</label>
           </div>
           <div class="flex gap-2">
             <button class="btn btn-primary flex-1 !py-2 !text-sm" type="submit">Apply</button>
@@ -201,13 +223,26 @@ const seo = {
               <span id="layout-toggle-label">List view</span>
             </button>
             <p id="layout-status" class="sr-only" role="status"></p>
-            <label class="text-sm" style="color:var(--text-mute)">Sort
-              <select id="sort" class="input ml-1 !w-auto !py-1.5" aria-label="Sort results">
+            <label class="flex items-center gap-1.5 text-sm" style="color:var(--text-mute)">Sort
+              <select id="sort" class="input !w-auto !py-1.5 !text-sm" aria-label="Sort results">
                 {sortOptions.map(([v, l]) => <option value={v} selected={filters.sort === v}>{l}</option>)}
               </select>
             </label>
           </div>
         </div>
+        {activeFilters.length > 0 && (
+          <div class="mt-3 flex flex-wrap items-center gap-1.5" aria-label="Active filters">
+            <span class="text-[12px] font-medium" style="color:var(--text-mute)">Filtering by</span>
+            {activeFilters.map((f) => (
+              <a href={f.href} class="chip chip-active !pr-2" title={`Remove filter: ${f.label}`}>
+                {f.label}
+                <span aria-hidden="true" class="ml-0.5 font-semibold">×</span>
+                <span class="sr-only">(remove)</span>
+              </a>
+            ))}
+            <a href={`/search${filters.q ? `?q=${encodeURIComponent(filters.q)}` : ''}`} class="text-[12px] font-medium underline" style="color:var(--text-soft)">Clear all</a>
+          </div>
+        )}
 
         {result.hits.length === 0 ? (
           <div class="mt-6">
@@ -262,19 +297,19 @@ const seo = {
   </script>
 
   <script>
-    // List/Grid layout toggle — anime.js v4 AutoLayout (FLIP) with staggered cards.
-    import { createLayout, utils, stagger } from 'animejs';
-
+    // List/Grid layout toggle — FLIP with the Web Animations API (no library):
+    // measure, toggle the class, measure again, then play the inverse transform.
     const initLayoutToggle = () => {
-      const [$root] = utils.$('.layout-container');
-      const [$button] = utils.$('#layout-toggle');
+      const $root = document.querySelector<HTMLElement>('.layout-container');
+      const $button = document.getElementById('layout-toggle');
       if (!$root || !$button) return;
-      const [$iconList] = utils.$('#icon-list');
-      const [$iconGrid] = utils.$('#icon-grid');
-      const [$label] = utils.$('#layout-toggle-label');
-      const [$status] = utils.$('#layout-status');
+      const $iconList = document.getElementById('icon-list');
+      const $iconGrid = document.getElementById('icon-grid');
+      const $label = document.getElementById('layout-toggle-label');
+      const $status = document.getElementById('layout-status');
       const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
       const STORAGE_KEY = 'cl:listLayout';
+      const EASE = 'cubic-bezier(0.22, 1, 0.36, 1)';
 
       const isGrid = () => $root.classList.contains('as-grid');
       const setLayout = (grid: boolean) => $root.classList.toggle('as-grid', grid);
@@ -293,36 +328,32 @@ const seo = {
         $button.setAttribute('aria-label', `${current} view. Switch to ${other} view`);
       };
 
-      // Anime.js FLIP layout animation; the class always toggles first so the
-      // layout still switches even if the animation engine is unavailable.
-      let layout = null;
-      try {
-        // children:'article' is critical — the default '*' selector also matches every
-        // descendant (SVG art, chips, links…), stretching the stagger to ~16s.
-        layout = createLayout($root, { ease: 'outExpo', children: 'article' });
-      } catch (e) {
-        layout = null;
-      }
       const applyToggle = () => {
         const grid = !isGrid();
-        if (reducedMotion.matches || !layout) {
+        const cards = Array.from($root.querySelectorAll<HTMLElement>(':scope > article'));
+        if (reducedMotion.matches || !('animate' in HTMLElement.prototype) || !cards.length) {
           setLayout(grid);
           return;
         }
-        try {
-          layout.update(
-            () => {
-              setLayout(grid);
-            },
-            {
-              delay: stagger(50, {
-                from: grid ? 'first' : 'last',
-              }),
-            },
+        const before = new Map(cards.map((el) => [el, el.getBoundingClientRect()]));
+        setLayout(grid);
+        const ordered = grid ? cards : [...cards].reverse();
+        ordered.forEach((el, i) => {
+          const a = before.get(el)!;
+          const b = el.getBoundingClientRect();
+          const dx = a.left - b.left, dy = a.top - b.top;
+          const sx = a.width / Math.max(b.width, 1), sy = a.height / Math.max(b.height, 1);
+          if (!dx && !dy && Math.abs(sx - 1) < 0.01 && Math.abs(sy - 1) < 0.01) return;
+          el.style.transformOrigin = 'top left';
+          el.style.willChange = 'transform';
+          const anim = el.animate(
+            [{ transform: `translate(${dx}px, ${dy}px) scale(${sx}, ${sy})` }, { transform: 'none' }],
+            { duration: 420, delay: Math.min(i, 8) * 40, easing: EASE, fill: 'backwards' },
           );
-        } catch (e) {
-          setLayout(grid);
-        }
+          // Drop the compositing hints once done so the card is repainted at its final layout
+          // (avoids a stale composited layer lingering over the resized card).
+          anim.onfinish = anim.oncancel = () => { el.style.willChange = ''; el.style.transformOrigin = ''; };
+        });
       };
 
       $button.addEventListener('click', () => {

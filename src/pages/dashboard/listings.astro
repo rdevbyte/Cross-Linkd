@@ -125,7 +125,7 @@ const allOtherDenominations = [...DENOMINATIONS]
 <DashboardLayout user={user} active="listings" seo={{ title: 'My listings — CrossLinkd', description: 'Manage your business listings.', path: '/dashboard/listings', noindex: true }}>
   <div class="flex flex-wrap items-center justify-between gap-3">
     <div>
-      <h1 class="text-2xl font-extrabold">My listings</h1>
+      <h1 class="text-2xl font-bold">My listings</h1>
       <p class="section-sub">Create, edit, and manage your business listings. Active listings are published live in the directory.</p>
     </div>
   </div>
@@ -151,16 +151,16 @@ const allOtherDenominations = [...DENOMINATIONS]
   <!-- New / edit listing card -->
   <details class="card mt-5 p-5 sm:p-6" id="listing-form-card">
     <summary class="cursor-pointer select-none">
-      <span class="font-extrabold" id="form-title">+ Create a new listing</span>
+      <span class="font-bold" id="form-title">+ Create a new listing</span>
       <span class="text-sm" style="color:var(--text-mute)"> — your business profile goes live immediately.</span>
     </summary>
     <form id="listing-form" class="mt-5 space-y-5" data-listing-id="">
       <!-- Section 1: Overview -->
       <div class="grid gap-4 sm:grid-cols-2">
-        <label class="block text-sm font-semibold">Business name *
+        <label class="block text-sm font-medium">Business name *
           <input name="name" required minlength="2" maxlength="240" class="input mt-1 w-full" placeholder="Enter your business name" />
         </label>
-        <label class="block text-sm font-semibold">Listing type *
+        <label class="block text-sm font-medium">Listing type *
           <select name="typeSlug" required class="input mt-1 w-full">
             <option value="business">Business</option>
             <option value="church">Church</option>
@@ -171,11 +171,11 @@ const allOtherDenominations = [...DENOMINATIONS]
         </label>
       </div>
 
-      <label class="block text-sm font-semibold">Tagline
+      <label class="block text-sm font-medium">Tagline
         <input name="tagline" maxlength="280" class="input mt-1 w-full" placeholder="Brief summary of what your business does" />
       </label>
 
-      <label class="block text-sm font-semibold">Description * <span class="font-normal" style="color:var(--text-mute)">(30+ characters to publish)</span>
+      <label class="block text-sm font-medium">Description * <span class="font-normal" style="color:var(--text-mute)">(30+ characters to publish)</span>
         <textarea name="description" rows="4" minlength="30" maxlength="8000" class="input mt-1 w-full" placeholder="Describe what your business offers, who you serve, and what makes your business distinct"></textarea>
       </label>
 
@@ -183,7 +183,7 @@ const allOtherDenominations = [...DENOMINATIONS]
       <div class="rounded-2xl p-4 border" style="border-color:var(--border);background:var(--surface-2)">
         <div class="flex flex-wrap items-center justify-between gap-2">
           <div>
-            <h3 class="text-sm font-bold">Industry &amp; business category *</h3>
+            <h3 class="text-sm font-semibold">Industry &amp; business category *</h3>
             <p class="text-xs" style="color:var(--text-mute)">Choose a broad industry, then select the specific category for your business.</p>
           </div>
           <span id="dash-category-badge" class="chip !text-[11px] font-bold">Category required</span>
@@ -205,7 +205,7 @@ const allOtherDenominations = [...DENOMINATIONS]
 
         <!-- Custom Category Input when 'Other' category is chosen -->
         <div id="dash-custom-category-wrap" class="hidden mt-3 rounded-xl p-3 border border-[var(--border)] bg-[var(--surface)]">
-          <label class="block text-xs font-semibold">Custom category name *
+          <label class="block text-xs font-medium">Custom category name *
             <input name="customCategory" id="dash-input-custom-category" class="input mt-1 w-full" placeholder="e.g. Specialty Gluten-Free Bakery, Stained Glass Restoration, etc." maxlength="180" />
           </label>
         </div>
@@ -266,7 +266,7 @@ const allOtherDenominations = [...DENOMINATIONS]
       <div class="rounded-2xl p-4 border" style="border-color:var(--border);background:var(--surface-2)">
         <div class="flex flex-wrap items-center justify-between gap-2">
           <div>
-            <h3 class="text-sm font-bold">Faith affiliation &amp; denomination</h3>
+            <h3 class="text-sm font-semibold">Faith affiliation &amp; denomination</h3>
             <p class="text-xs" style="color:var(--text-mute)">Select up to two denominations that best represent this organization.</p>
           </div>
           <span id="dash-denom-counter" class="chip !text-[11px]">0 of 2 selected</span>
@@ -294,7 +294,7 @@ const allOtherDenominations = [...DENOMINATIONS]
           </div>
 
           <div class="mt-2.5">
-            <label class="block text-xs font-semibold mb-1" style="color:var(--text-mute)">More historical &amp; regional denominations:
+            <label class="block text-xs font-medium mb-1" style="color:var(--text-mute)">More historical &amp; regional denominations:
               <select id="dash-more-denoms-select" class="input mt-1 w-full text-xs">
                 <option value="">Choose additional denomination…</option>
                 {allOtherDenominations.map((d) => (
@@ -307,7 +307,7 @@ const allOtherDenominations = [...DENOMINATIONS]
 
         <!-- Custom Denomination Input when 'Other' is chosen -->
         <div id="dash-custom-denom-wrap" class="hidden mt-3 rounded-xl p-3 border border-[var(--border)] bg-[var(--surface)]">
-          <label class="block text-xs font-semibold">Custom denomination or movement name *
+          <label class="block text-xs font-medium">Custom denomination or movement name *
             <input
               name="customDenomination"
               id="dash-custom-denom-input"
@@ -318,7 +318,7 @@ const allOtherDenominations = [...DENOMINATIONS]
           </label>
         </div>
 
-        <label class="mt-3 flex items-center gap-2 text-xs font-semibold cursor-pointer">
+        <label class="mt-3 flex items-center gap-2 text-xs font-medium cursor-pointer">
           <input type="checkbox" name="showDenomination" value="1" checked class="h-4 w-4 accent-[var(--accent)]" />
           Display faith affiliation publicly on listing
         </label>
@@ -326,41 +326,41 @@ const allOtherDenominations = [...DENOMINATIONS]
 
       <!-- Section 4: Location -->
       <div class="grid gap-4 sm:grid-cols-3">
-        <label class="block text-sm font-semibold">City *
+        <label class="block text-sm font-medium">City *
           <input name="city" maxlength="120" class="input mt-1 w-full" placeholder="Enter city" />
         </label>
-        <label class="block text-sm font-semibold">State / Region *
+        <label class="block text-sm font-medium">State / Region *
           <input name="region" maxlength="120" class="input mt-1 w-full" placeholder="Enter state or region" />
         </label>
-        <label class="block text-sm font-semibold">ZIP / Postal code
+        <label class="block text-sm font-medium">ZIP / Postal code
           <input name="postalCode" maxlength="24" class="input mt-1 w-full" placeholder="Postal code" />
         </label>
       </div>
 
-      <label class="flex items-center gap-2 text-xs font-semibold cursor-pointer">
+      <label class="flex items-center gap-2 text-xs font-medium cursor-pointer">
         <input type="checkbox" name="showAddress" value="1" class="h-4 w-4 accent-[var(--accent)]" />
         Display full address publicly on listing
       </label>
 
-      <label class="flex items-center gap-2 text-sm font-semibold">
+      <label class="flex items-center gap-2 text-sm font-medium">
         <input type="checkbox" name="isOnlineOnly" class="h-4 w-4 accent-[var(--accent)]" />
         Online only — serves nationwide (no physical storefront)
       </label>
 
       <!-- Section 5: Contact & Privacy Controls -->
       <div class="rounded-2xl p-4 border" style="border-color:var(--border)">
-        <h3 class="text-sm font-bold">Contact information &amp; privacy controls</h3>
+        <h3 class="text-sm font-semibold">Contact information &amp; privacy controls</h3>
         <p class="text-xs" style="color:var(--text-mute)">Private contact details are kept secure for account purposes and never exposed publicly.</p>
 
         <!-- Contact Email -->
         <div class="mt-3 space-y-1">
-          <label class="block text-sm font-semibold">Contact email *
+          <label class="block text-sm font-medium">Contact email *
             <input name="email" type="email" class="input mt-1 w-full" placeholder="contact@yourbusiness.com" value={user.email} />
           </label>
           <p class="text-[11px]" style="color:var(--text-soft)">
             Account email: <strong>{user.email}</strong>. Pre-filled for your convenience; feel free to change it to your organization's inquiry address.
           </p>
-          <label class="flex items-center gap-2 text-xs font-semibold cursor-pointer pt-1">
+          <label class="flex items-center gap-2 text-xs font-medium cursor-pointer pt-1">
             <input type="checkbox" name="showEmail" value="1" class="h-4 w-4 accent-[var(--accent)]" />
             Display email address publicly on listing
           </label>
@@ -369,10 +369,10 @@ const allOtherDenominations = [...DENOMINATIONS]
 
         <!-- Phone -->
         <div class="mt-4 space-y-1">
-          <label class="block text-sm font-semibold">Phone number
+          <label class="block text-sm font-medium">Phone number
             <input name="phone" maxlength="60" class="input mt-1 w-full" placeholder="Enter phone number" />
           </label>
-          <label class="flex items-center gap-2 text-xs font-semibold cursor-pointer">
+          <label class="flex items-center gap-2 text-xs font-medium cursor-pointer">
             <input type="checkbox" name="showPhone" value="1" class="h-4 w-4 accent-[var(--accent)]" />
             Display phone number publicly on listing
           </label>
@@ -380,10 +380,10 @@ const allOtherDenominations = [...DENOMINATIONS]
 
         <!-- Website -->
         <div class="mt-4 space-y-1">
-          <label class="block text-sm font-semibold">Website
+          <label class="block text-sm font-medium">Website
             <input name="website" type="url" class="input mt-1 w-full" placeholder="https://yourbusiness.com" />
           </label>
-          <label class="flex items-center gap-2 text-xs font-semibold cursor-pointer">
+          <label class="flex items-center gap-2 text-xs font-medium cursor-pointer">
             <input type="checkbox" name="showWebsite" value="1" class="h-4 w-4 accent-[var(--accent)]" />
             Display website link publicly on listing
           </label>
@@ -391,7 +391,7 @@ const allOtherDenominations = [...DENOMINATIONS]
 
         <!-- Price Range -->
         <div class="mt-4">
-          <label class="block text-sm font-semibold">Price range
+          <label class="block text-sm font-medium">Price range
             <select name="priceRange" class="input mt-1 w-full">
               <option value="">Select price range (optional)</option>
               <option value="$">$ (Inexpensive)</option>

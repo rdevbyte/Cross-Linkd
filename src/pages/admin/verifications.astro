@@ -15,7 +15,7 @@ const rows: Array<{
 }> = [];
 ---
 <DashboardLayout user={user} admin active="verifications" seo={{ title: 'Admin: Listing notes', description: 'Internal listing notes. Not a verification queue.', path: '/admin/verifications', noindex: true }}>
-  <h1 class="text-2xl font-extrabold">Listing notes</h1>
+  <h1 class="text-2xl font-bold">Listing notes</h1>
   <p class="mt-1 text-sm" style="color:var(--text-soft)">This queue does not grant a verification badge. CrossLinkd does not independently verify faith, ownership, licenses, or credentials. See the <a href="/trust" class="underline">trust page</a>.</p>
 
   {rows.length === 0 ? (
@@ -23,7 +23,7 @@ const rows: Array<{
       <div class="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl" style="background:var(--surface-2);color:var(--teal)">
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 14 14"/></svg>
       </div>
-      <h2 class="mt-4 text-base font-bold">No pending listing notes</h2>
+      <h2 class="mt-4 text-base font-semibold">No pending listing notes</h2>
       <p class="mt-1 text-sm" style="color:var(--text-soft)">Owner documents, if any are collected later, would be completeness notes. They would not create a verified or credentialed badge.</p>
     </div>
   ) : (

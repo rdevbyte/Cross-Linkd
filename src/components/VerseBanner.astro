@@ -1,9 +1,15 @@
 ---
 // John 14:6 — displayed near the top of the site per product spec.
+// A quiet parchment strip with a small cross glyph; phones show the core clause,
+// larger screens the full sentence.
 ---
-<div class="border-b" style="background:var(--accent-soft);border-color:var(--border)">
-  <p class="mx-auto max-w-6xl px-4 py-2 text-center text-[12.5px] italic leading-snug sm:text-[13px]" style="color:var(--text-soft)">
-    “Jesus said to him, ‘I am the way, the truth, and the life. No one comes to the Father except through Me.’”
-    <span class="ml-2 whitespace-nowrap font-semibold not-italic" style="color:var(--text)">— John 14:6, NKJV</span>
+<div class="verse-banner border-b" style="background:var(--bg-soft);border-color:var(--border)">
+  <p class="mx-auto flex max-w-6xl items-center justify-center gap-2 px-4 py-1.5 text-center text-[12px] leading-snug sm:text-[12.5px]" style="color:var(--text-soft)">
+    <svg class="shrink-0" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="3" stroke-linecap="round" aria-hidden="true"><path d="M12 3v18M5 9h14"/></svg>
+    <span class="italic">
+      <span class="hidden sm:inline">“Jesus said to him, ‘I am the way, the truth, and the life. No one comes to the Father except through Me.’”</span>
+      <span class="sm:hidden">“I am the way, the truth, and the life.”</span>
+    </span>
+    <span class="whitespace-nowrap font-medium" style="color:var(--text)">— John 14:6, NKJV</span>
   </p>
 </div>

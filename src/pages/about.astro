@@ -31,7 +31,7 @@ const seo = {
 ---
 <BaseLayout user={user} seo={seo}>
   <div class="mx-auto max-w-3xl px-4 py-12">
-    <h1 class="text-3xl font-extrabold">About CrossLinkd</h1>
+    <h1 class="text-3xl font-bold">About CrossLinkd</h1>
     <p class="section-sub">A small, independent company. We are not a denomination, a church network, or a marketing agency.</p>
 
     <div class="prose-custom mt-8 space-y-4 text-[15px] leading-relaxed" style="color:var(--text-soft)">
@@ -56,12 +56,12 @@ const seo = {
       </p>
     </div>
 
-    <h2 class="mt-12 text-2xl font-extrabold">The team</h2>
+    <h2 class="mt-12 text-2xl font-semibold">The team</h2>
     <p class="mt-2 text-sm" style="color:var(--text-mute)">Names below still need the site owner to confirm they should be published. Earlier bios claimed a verification operation this directory does not have. Those claims have been removed.</p>
     <div class="mt-4 grid gap-4 sm:grid-cols-3">
       {team.map((m) => (
         <div class="card p-5 text-center">
-          <span class="mx-auto flex h-16 w-16 items-center justify-center rounded-full text-xl font-extrabold text-white" style={`background:hsl(${m.hue},45%,55%)`} aria-hidden="true">{m.name.split(' ').map((n) => n[0]).join('')}</span>
+          <span class="mx-auto flex h-16 w-16 items-center justify-center rounded-full text-xl font-bold text-white" style={`background:hsl(${m.hue},45%,55%)`} aria-hidden="true">{m.name.split(' ').map((n) => n[0]).join('')}</span>
           <p class="mt-3 font-bold">{m.name}</p>
           <p class="text-xs font-bold uppercase tracking-wide" style="color:var(--teal)">{m.role}</p>
           <p class="mt-2 text-[13px] leading-relaxed" style="color:var(--text-soft)">{m.bio}</p>
@@ -69,14 +69,14 @@ const seo = {
       ))}
     </div>
 
-    <h2 class="mt-12 text-2xl font-extrabold">How the directory is managed</h2>
+    <h2 class="mt-12 text-2xl font-semibold">How the directory is managed</h2>
     <div class="prose-custom mt-3 space-y-3 text-[15px] leading-relaxed" style="color:var(--text-soft)">
       <p>A submission may be reviewed for completeness and obvious inconsistencies — see <a href="/how-it-works" class="underline">how it works</a>. That is not an independent verification. Reviews are screened under our <a href="/reviews-policy" class="underline">review &amp; moderation policy</a>. Appeals are requested on the <a href="/appeals" class="underline">appeals page</a>. An appeal is not a verification. Our <a href="/editorial-policy" class="underline">editorial policy</a> governs the guides we publish, and the <a href="/submission-policy" class="underline">submission policy</a> explains what we accept and what we remove.</p>
       <p>Owners can claim a listing and update it. If a listing is no longer maintained, the accurate status is Inactive, not verified.</p>
     </div>
 
     <div class="card mt-10 p-6">
-      <h2 class="text-lg font-extrabold">Contact us</h2>
+      <h2 class="text-lg font-semibold">Contact us</h2>
       <p class="mt-2 text-sm leading-relaxed" style="color:var(--text-soft)">
         Have questions, feedback, or need assistance? Use the contact form. A person can read a saved message. We do not promise a reply within 1–2 business days.
       </p>

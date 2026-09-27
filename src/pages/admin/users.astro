@@ -33,7 +33,7 @@ const ROLES = ['member', 'listing_owner', 'org_admin', 'content_editor', 'verifi
 const flash = Astro.url.searchParams.get('flash') ?? '';
 ---
 <DashboardLayout user={user} admin active="users" seo={{ title: 'Admin: Users', description: 'Manage user accounts and roles.', path: '/admin/users', noindex: true }}>
-  <h1 class="text-2xl font-extrabold">Users</h1>
+  <h1 class="text-2xl font-bold">Users</h1>
   <p class="section-sub">
     {canManageRoles
       ? 'Role changes take effect when the user next signs in. You cannot change your own role.'

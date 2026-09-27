@@ -18,7 +18,8 @@
   --border-strong: #d8d0ba;
   --text: #1d1a14;
   --text-soft: #57503f;
-  --text-mute: #7a7260;
+  --text-mute: #716957;         /* ≥4.7:1 on every light surface */
+  --navy: #16263f;              /* logo navy — wordmark + monograms only */
   --accent: #8f7028;            /* aged brass — AA with white ink */
   --accent-ink: #fffdf6;
   --accent-soft: rgba(143, 112, 40, 0.10);
@@ -41,6 +42,7 @@
   --text: #ebe9e4;
   --text-soft: #b7b4ad;
   --text-mute: #908d85;
+  --navy: #9fb3d1;              /* steel-blue stand-in for the logo navy */
   --accent: #c7a15a;            /* muted brand gold */
   --accent-ink: #1f232a;
   --accent-soft: rgba(199, 161, 90, 0.13);
@@ -70,6 +72,13 @@
     border-radius: 6px;
   }
   h1, h2, h3, h4 { letter-spacing: -0.02em; }
+  h1 { font-weight: 700; }
+  h2, h3, h4 { font-weight: 600; }
+  /* Progressive reveal (IntersectionObserver in HeroAnimations.ts). Only when JS
+     is running, so content is never hidden without it. */
+  html.js [data-reveal]:not([data-reveal='in']) { opacity: 0; transform: translateY(12px); }
+  [data-reveal] { transition: opacity 0.4s cubic-bezier(0.22, 1, 0.36, 1), transform 0.4s cubic-bezier(0.22, 1, 0.36, 1); }
+  [data-reveal='in'] { opacity: 1; transform: none; }
 }
 
 @layer components {
@@ -98,6 +107,7 @@
     color: var(--accent-ink);
     box-shadow: 0 1px 2px rgba(15, 16, 20, 0.10);
   }
+  .btn:active { transform: scale(0.98); }
   .btn-primary:hover { filter: brightness(0.95); }
   [data-theme='dark'] .btn-primary:hover { filter: brightness(1.07); }
   .btn-secondary {
@@ -118,6 +128,25 @@
     @apply w-full rounded-xl px-4 py-2.5 text-sm outline-none transition-all duration-200 placeholder:text-[var(--text-mute)];
   }
   .input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--ring); }
+  select.input {
+    appearance: none;
+    -webkit-appearance: none;
+    padding-right: 2.25rem;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23716957' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.75rem center;
+  }
+  [data-theme='dark'] select.input {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23908d85' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  }
+  .field-label { @apply block text-sm font-medium; }
+  /* Breadcrumb: evenly spaced separators, current page in full ink */
+  .breadcrumb { display: flex; flex-wrap: wrap; align-items: center; gap: 0.35rem 0.5rem; font-size: 13px; color: var(--text-mute); }
+  .breadcrumb li { display: inline-flex; align-items: center; gap: 0.5rem; min-width: 0; }
+  .breadcrumb li + li::before { content: '/'; color: var(--border-strong); }
+  .breadcrumb a:hover { text-decoration: underline; color: var(--text); }
+  .breadcrumb [aria-current='page'] { color: var(--text); font-weight: 500; }
+  .field-help { color: var(--text-mute); @apply text-xs leading-relaxed; }
 
   .chip {
     @apply inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium;
@@ -130,11 +159,31 @@
     border-color: var(--accent);
     color: var(--text);
   }
+  a.chip { transition: background-color 0.18s ease, border-color 0.18s ease, color 0.18s ease; }
+  a.chip:hover { background: var(--accent-soft); border-color: var(--accent); color: var(--text); }
+  .chip-featured { background: var(--accent-soft); border-color: transparent; color: var(--accent); font-weight: 600; }
+  [data-theme='dark'] .chip-featured { color: var(--text); }
+  /* Status pill — a label, not a button: outline only, medium weight, muted icon */
+  .status-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    max-width: 100%;
+    border: 1px solid var(--border-strong);
+    background: transparent;
+    color: var(--text-soft);
+    border-radius: 999px;
+    padding: 0.22rem 0.6rem;
+    font-size: 0.72rem;
+    font-weight: 500;
+    line-height: 1.35;
+  }
+  .status-pill > svg { color: var(--text-mute); flex: none; }
 
   .badge-verify {
     @apply inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-semibold;
   }
-  .section-title { @apply text-2xl font-bold sm:text-3xl; }
+  .section-title { @apply text-2xl font-semibold sm:text-3xl; }
   .section-sub { color: var(--text-soft); @apply mt-2 max-w-2xl text-[15px]; }
 
   .skeleton {
@@ -241,28 +290,52 @@ html:not([data-theme='dark']) .dark-only { display: none; }
   .theme-slider-knob, .theme-slider, .logo-mark { transition: none !important; }
 }
 
-/* ---- Search results: list/grid layout toggle (anime.js FLIP) ---- */
-/* Base = LIST view: single column of compact horizontal cards.
-   The media <a> is the flex item — size IT, and let .card-media fill it. */
-.listings-grid { display: grid; gap: 1rem; grid-template-columns: 1fr; }
-.listings-grid > article { flex-direction: row; }
-.listings-grid .card-media-link { display: block; flex: none; width: 7.75rem; }
-.listings-grid .card-media { width: 100%; height: 100%; }
-.listings-grid .card-media .chip,
-.listings-grid .card-media .badge-verify { max-width: calc(100% - 1.25rem); }
-@media (min-width: 640px) {
-  .listings-grid { gap: 0.875rem; }
-  .listings-grid .card-media-link { width: 13.5rem; }
-  .listings-grid .card-media .chip,
-  .listings-grid .card-media .badge-verify { max-width: none; }
+/* ---- Listing card anatomy ----
+   Default (homepage grids, .as-grid): a short tinted band with the monogram
+   and a category glyph. List view (.listings-grid): the band is dropped for a
+   48px monogram avatar so the row reads name-first. */
+.card-media { height: 6.5rem; background: hsl(var(--hue, 40) 26% 82%); }
+[data-theme='dark'] .card-media { background: hsl(var(--hue, 40) 18% 26%); }
+.card-monogram {
+  display: flex; align-items: center; justify-content: center;
+  width: 3rem; height: 3rem; border-radius: 0.9rem;
+  background: rgba(255, 255, 255, 0.88); color: var(--navy);
+  font-family: var(--font-display); font-size: 1.25rem; font-weight: 700;
+  box-shadow: 0 1px 2px rgba(15, 16, 20, 0.08);
 }
-/* GRID view: clear multi-column cards; adapts 1 col (phones) → 2 (tablets) → 3+ (desktop). */
+[data-theme='dark'] .card-monogram { background: rgba(255, 255, 255, 0.1); color: var(--text); }
+.card-glyph {
+  position: absolute; right: 0.8rem; bottom: 0.65rem;
+  color: var(--navy); opacity: 0.5;
+}
+[data-theme='dark'] .card-glyph { color: var(--text); opacity: 0.35; }
+.card-avatar {
+  display: none; align-items: center; justify-content: center; flex: none;
+  width: 3rem; height: 3rem; border-radius: 0.9rem;
+  background: hsl(var(--hue, 40) 26% 90%);
+  border: 2px solid hsl(var(--hue, 40) 28% 74%);
+  color: var(--navy);
+  font-family: var(--font-display); font-size: 1.1rem; font-weight: 700;
+}
+[data-theme='dark'] .card-avatar {
+  background: hsl(var(--hue, 40) 18% 24%);
+  border-color: hsl(var(--hue, 40) 18% 36%);
+  color: var(--text);
+}
+.card-title { font-weight: 700; line-height: 1.3; }
+.card-title:hover { text-decoration: underline; }
+
+/* ---- Search results: list/grid layout toggle ---- */
+.listings-grid { display: grid; gap: 0.875rem; grid-template-columns: 1fr; }
+.listings-grid:not(.as-grid) .card-media-link { display: none; }
+.listings-grid:not(.as-grid) .card-avatar { display: flex; }
+/* In list view the save button sits over the title row: keep the text clear of it */
+.listings-grid:not(.as-grid) .card-head { padding-right: 2.75rem; }
+/* GRID view: 1 col (phones) → 2 (tablets) → 3+ (desktop). */
 .listings-grid.as-grid {
   grid-template-columns: repeat(auto-fill, minmax(min(100%, 255px), 1fr));
   gap: 1rem;
 }
-.listings-grid.as-grid > article { flex-direction: column; }
-.listings-grid.as-grid .card-media-link { width: 100%; height: 9rem; }
 /* Toggle button pressed state while grid view is active */
 #layout-toggle[aria-pressed='true'] {
   border-color: var(--accent);
@@ -274,13 +347,8 @@ html:not([data-theme='dark']) .dark-only { display: none; }
   .listings-grid > * { transition: none !important; animation: none !important; }
 }
 
-/* ---- Card trace: animated outline around each business card ----
-   A muted brand-gold light travels the full card perimeter (adapted from the
-   supplied SVG animation): a faint static gold outline is always visible, and a
-   soft light rides the border through a mask. Pure gradients, no blur filters. */
-/* ---- Listing-card trace: one cohesive border with a traveling glow ---- */
-/* The trace SVG is the card's single visible border: hide the CSS border so
-   there is never a second outline. (Unlayered → overrides .card in @layer.) */
+/* ---- Card trace: one hairline border, with a brass light that travels the
+   perimeter only while the card is hovered or focused (never ambient). ---- */
 .card-traced,
 .card-traced:hover {
   border-color: transparent;
@@ -294,10 +362,9 @@ html:not([data-theme='dark']) .dark-only { display: none; }
 .card-trace-outline {
   fill: none;
   stroke: var(--logo-gold);
-  stroke-opacity: 0.32;
+  stroke-opacity: 0.34;
   transition: stroke-opacity 0.22s ease;
 }
-/* Hover/focus affordance now lives on the border itself. */
 .card-traced:hover .card-trace-outline,
 .card-traced:focus-within .card-trace-outline {
   stroke-opacity: 0.8;
@@ -305,122 +372,43 @@ html:not([data-theme='dark']) .dark-only { display: none; }
 .card-trace-light {
   offset-path: path('M 13 0 H 327 A 13 13 0 0 1 340 13 V 207 A 13 13 0 0 1 327 220 H 13 A 13 13 0 0 1 0 207 V 13 A 13 13 0 0 1 13 0 Z');
   offset-rotate: 0deg;
-  opacity: 0.95;
-  animation: card-trace-orbit var(--trace-duration, 9s) linear infinite;
-  animation-delay: var(--glow-delay, 0s);
+  opacity: 0;
+  transition: opacity 0.3s ease;
   will-change: offset-distance;
+}
+.card-traced:hover .card-trace-light,
+.card-traced:focus-within .card-trace-light {
+  opacity: 0.95;
+  animation: card-trace-orbit 3.2s linear infinite;
 }
 @keyframes card-trace-orbit {
   from { offset-distance: 0%; }
   to { offset-distance: 100%; }
 }
-/* Pause while the visitor is reading a card */
-.card:hover .card-trace-light { animation-play-state: paused; }
-/* Reduced motion: no moving light; the static outline remains */
 @media (prefers-reduced-motion: reduce) {
-  .card-trace-light { animation: none; opacity: 0; }
-  .card-trace-outline { stroke-opacity: 0.38; }
+  .card-trace-light { animation: none !important; opacity: 0 !important; }
 }
-/* Static fallback: if motion paths are unsupported the traveling light is
-   hidden and the plain outline stays (it is always rendered either way). */
 @supports not (offset-path: path('M 0 0 H 1')) {
   .card-trace-light { display: none; }
 }
 
-
-/* ---- Structured dropdown (Listing type + Denomination filters) ---- */
-.sdd { position: relative; }
-/* Progressive enhancement: native select by default; custom control when JS runs */
-.sdd .sdd-control { display: none; }
-.sdd.sdd-enhanced .sdd-native { display: none; }
-.sdd.sdd-enhanced .sdd-control { display: block; }
-
-.sdd-button {
-  display: flex; align-items: center; justify-content: space-between; gap: 0.5rem;
-  text-align: left; cursor: pointer; padding-right: 0.65rem;
-}
-.sdd-button:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
-.sdd-value { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-mute); }
-.sdd-value.sdd-set { color: var(--text); font-weight: 600; }
-.sdd-chevron { width: 1rem; height: 1rem; flex: none; color: var(--text-mute); transition: transform 0.18s ease; }
-.sdd-button[aria-expanded='true'] .sdd-chevron { transform: rotate(180deg); }
-
-.sdd-panel {
-  position: absolute; z-index: 40;
-  top: calc(100% + 0.375rem); left: 0; right: 0;
-  display: flex; flex-direction: column; gap: 0.375rem;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 0.9rem;
-  box-shadow: 0 1px 2px rgba(15, 16, 20, 0.06), 0 14px 32px -14px rgba(15, 16, 20, 0.22);
-  padding: 0.5rem;
-}
-/* display:flex would defeat the hidden attribute — keep it authoritative */
-.sdd-panel[hidden] { display: none !important; }
-.sdd-search { position: relative; }
-.sdd-search .input { width: 100%; padding-right: 1.9rem; }
-.sdd-clear {
-  position: absolute; right: 0.4rem; top: 50%; transform: translateY(-50%);
-  width: 1.4rem; height: 1.4rem; border-radius: 999px; border: 0;
-  background: var(--surface-2); color: var(--text-mute);
-  font-size: 0.95rem; line-height: 1; cursor: pointer;
-}
-.sdd-clear:hover { color: var(--text); }
-
-.sdd-list {
-  max-height: min(21rem, 56vh);
-  overflow: auto;
-  margin: 0; padding: 0 0.15rem 0.15rem; list-style: none;
-  display: flex; flex-direction: column; gap: 2px;
-  overscroll-behavior: contain;
-}
-.sdd-option {
-  display: flex; align-items: center; justify-content: space-between; gap: 0.5rem;
-  padding: 0.45rem 0.6rem; border-radius: 0.55rem;
-  font-size: 0.875rem; color: var(--text-soft); cursor: pointer;
-}
-.sdd-option:hover, .sdd-option.sdd-active { background: var(--surface-2); color: var(--text); }
-.sdd-option[aria-selected='true'] { background: var(--accent-soft); color: var(--text); font-weight: 600; }
-.sdd-option[aria-selected='true']::after { content: '✓'; color: var(--accent); font-weight: 700; }
-.sdd-any { border-bottom: 1px solid var(--border); border-radius: 0.55rem 0.55rem 0 0; margin-bottom: 2px; }
-
-.sdd-ghead { background: var(--surface); }
-.sdd-toggle {
-  width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 0.5rem;
-  padding: 0.42rem 0.4rem 0.3rem; border: 0; border-top: 1px solid var(--border);
-  background: var(--surface); cursor: pointer; text-align: left;
-  font-size: 0.72rem; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase;
-  color: var(--text-mute);
-}
-.sdd-ghead:first-child .sdd-toggle { border-top: 0; }
-.sdd-toggle:hover { color: var(--text); }
-.sdd-gmeta { display: inline-flex; align-items: center; gap: 0.35rem; }
+/* Count badge used by the admin listing filters */
 .sdd-gcount {
   background: var(--surface-2); border: 1px solid var(--border);
   border-radius: 999px; padding: 0 0.4rem; font-size: 0.66rem; letter-spacing: 0;
-}
-.sdd-toggle .sdd-chevron { width: 0.85rem; height: 0.85rem; }
-.sdd-toggle[aria-expanded='false'] .sdd-chevron { transform: rotate(-90deg); }
-.sdd-group {
-  display: flex; flex-direction: column; gap: 2px;
-  margin: 0 0 0.25rem; padding: 0; list-style: none;
-}
-.sdd-group[hidden], .sdd-ghead[hidden], .sdd-option[hidden], .sdd-empty[hidden] { display: none; }
-.sdd-group.sdd-collapsed { display: none; }
-.sdd-empty { padding: 0.6rem; text-align: center; font-size: 0.85rem; color: var(--text-mute); }
-
-@media (prefers-reduced-motion: reduce) {
-  .sdd-chevron, .sdd-option, .sdd-clear { transition: none !important; }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .card,
   .card-hover:hover,
   .btn,
-  .input {
+  .btn:active,
+  .input,
+  [data-reveal] {
     transition: none;
     transform: none;
   }
+  html.js [data-reveal]:not([data-reveal='in']) { opacity: 1; transform: none; }
 }
 .input:user-invalid,
 .input[aria-invalid="true"] {

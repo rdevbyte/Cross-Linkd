@@ -107,7 +107,7 @@ const stats = [
 
   <div class="flex flex-wrap items-center justify-between gap-3">
     <div>
-      <h1 class="text-2xl font-extrabold">Welcome{user ? `, ${user.displayName.split(' ')[0]}` : ''}</h1>
+      <h1 class="text-2xl font-bold">Welcome{user ? `, ${user.displayName.split(' ')[0]}` : ''}</h1>
       <p class="text-sm" style="color:var(--text-soft)">Here’s how your listings are doing.</p>
     </div>
     <a href="/dashboard/listings" class="btn btn-primary">+ New listing</a>
@@ -117,13 +117,13 @@ const stats = [
     {stats.map((s) => (
       <div class="card p-4">
         <p class="text-[13px]" style="color:var(--text-mute)">{s.label}</p>
-        <p class="mt-1 text-2xl font-extrabold">{s.value}</p>
+        <p class="mt-1 text-2xl font-bold">{s.value}</p>
         <p class="text-xs font-medium" style="color:var(--text-soft)">{s.sub}</p>
       </div>
     ))}
   </div>
 
-  <h2 class="mt-8 text-lg font-extrabold">Your listings</h2>
+  <h2 class="mt-8 text-lg font-semibold">Your listings</h2>
   {userListings.length === 0 ? (
     <div class="card mt-3 p-8 text-center">
       <div class="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl" style="background:var(--surface-2);color:var(--teal)">

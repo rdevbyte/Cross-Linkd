@@ -1,7 +1,9 @@
 ---
 import FavoriteButton from './FavoriteButton';
 import StatusBadge from './StatusBadge.astro';
+import TypeGlyph from './TypeGlyph.astro';
 import type { SampleListing } from '@/data/listings';
+import { typeBySlug } from '@/data/listing-types';
 import { compact, timeAgo } from '@/lib/format';
 
 interface Props { listing: SampleListing; distanceMiles?: number; sponsored?: boolean }
@@ -13,8 +15,12 @@ const badgeLabels: Record<string, string> = {
   claimed: 'Owner claimed',
   christian_owned: 'Self-identified Christian-owned',
 };
+const initial = l.name.trim().charAt(0).toUpperCase();
+const typeIcon = typeBySlug(l.typeSlug)?.icon ?? 'store';
+const MAX_TAGS = 3;
+const extraTags = Math.max(0, l.hashtags.length - MAX_TAGS);
 ---
-<article class="card card-hover card-traced relative flex flex-col overflow-hidden">
+<article class="card card-hover card-traced relative flex flex-col overflow-hidden" style={`--hue:${l.imageHue}`}>
   <svg class="card-trace" viewBox="0 0 340 220" preserveAspectRatio="none" aria-hidden="true" focusable="false" style={`--glow-delay:${glowDelay}s`}>
     <defs>
       <radialGradient id={`traceg-${artUid}`} cx="50%" cy="50%" r="50%">
@@ -83,34 +89,32 @@ const badgeLabels: Record<string, string> = {
       traceRO.observe(svg);
     });
   </script>
-  <a href={`/directory/${l.slug}`} class="card-media-link block" aria-label={`View ${l.name}`}>
-    <div class="card-media relative h-36" style={`background:hsl(${l.imageHue},26%,80%)`}>
+  <a href={`/directory/${l.slug}`} class="card-media-link block" aria-label={`View ${l.name}`} tabindex="-1">
+    <div class="card-media relative">
       <div class="absolute inset-0 flex items-center justify-center">
-        <span class="flex h-14 w-14 items-center justify-center rounded-2xl bg-white/85 text-2xl font-extrabold shadow" style="color:#3a3325" aria-hidden="true">
-          {l.name.charAt(0)}
-        </span>
+        <span class="card-monogram" aria-hidden="true">{initial}</span>
       </div>
-      <div class="absolute left-3 top-3 flex flex-wrap gap-1.5">
-        {sponsored && <span class="chip !bg-black/70 !text-white !text-[11px]">Sponsored</span>}
-        {l.featured && !sponsored && <span class="chip !text-[11px] font-bold">Highlighted</span>}
-      </div>
-      <div class="absolute right-3 top-3"><FavoriteButton id={l.id} client:visible /></div>
-
+      <span class="card-glyph"><TypeGlyph name={typeIcon} size={22} /></span>
     </div>
   </a>
+  <div class="card-fav absolute right-3 top-3 z-[4]"><FavoriteButton id={l.id} client:visible /></div>
   <div class="flex flex-1 flex-col gap-2 p-4">
-    <div class="flex items-start justify-between gap-2">
-      <a href={`/directory/${l.slug}`} class="font-bold leading-snug hover:underline">{l.name}</a>
-      <span class="shrink-0 rounded-lg px-2 py-0.5 text-xs font-bold" style="background:var(--surface-2)" title={l.reviewCount > 0 ? `${l.reviewCount} reviews` : 'No reviews yet'}>
-        {l.reviewCount > 0 ? (
-          <>★ {l.rating.toFixed(1)} <span style="color:var(--text-mute)">({compact(l.reviewCount)})</span></>
-        ) : (
-          <span style="color:var(--text-mute)">No reviews yet</span>
+    <div class="card-head flex items-start gap-3">
+      <span class="card-avatar" aria-hidden="true">{initial}</span>
+      <div class="min-w-0 flex-1">
+        {(sponsored || l.featured) && (
+          <span class={`chip mb-1 !py-0 !text-[11px] ${sponsored ? '' : 'chip-featured'}`}>{sponsored ? 'Sponsored' : 'Highlighted'}</span>
         )}
-      </span>
+        <a href={`/directory/${l.slug}`} class="card-title block">{l.name}</a>
+        <p class="line-clamp-2 mt-0.5 text-sm" style="color:var(--text-soft)">{l.tagline}</p>
+      </div>
     </div>
-    <p class="line-clamp-2 text-sm" style="color:var(--text-soft)">{l.tagline}</p>
     <p class="text-[13px]" style="color:var(--text-mute)">
+      {l.reviewCount > 0 ? (
+        <span title={`${l.reviewCount} reviews`}><strong class="font-semibold" style="color:var(--text)">★ {l.rating.toFixed(1)}</strong> ({compact(l.reviewCount)}) • </span>
+      ) : (
+        <span>No reviews yet • </span>
+      )}
       {l.isOnlineOnly ? 'Online' : `${l.city}, ${l.region}`}
       {typeof distanceMiles === 'number' && distanceMiles < 9999 ? ` • ${distanceMiles.toFixed(1)} mi` : ''}
       {l.priceRange ? ` • ${l.priceRange}` : ''}
@@ -122,11 +126,16 @@ const badgeLabels: Record<string, string> = {
         <StatusBadge name={badgeLabels[b]} />
       ))}
     </div>
-    <div class="mt-auto flex flex-wrap gap-1.5 pt-1">
-      {l.hashtags.slice(0, 4).map((t) => (
-        <a href={`/search?q=${encodeURIComponent('#' + t)}`} class="chip !py-0.5 !text-[11px] hover:border-[var(--accent)]">#{t}</a>
-      ))}
-    </div>
+    {l.hashtags.length > 0 && (
+      <div class="mt-auto flex flex-wrap items-center gap-x-2 gap-y-1 pt-1 text-[12px]">
+        {l.hashtags.slice(0, MAX_TAGS).map((t) => (
+          <a href={`/search?q=${encodeURIComponent('#' + t)}`} class="hover:underline" style="color:var(--teal)">#{t}</a>
+        ))}
+        {extraTags > 0 && (
+          <a href={`/directory/${l.slug}`} class="hover:underline" style="color:var(--text-mute)">+{extraTags} more</a>
+        )}
+      </div>
+    )}
   </div>
 </article>
 <style>

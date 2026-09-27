@@ -7,7 +7,7 @@ const error = Astro.url.searchParams.get('error') ?? '';
 <BaseLayout seo={{ title: 'Reset Password — CrossLinkd', description: 'Reset your password.', path: '/auth/reset', noindex: true }}>
   <div class="mx-auto max-w-md px-4 py-14">
     <div class="card p-8">
-      <h1 class="text-2xl font-extrabold">{token ? 'Choose a new password' : 'Reset password'}</h1>
+      <h1 class="text-2xl font-bold">{token ? 'Choose a new password' : 'Reset password'}</h1>
       {error && <p class="mt-3 rounded-xl p-3 text-sm" style="background:rgba(196,74,58,.12)" role="alert">{error}</p>}
       {sent ? (
         <p class="mt-3 rounded-xl p-3 text-sm" style="background:rgba(46,146,131,.12)">If an account exists for that email, a reset link is on its way.</p>

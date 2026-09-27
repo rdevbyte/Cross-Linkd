@@ -74,7 +74,7 @@ const seo = {
 ---
 <BaseLayout user={user} seo={seo}>
   <div class="mx-auto max-w-5xl px-4 py-10">
-    <h1 class="text-3xl font-extrabold">Browse by location</h1>
+    <h1 class="text-3xl font-bold">Browse by location</h1>
     <p class="section-sub">
       {activeStates.length > 0
         ? 'A place is listed only when it has a published, owner-submitted listing. That is not a verification, and it is not limited to U.S. states.'
@@ -85,7 +85,7 @@ const seo = {
       activeStates.map((state) => (
         <section class="mt-8" aria-label={state.name}>
           <div class="flex items-baseline justify-between">
-            <h2 class="text-xl font-extrabold">
+            <h2 class="text-xl font-semibold">
               <a href={isUsRegion(state.abbr) ? `/states/${state.slug}` : (state.cities[0] ? `/locations/${state.cities[0].slug}` : '/search')} class="hover:underline">{state.name}</a>
             </h2>
             <span class="chip">{state.count} {state.count === 1 ? 'listing' : 'listings'}</span>
@@ -115,7 +115,7 @@ const seo = {
             <circle cx="12" cy="10" r="3"/>
           </svg>
         </div>
-        <h2 class="mt-4 text-lg font-bold">No places listed yet</h2>
+        <h2 class="mt-4 text-lg font-semibold">No places listed yet</h2>
         <p class="mt-2 max-w-md text-sm leading-relaxed" style="color:var(--text-soft)">
           CrossLinkd is not a nationwide verified directory. A location card appears only after a listing is published.
         </p>
@@ -123,7 +123,7 @@ const seo = {
     )}
 
     <div class="card mt-10 p-6">
-      <h2 class="font-extrabold">Online-only & nationwide services</h2>
+      <h2 class="font-semibold">Online-only & nationwide services</h2>
       <p class="mt-1 text-sm" style="color:var(--text-soft)">
         Online-only businesses say they serve customers without a storefront — <a href="/search?onlineOnly=1" class="underline">browse them here</a>. A listing is owner-submitted, not verified.
       </p>

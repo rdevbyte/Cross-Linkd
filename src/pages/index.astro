@@ -129,39 +129,40 @@ const seo = {
 ---
 <BaseLayout seo={seo} user={user}>
   <section class="home-hero" aria-labelledby="home-heading">
-    <div class="mx-auto max-w-3xl px-4 pb-4 pt-8 sm:pt-14">
-      <p class="text-sm font-semibold" style="color:var(--accent)">Community directory</p>
-      <h1 id="home-heading" class="mt-2 text-[2rem] font-extrabold leading-[1.12] sm:text-5xl">
+    <div class="mx-auto max-w-4xl px-4 pb-6 pt-8 sm:pt-14">
+      <p class="hero-eyebrow text-[12px] font-semibold uppercase tracking-[0.14em]" style="color:var(--accent)">Community directory</p>
+      <h1 id="home-heading" class="mt-3 max-w-3xl text-[2rem] font-bold leading-[1.1] sm:text-5xl">
         Discover community-listed Christian businesses, churches, and ministries.
       </h1>
       <p class="mt-4 max-w-2xl text-base leading-relaxed sm:text-lg" style="color:var(--text-soft)">
         Browse owner-submitted listings, learn how each profile was added or updated, and make informed decisions for yourself.
       </p>
 
-      <div class="card mt-6 p-4 sm:p-6">
+      <div class="card mt-7 p-4 sm:p-6">
         <SearchBar client:load labeled locationChoices={locationChoices} />
-        <p class="mt-3 text-sm" style="color:var(--text-soft)">
-          Search looks through published listings only.
-          {corpus.length > 0
-            ? ` ${corpus.length} ${corpus.length === 1 ? 'listing is' : 'listings are'} published right now.`
-            : ' None are published yet.'}
-        </p>
-        {populatedCategories.length > 0 && (
-          <div class="mt-3 flex flex-wrap gap-2">
-            <span class="sr-only">Categories that currently have listings</span>
-            {populatedCategories.slice(0, 4).map((category) => (
-              <a href={category.href} class="chip hover:border-[var(--accent)]">{category.label}</a>
-            ))}
-          </div>
-        )}
+        <div class="mt-4 flex flex-col gap-3 border-t pt-4 sm:flex-row sm:items-center sm:justify-between" style="border-color:var(--border)">
+          {populatedCategories.length > 0 ? (
+            <div class="flex flex-wrap items-center gap-2">
+              <span class="text-[12px] font-medium" style="color:var(--text-mute)">Popular:</span>
+              {populatedCategories.slice(0, 4).map((category) => (
+                <a href={category.href} class="chip">{category.label}</a>
+              ))}
+            </div>
+          ) : <span />}
+          <p class="text-[13px] sm:text-right" style="color:var(--text-mute)">
+            {corpus.length > 0
+              ? <><strong class="font-semibold" style="color:var(--text)">{corpus.length}</strong> published {corpus.length === 1 ? 'listing' : 'listings'} · search covers published listings only</>
+              : 'No listings are published yet.'}
+          </p>
+        </div>
       </div>
 
     </div>
   </section>
 
   <section class="mx-auto mt-8 max-w-3xl px-4" aria-labelledby="trust-heading">
-    <div class="card p-5 sm:p-6" style="border-left:4px solid var(--teal)">
-      <h2 id="trust-heading" class="text-lg font-extrabold">How to read a listing</h2>
+    <div class="card p-5 sm:p-6" style="border-left:4px solid var(--navy)">
+      <h2 id="trust-heading" class="text-lg font-semibold">How to read a listing</h2>
       <p class="mt-2 text-[15px] leading-relaxed" style="color:var(--text-soft)">
         Listings are submitted by businesses, churches, ministries, and community members. CrossLinkd reviews submissions for completeness but does not guarantee quality, credentials, licensing, outcomes, or theological agreement.
       </p>
@@ -184,7 +185,7 @@ const seo = {
       </div>
     ) : (
       <div class="card p-6 text-center sm:p-10">
-        <h3 class="text-xl font-extrabold">Help grow the directory by adding a business or organization.</h3>
+        <h3 class="text-xl font-semibold">Help grow the directory by adding a business or organization.</h3>
         <p class="mx-auto mt-2 max-w-lg text-sm leading-relaxed" style="color:var(--text-soft)">
           There is nothing to browse yet. A free listing is owner-submitted. Publishing it does not verify the organization.
         </p>
@@ -204,7 +205,7 @@ const seo = {
       <div class="space-y-8">
         {populatedCategories.length > 0 && (
           <div>
-            <h3 class="text-base font-extrabold">Categories with listings</h3>
+            <h3 class="text-base font-semibold">Categories with listings</h3>
             <div class="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {populatedCategories.map((category) => (
                 <a href={category.href} class="card card-hover flex items-center justify-between gap-3 p-4">
@@ -217,7 +218,7 @@ const seo = {
         )}
         {(activeLocations.length > 0 || onlineOnlyCount > 0) && (
           <div>
-            <h3 class="text-base font-extrabold">Places with listings</h3>
+            <h3 class="text-base font-semibold">Places with listings</h3>
             {hasInternational && (
               <p class="mt-1 text-sm" style="color:var(--text-soft)">Includes locations outside the United States. A city name is where the listing says it is based.</p>
             )}
@@ -271,7 +272,7 @@ const seo = {
       {guides.map((article) => (
         <article class="card p-5">
           <p class="text-xs font-bold uppercase tracking-wide" style="color:var(--text-mute)">{article.category}</p>
-          <h3 class="mt-2 font-extrabold leading-snug">
+          <h3 class="mt-2 font-semibold leading-snug">
             <a href={`/articles/${article.slug}`} class="hover:underline">{article.title}</a>
           </h3>
           <p class="mt-2 text-sm leading-relaxed" style="color:var(--text-soft)">{article.excerpt}</p>
@@ -292,7 +293,7 @@ const seo = {
 
   <section class="mx-auto mt-16 max-w-3xl px-4 pb-8 text-center" aria-labelledby="close-heading">
     <div class="card px-5 py-10 sm:px-10">
-      <h2 id="close-heading" class="text-2xl font-extrabold leading-snug sm:text-3xl">Help build a clearer, more transparent directory for your community.</h2>
+      <h2 id="close-heading" class="text-2xl font-semibold leading-snug sm:text-3xl">Help build a clearer, more transparent directory for your community.</h2>
       <p class="mx-auto mt-3 max-w-xl text-sm leading-relaxed" style="color:var(--text-soft)">
         Add an accurate listing, or browse what is already published. CrossLinkd does not independently verify the organizations you find here.
       </p>
@@ -300,6 +301,25 @@ const seo = {
   </section>
 </BaseLayout>
 <style>
-  .home-hero { background: var(--bg-soft); border-bottom: 1px solid var(--border); }
+  /* Parchment surface: a soft brass wash in the corner plus a faint hairline
+     grid, so the hero reads as a surface rather than an empty page. */
+  .home-hero {
+    position: relative;
+    border-top: 2px solid color-mix(in srgb, var(--logo-gold) 65%, transparent);
+    border-bottom: 1px solid var(--border);
+    background:
+      radial-gradient(56rem 22rem at 12% -10%, var(--accent-soft), transparent 70%),
+      linear-gradient(var(--border) 1px, transparent 1px) 0 0 / 100% 3.5rem,
+      linear-gradient(90deg, var(--border) 1px, transparent 1px) 0 0 / 3.5rem 100%,
+      var(--bg-soft);
+    background-blend-mode: normal, soft-light, soft-light, normal;
+  }
+  [data-theme='dark'] .home-hero {
+    background:
+      radial-gradient(56rem 22rem at 12% -10%, var(--accent-soft), transparent 70%),
+      linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px) 0 0 / 100% 3.5rem,
+      linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px) 0 0 / 3.5rem 100%,
+      var(--bg-soft);
+  }
   .min-h-11 { min-height: 44px; }
 </style>

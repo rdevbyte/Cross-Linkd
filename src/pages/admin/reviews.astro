@@ -50,7 +50,7 @@ if (hasDatabase()) {
 }
 ---
 <DashboardLayout user={user} admin active="reviews" seo={{ title: 'Admin: Reviews', description: 'Moderate reviews.', path: '/admin/reviews', noindex: true }}>
-  <h1 class="text-2xl font-extrabold">Review moderation</h1>
+  <h1 class="text-2xl font-bold">Review moderation</h1>
   <p class="mt-1 text-sm" style="color:var(--text-soft)">Policy: <a href="/reviews-policy" class="underline">Review Policy</a>. Never publish anonymous accusations of serious misconduct without process.</p>
 
   {rows.length === 0 ? (
@@ -58,7 +58,7 @@ if (hasDatabase()) {
       <div class="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl" style="background:var(--surface-2);color:var(--teal)">
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
       </div>
-      <h2 class="mt-4 text-base font-bold">No reviews pending moderation</h2>
+      <h2 class="mt-4 text-base font-semibold">No reviews pending moderation</h2>
       <p class="mt-1 text-sm" style="color:var(--text-soft)">Submitted user reviews will appear here for moderation. Approving a review does not verify the reviewer or the business.</p>
     </div>
   ) : (

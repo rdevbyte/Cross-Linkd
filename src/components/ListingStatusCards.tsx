@@ -3,18 +3,10 @@ import { motion, useReducedMotion } from 'framer-motion';
 import { MOTION } from '@/lib/motion';
 
 /**
- * Motion split, so the libraries do not fight over the same properties:
+ * Motion split, so nothing animates the same property twice:
  * - Framer Motion owns each card: fade, slide, stagger, viewport trigger, hover, and tap.
- * - GSAP owns only the accent rule inside a card, sequenced on one timeline.
+ * - The accent rule inside a card is drawn once with the Web Animations API.
  */
-
-type AccentTimeline = {
-  kill: () => void;
-  duration: () => number;
-  isActive: () => boolean;
-  play: () => void;
-  fromTo: (target: HTMLElement, from: object, to: object, position?: string | number) => AccentTimeline;
-};
 
 export interface StatusItem {
   name: string;
@@ -35,43 +27,27 @@ interface Props {
 
 const EASE = MOTION.ease;
 
-let accentTimeline: AccentTimeline | null = null;
-let accentQueue: HTMLElement[] = [];
-let accentLoading = false;
 let accentBatchAt = 0;
+let accentBatchIndex = 0;
 
 function prefersReduce() {
   return typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 }
 
-async function drawAccent(el: HTMLElement) {
-  if (prefersReduce()) return;
-  accentQueue.push(el);
-  if (accentLoading) return;
-  accentLoading = true;
-  const pending = accentQueue.splice(0);
-  try {
-    const { default: gsap } = await import('gsap');
-    const now = Date.now();
-    if (!accentTimeline || now - accentBatchAt > 500) {
-      accentTimeline = gsap.timeline({ defaults: { ease: 'power2.out', duration: 0.42 } }) as AccentTimeline;
-    }
-    accentBatchAt = now;
-    pending.forEach((node, index) => {
-      accentTimeline?.fromTo(
-        node,
-        { scaleX: 0 },
-        { scaleX: 1, duration: 0.42, ease: 'power2.out' },
-        index === 0 ? 0 : '>-0.18',
-      );
-    });
-  } finally {
-    accentLoading = false;
-    if (accentQueue.length) {
-      const next = accentQueue.shift();
-      if (next) void drawAccent(next);
-    }
+/** Draws the brass accent line left→right; cards entering together are staggered. */
+function drawAccent(el: HTMLElement) {
+  if (prefersReduce() || typeof el.animate !== 'function') {
+    el.style.transform = 'scaleX(1)';
+    return;
   }
+  const now = Date.now();
+  if (now - accentBatchAt > 500) accentBatchIndex = 0;
+  accentBatchAt = now;
+  const delay = Math.min(accentBatchIndex++, 6) * 240;
+  el.animate(
+    [{ transform: 'scaleX(0)' }, { transform: 'scaleX(1)' }],
+    { duration: 420, delay, easing: MOTION.cssEase, fill: 'forwards' },
+  );
 }
 
 function iconFor(name: string) {
@@ -163,30 +139,13 @@ function MotionCard({
 
 export default function ListingStatusCards({ disclaimer, statuses, terms, recommendation }: Props) {
   useEffect(() => () => {
-    accentTimeline?.kill();
-    accentTimeline = null;
-    accentQueue = [];
-    accentLoading = false;
     accentBatchAt = 0;
+    accentBatchIndex = 0;
   }, []);
 
   return (
     <>
       <style>{`
-        .status-pill {
-          display: inline-flex;
-          align-items: center;
-          gap: 0.35rem;
-          max-width: 100%;
-          border: 1px solid var(--border-strong);
-          background: var(--surface-2);
-          color: var(--text);
-          border-radius: 999px;
-          padding: 0.28rem 0.65rem;
-          font-size: 0.75rem;
-          font-weight: 700;
-          line-height: 1.35;
-        }
         .min-h-11 { min-height: 44px; }
         @media (prefers-reduced-motion: reduce), (scripting: none) {
           .listing-status-card { opacity: 1 !important; transform: none !important; }
@@ -210,26 +169,26 @@ export default function ListingStatusCards({ disclaimer, statuses, terms, recomm
         ))}
       </div>
 
-      <h2 className="mt-12 text-2xl font-extrabold">What the words mean</h2>
+      <h2 className="mt-12 text-2xl font-semibold">What the words mean</h2>
       <p className="mt-2 text-[15px] leading-relaxed" style={{ color: 'var(--text-soft)' }}>{recommendation}</p>
       <div className="mt-4 grid gap-2">
         {terms.map((term, index) => (
           <MotionCard key={term.title} index={index} className="card p-4">
-            <h3 className="text-sm font-bold">{term.title}</h3>
+            <h3 className="text-sm font-semibold">{term.title}</h3>
             <p className="mt-1 text-sm leading-relaxed" style={{ color: 'var(--text-soft)' }}>{term.body}</p>
           </MotionCard>
         ))}
       </div>
 
       <MotionCard index={0} className="card mt-8 p-5">
-        <h2 className="font-extrabold">Highlighted is not a recommendation</h2>
+        <h2 className="font-semibold">Highlighted is not a recommendation</h2>
         <p className="mt-2 text-sm leading-relaxed" style={{ color: 'var(--text-soft)' }}>
           “Highlighted” only means a listing is called out in the directory. It is not an endorsement, a quality rating, or a check of anything the owner wrote.
         </p>
       </MotionCard>
 
       <MotionCard index={1} className="card mt-4 p-5" interactive={false}>
-        <h2 className="font-extrabold">Saw something wrong?</h2>
+        <h2 className="font-semibold">Saw something wrong?</h2>
         <p className="mt-1 text-sm leading-relaxed" style={{ color: 'var(--text-soft)' }}>
           A report is community reported. It asks a person to look at the listing. It does not mean CrossLinkd has already confirmed or rejected the business.
         </p>

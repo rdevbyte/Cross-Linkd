@@ -31,11 +31,14 @@ const seo = {
 ---
 <BaseLayout user={user} seo={seo}>
   <div class="mx-auto max-w-7xl px-4 py-10">
-    <nav class="text-[13px]" style="color:var(--text-mute)" aria-label="Breadcrumb">
-      <a href="/browse/locations" class="hover:underline">Browse by location</a> / <span style="color:var(--text)">{state.name}</span>
+    <nav aria-label="Breadcrumb">
+      <ol class="breadcrumb">
+        <li><a href="/browse/locations">Browse by location</a></li>
+        <li aria-current="page">{state.name}</li>
+      </ol>
     </nav>
 
-    <h1 class="mt-2 text-3xl font-extrabold">Listings in {state.name}</h1>
+    <h1 class="mt-2 text-3xl font-bold">Listings in {state.name}</h1>
     <p class="section-sub">
       {stateListings.length} owner-submitted listing{stateListings.length === 1 ? '' : 's'}. CrossLinkd has not independently verified faith, ownership, licenses, or service quality.
     </p>

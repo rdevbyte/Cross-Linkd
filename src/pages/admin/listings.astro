@@ -60,7 +60,7 @@ const tabUrl = (s: string) => `/admin/listings?status=${s}`;
 ---
 <DashboardLayout user={user} admin active="listings" seo={{ title: 'Admin: Listings', description: 'Review business submissions.', path: '/admin/listings', noindex: true }}>
   <div class="flex flex-wrap items-center justify-between gap-3">
-    <h1 class="text-2xl font-extrabold">Listings</h1>
+    <h1 class="text-2xl font-bold">Listings</h1>
     <a href="/api/admin/export?table=listings" class="btn btn-secondary !py-2 !text-sm">Export CSV</a>
   </div>
 

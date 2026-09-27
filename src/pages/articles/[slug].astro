@@ -35,12 +35,16 @@ const seo = {
 ---
 <BaseLayout user={user} seo={seo}>
   <div class="mx-auto max-w-3xl px-4 py-12">
-    <nav class="text-[13px]" style="color:var(--text-mute)" aria-label="Breadcrumb">
-      <a href="/" class="hover:underline">Home</a> / <a href="/articles" class="hover:underline">Resource Center</a> / <span style="color:var(--text)">{article.category}</span>
+    <nav aria-label="Breadcrumb">
+      <ol class="breadcrumb">
+        <li><a href="/">Home</a></li>
+        <li><a href="/articles">Resource Center</a></li>
+        <li aria-current="page">{article.category}</li>
+      </ol>
     </nav>
 
     <p class="mt-4 text-xs font-bold uppercase tracking-wide" style="color:var(--teal)">{article.category}</p>
-    <h1 class="mt-1 text-3xl font-extrabold leading-tight">{article.title}</h1>
+    <h1 class="mt-1 text-3xl font-bold leading-tight">{article.title}</h1>
     <p class="mt-2 text-[15px]" style="color:var(--text-soft)">{article.excerpt}</p>
     <p class="mt-3 text-xs" style="color:var(--text-mute)">
       Published {new Date(Date.now() - article.publishedDaysAgo * 86400000).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
@@ -51,7 +55,7 @@ const seo = {
     <div class="prose-custom mt-8 space-y-8">
       {article.sections.map((section) => (
         <section>
-          <h2 class="text-xl font-extrabold">{section.heading}</h2>
+          <h2 class="text-xl font-semibold">{section.heading}</h2>
           {section.body.map((p) => <p class="mt-2 text-[15px] leading-relaxed" style="color:var(--text-soft)" set:html={p.replace(/\n/g, '<br />')} />)}
         </section>
       ))}
@@ -59,7 +63,7 @@ const seo = {
 
     {relatedListings.length > 0 && (
       <section class="mt-12" aria-label="Listings mentioned in this article">
-        <h2 class="text-xl font-extrabold">Published listings</h2>
+        <h2 class="text-xl font-semibold">Published listings</h2>
         <p class="mt-1 text-sm" style="color:var(--text-soft)">These are owner-submitted listings already in the directory. They were not independently verified for this guide.</p>
         <div class="mt-4 grid gap-4 sm:grid-cols-2">
           {relatedListings.map((l) => <ListingCard listing={l} />)}

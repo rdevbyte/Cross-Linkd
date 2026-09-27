@@ -2,14 +2,17 @@
 // CrossLinkd brand mark — merged from the two source logos:
 // the navy C-link + gold square-link chain with a white cross
 // cutout at the interlock, and node dots from the contour concept.
+// mark.png / mark-dark.png are cropped to the artwork (241×148, ratio 1.63).
 interface Props { size?: number; showWordmark?: boolean; }
-const { size = 40, showWordmark = true } = Astro.props;
+const { size = 36, showWordmark = true } = Astro.props;
+const MARK_RATIO = 241 / 148;
+const width = Math.round(size * MARK_RATIO);
 ---
 <a href="/" class="group flex min-w-0 max-w-full items-center gap-2.5" aria-label="CrossLinkd home">
   <img
     src="/brand/mark.png"
     alt=""
-    width={Math.round(size * 1.38)}
+    width={width}
     height={size}
     class="logo-mark light-only shrink-0 transition-transform duration-200 group-hover:scale-105"
     style={`height:${size}px;width:auto`}
@@ -18,7 +21,7 @@ const { size = 40, showWordmark = true } = Astro.props;
   <img
     src="/brand/mark-dark.png"
     alt=""
-    width={Math.round(size * 1.38)}
+    width={width}
     height={size}
     class="logo-mark dark-only shrink-0 transition-transform duration-200 group-hover:scale-105"
     style={`height:${size}px;width:auto`}
@@ -26,19 +29,8 @@ const { size = 40, showWordmark = true } = Astro.props;
   />
   {showWordmark && (
     <span class="min-w-0 leading-tight">
-      <span class="logo-wordmark block text-[16px] font-extrabold tracking-tight sm:text-[17px]" style="color:var(--text)">Cross<span style="color:var(--logo-gold)">Linkd</span></span>
-      <span class="logo-tagline hidden max-w-full whitespace-normal text-[11px] font-medium leading-snug md:block" style="color:var(--text-mute)">Community-listed<br />Christian businesses</span>
+      <span class="logo-wordmark block text-[17px] font-bold tracking-tight sm:text-[18px]"><span style="color:var(--navy)">Cross</span><span style="color:var(--logo-gold)">Linkd</span></span>
+      <span class="logo-tagline hidden whitespace-nowrap text-[12px] font-medium leading-snug xl:block" style="color:var(--text-mute)">Community-listed Christian businesses</span>
     </span>
   )}
 </a>
-<style>
-  .logo-tagline {
-    white-space: normal;
-    overflow-wrap: break-word;
-    max-width: 100%;
-  }
-  .logo-tagline br {
-    display: block;
-    content: "";
-  }
-</style>

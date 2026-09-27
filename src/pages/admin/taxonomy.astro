@@ -13,7 +13,7 @@ if (__adminGate) return __adminGate;
 <DashboardLayout user={user} admin active="taxonomy" seo={{ title: 'Admin: Taxonomy', description: 'Manage taxonomy.', path: '/admin/taxonomy', noindex: true }}>
   <div class="flex flex-wrap items-center justify-between gap-2">
     <div>
-      <h1 class="text-2xl font-extrabold">Taxonomy</h1>
+      <h1 class="text-2xl font-bold">Taxonomy</h1>
       <p class="mt-1 text-sm" style="color:var(--text-soft)">Manage industries, categories, professions, denominations, and official hashtags.</p>
     </div>
     <div class="flex gap-2">
@@ -23,11 +23,11 @@ if (__adminGate) return __adminGate;
   </div>
   <div class="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
     {[['Industries', INDUSTRIES.length], ['Professions', profCount], ['Denominations', `${DENOMINATIONS.length} / ${TRADITIONS.length} traditions`], ['Hashtags', HASHTAG_CATALOG.length]].map(([l, n]) => (
-      <div class="card p-4"><p class="text-[13px]" style="color:var(--text-mute)">{l}</p><p class="text-2xl font-extrabold">{n}</p></div>
+      <div class="card p-4"><p class="text-[13px]" style="color:var(--text-mute)">{l}</p><p class="text-2xl font-bold">{n}</p></div>
     ))}
   </div>
   <form method="POST" action="/api/admin/taxonomy" class="card mt-4 space-y-4 p-6" onsubmit="event.preventDefault();alert('Taxonomy entry saved! (demo)')">
-    <h2 class="font-extrabold">Add taxonomy entry</h2>
+    <h2 class="font-semibold">Add taxonomy entry</h2>
     <div class="grid gap-4 sm:grid-cols-3">
       <label class="text-sm font-medium">Kind
         <select class="input mt-1.5" name="kind"><option>Industry</option><option>Category</option><option>Profession</option><option>Denomination</option><option>Hashtag</option></select>

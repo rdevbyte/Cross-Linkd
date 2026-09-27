@@ -17,7 +17,7 @@ const groups = [...TRADITIONS]
 ---
 <BaseLayout user={user} seo={{ title: 'Browse Traditions — CrossLinkd', description: 'Traditions and denominations used on published listings. A denomination is self-identified, not a CrossLinkd endorsement.', path: '/browse/denominations' }}>
   <div class="mx-auto max-w-7xl px-4 py-10">
-    <h1 class="text-3xl font-extrabold">Browse traditions</h1>
+    <h1 class="text-3xl font-bold">Browse traditions</h1>
     <p class="section-sub">A denomination on a listing is self-identified. It is not a CrossLinkd endorsement or a verification.</p>
     {publishedCount === 0 && (
       <p class="card mt-6 p-4 text-sm leading-relaxed" style="color:var(--text-soft)" role="status">No published listings name a denomination yet. A tradition with zero listings is not a coverage claim.</p>
@@ -25,7 +25,7 @@ const groups = [...TRADITIONS]
     <div class="mt-8 space-y-8">
       {groups.map((group) => (
         <section aria-labelledby={`tradition-${group.slug}`}>
-          <h2 id={`tradition-${group.slug}`} class="text-xl font-extrabold">{group.name}</h2>
+          <h2 id={`tradition-${group.slug}`} class="text-xl font-semibold">{group.name}</h2>
           <div class="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {group.items.map((denomination) => (
               <a href={`/denominations/${denomination.slug}`} class="card card-hover p-4">

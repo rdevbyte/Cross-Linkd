@@ -10,7 +10,7 @@ const unclaimed = corpus.filter((l) => !l.claimed);
 ---
 <BaseLayout user={user} seo={{ title: 'Claim a Listing — CrossLinkd', description: 'Claim a listing by showing control of a contact channel. Claiming is not a verification of faith, ownership, or credentials.', path: '/claim-listing' }}>
   <div class="mx-auto max-w-3xl px-4 py-10">
-    <h1 class="text-3xl font-extrabold">Claim your listing</h1>
+    <h1 class="text-3xl font-bold">Claim your listing</h1>
     <p class="section-sub">Show that you control the listing or a business contact channel. A successful claim is labeled Owner claimed. It does not verify faith, ownership, licenses, or credentials.</p>
 
     <div class="mt-6 grid gap-3 sm:grid-cols-3">
@@ -21,7 +21,7 @@ const unclaimed = corpus.filter((l) => !l.claimed);
 
     {success ? (
       <div class="card mt-6 border-l-4 p-6" style="border-left-color:var(--teal)">
-        <h2 class="text-lg font-extrabold">Claim received</h2>
+        <h2 class="text-lg font-semibold">Claim received</h2>
         <p class="mt-1 text-sm" style="color:var(--text-soft)" role="status">We received your request. Owner claimed is not applied until you show control of a contact channel. A claim is not a verification of faith, ownership, or credentials. {user ? '' : 'Create an account with the same email so you can edit the listing after the claim is accepted.'}</p>
       </div>
     ) : (
@@ -47,14 +47,14 @@ const unclaimed = corpus.filter((l) => !l.claimed);
         <label class="block text-sm font-medium">How you can show control of a contact channel *
           <textarea name="evidence" required minlength="10" rows="4" class="input mt-1.5" placeholder="Example: my work email matches the website domain, or my name is on the public staff page at this URL."></textarea>
         </label>
-        <button class="btn btn-primary w-full !py-3" type="submit" data-animate="cta">Submit claim</button>
+        <button class="btn btn-primary w-full !py-3" type="submit">Submit claim</button>
         <p class="text-center text-[13px]" style="color:var(--text-mute)">False claims are removed and may result in account suspension.</p>
       </form>
     )}
 
     {unclaimed.length > 0 && (
       <section class="mt-8">
-        <h2 class="font-extrabold">Unclaimed profiles waiting for their owners</h2>
+        <h2 class="font-semibold">Unclaimed profiles waiting for their owners</h2>
         <div class="mt-3 flex flex-wrap gap-2">
           {unclaimed.map((l) => <a href={`/claim-listing?listing=${l.slug}`} class="chip hover:border-[var(--accent)]">{l.name}</a>)}
         </div>

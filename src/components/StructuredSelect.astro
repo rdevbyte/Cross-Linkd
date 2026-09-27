@@ -23,8 +23,8 @@ const {
 const id = `structured-${name}`;
 ---
 <div class="space-y-1">
-  <label class="text-sm font-medium" for={id}>{label}</label>
-  {helper && <p class="text-xs leading-relaxed" style="color:var(--text-mute)">{helper}</p>}
+  <label class="field-label" for={id}>{label}</label>
+  {helper && <p class="field-help">{helper}</p>}
   <input type="search" class="input mt-1" placeholder={searchPlaceholder} aria-label={searchPlaceholder} data-filter-for={id} />
   <select id={id} name={name} class="input mt-1">
     <option value="">{placeholder}</option>

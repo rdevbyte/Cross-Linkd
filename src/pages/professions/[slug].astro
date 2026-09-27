@@ -17,10 +17,10 @@ const matches = corpus.filter((l) => l.professions.includes(prof.slug));
 <BaseLayout user={user} seo={{ title: `${prof.name} — CrossLinkd`, description: `Owner-submitted ${prof.name.toLowerCase()} listings. CrossLinkd does not verify licenses or credentials.`.slice(0, 160), path: `/professions/${prof.slug}`, noindex: matches.length === 0 }}>
   <div class="mx-auto max-w-7xl px-4 py-10">
     <nav class="text-[13px]" style="color:var(--text-mute)"><a href="/browse/professions" class="hover:underline">Professions</a> / <span style="color:var(--text)">{prof.name}</span></nav>
-    <h1 class="mt-2 text-3xl font-extrabold">Christian {prof.name}s</h1>
+    <h1 class="mt-2 text-3xl font-bold">Christian {prof.name}s</h1>
     <p class="section-sub">{industry?.name}{prof.requiresLicense ? ' • Regulated profession. CrossLinkd does not confirm licenses.' : ' • Owner-submitted listings. Not independently verified.'}</p>
     {prof.services && <div class="mt-4 flex flex-wrap gap-2">{prof.services.map((s) => <a href={`/search?q=${encodeURIComponent(s)}`} class="chip hover:border-[var(--accent)]">{s}</a>)}</div>}
-    <h2 class="mt-8 text-xl font-extrabold">Listings ({matches.length})</h2>
+    <h2 class="mt-8 text-xl font-semibold">Listings ({matches.length})</h2>
     {matches.length === 0 ? (
       <div class="mt-4"><EmptyState title="No listings yet" body="No published listings use this profession yet." /></div>
     ) : (
