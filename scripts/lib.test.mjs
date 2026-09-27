@@ -134,3 +134,14 @@ test('appUrl builds absolute links from the shared resolver', () =>
     const { appUrl } = await import('../src/lib/mailer.ts');
     assert.equal(appUrl('/auth/reset?token=abc'), 'https://crosslinkd.com/auth/reset?token=abc');
   }));
+
+// ------------------------------------------------------------- searchParams
+
+test('withoutParams drops one value without touching its siblings', async () => {
+  const { withoutParams } = await import('../src/lib/searchParams.ts');
+  const params = new URLSearchParams('q=bakery&denomination=baptist&denomination=lutheran&page=3');
+  assert.equal(withoutParams(params, ['denomination', 'baptist'], ['page']).toString(), 'q=bakery&denomination=lutheran');
+  assert.equal(withoutParams(params, ['denomination']).toString(), 'q=bakery&page=3');
+  assert.equal(withoutParams(params, ['missing'], ['q', 'other']).toString(), params.toString(), 'no-op when nothing matches');
+  assert.equal(params.toString(), 'q=bakery&denomination=baptist&denomination=lutheran&page=3', 'input is not mutated');
+});

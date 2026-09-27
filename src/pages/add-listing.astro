@@ -3,6 +3,8 @@ import BaseLayout from '@/layouts/BaseLayout.astro';
 import { INDUSTRIES } from '@/data/industries';
 import { DENOMINATIONS } from '@/data/denominations';
 import { ATTESTATION } from '@/lib/trustCopy';
+import { typeBySlug } from '@/data/listing-types';
+import TypeGlyph from '@/components/TypeGlyph.astro';
 
 const user = Astro.locals.user;
 const error = Astro.url.searchParams.get('error');
@@ -118,29 +120,26 @@ const HOURS_OPTIONS = [
 const CONTACT_PREF_OPTIONS = ['Email', 'Phone call', 'Text message', 'Any is fine'];
 ---
 <BaseLayout user={user} seo={{ title: 'List Your Business — Free Directory Listing | CrossLinkd', description: 'Submit an owner-submitted listing for your business, church, ministry, or practice. CrossLinkd does not independently verify faith, ownership, licenses, or service quality.', path: '/add-listing' }}>
-  <div class="mx-auto max-w-5xl px-4 py-8 pb-32" data-motion="static">
-    <h1 class="text-3xl font-bold tracking-tight">List your business</h1>
-    <p class="section-sub">Free to list. Your profile is owner-submitted. Publishing it does not verify faith, ownership, licenses, or service quality. Fields marked * are required. Everything else can wait.</p>
-    <details class="disclose mt-4">
-      <summary>What a listing does — and does not — confirm</summary>
-      <p class="mt-2 text-sm leading-relaxed" style="color:var(--text-soft)">CrossLinkd is a community directory. Business owners submit information about their business and may identify it as Christian-owned. CrossLinkd reviews submissions for completeness and obvious inconsistencies but does not independently verify faith, ownership, licenses, certifications, credentials, or service quality. Please perform your own due diligence before hiring or supporting a listed organization.</p>
-      <dl class="mt-3 grid gap-x-6 gap-y-2 text-sm leading-relaxed sm:grid-cols-2" style="color:var(--text-soft)">
-        <div><dt class="inline font-semibold" style="color:var(--text)">Required.</dt> <dd class="inline">Organization type, listing name, and the accuracy attestation. No identity documents, licenses, or private religious records.</dd></div>
-        <div><dt class="inline font-semibold" style="color:var(--text)">Public.</dt> <dd class="inline">Only the contact fields you turn on appear on the profile. A faith statement is optional and self-reported.</dd></div>
-        <div><dt class="inline font-semibold" style="color:var(--text)">Review.</dt> <dd class="inline">A complete form may publish as owner-submitted. Missing required fields are not published. A completeness check is not a license or faith check.</dd></div>
-        <div><dt class="inline font-semibold" style="color:var(--text)">Afterward.</dt> <dd class="inline">Claim the listing to edit it. <a href="/contact?topic=correction" class="underline">Request a correction</a> or <a href="/contact?topic=removal" class="underline">removal</a>. A listing is not an endorsement.</dd></div>
-      </dl>
-    </details>
-    <div class="mt-4 flex flex-wrap items-center justify-between gap-3">
-      <nav class="form-jump" aria-label="Form sections">
-        <a href="#section-basics" data-step="basics">Basics</a>
-        <a href="#section-category" data-step="category">Category</a>
-        <a href="#section-faith" data-step="faith">Faith</a>
-        <a href="#section-contact" data-step="contact">Contact</a>
-        <a href="#section-review" data-step="review">Review</a>
-      </nav>
-      <p class="text-sm font-medium" style="color:var(--text-soft)">Free forever for the basic listing. No credit card required.</p>
-    </div>
+  <div class="listing-page mx-auto max-w-6xl px-4 py-8 pb-36" data-motion="static">
+    <header class="listing-head">
+      <h1 class="text-3xl font-bold tracking-tight">List your business</h1>
+      <p class="section-sub">Free to list. Your profile is owner-submitted. Publishing it does not verify faith, ownership, licenses, or service quality. Fields marked * are required. Everything else can wait.</p>
+      <details class="disclose info-strip mt-4">
+        <summary>
+          <span class="info-strip-title">
+            <svg class="info-strip-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg>
+            What a listing does — and does not — confirm
+          </span>
+        </summary>
+        <p class="mt-2 text-sm leading-relaxed" style="color:var(--text-soft)">CrossLinkd is a community directory. Business owners submit information about their business and may identify it as Christian-owned. CrossLinkd reviews submissions for completeness and obvious inconsistencies but does not independently verify faith, ownership, licenses, certifications, credentials, or service quality. Please perform your own due diligence before hiring or supporting a listed organization.</p>
+        <dl class="mt-3 grid gap-x-6 gap-y-2 text-sm leading-relaxed sm:grid-cols-2" style="color:var(--text-soft)">
+          <div><dt class="inline font-semibold" style="color:var(--text)">Required.</dt> <dd class="inline">Organization type, listing name, and the accuracy attestation. No identity documents, licenses, or private religious records.</dd></div>
+          <div><dt class="inline font-semibold" style="color:var(--text)">Public.</dt> <dd class="inline">Only the contact fields you turn on appear on the profile. A faith statement is optional and self-reported.</dd></div>
+          <div><dt class="inline font-semibold" style="color:var(--text)">Review.</dt> <dd class="inline">A complete form may publish as owner-submitted. Missing required fields are not published. A completeness check is not a license or faith check.</dd></div>
+          <div><dt class="inline font-semibold" style="color:var(--text)">Afterward.</dt> <dd class="inline">Claim the listing to edit it. <a href="/contact?topic=correction" class="underline">Request a correction</a> or <a href="/contact?topic=removal" class="underline">removal</a>. A listing is not an endorsement.</dd></div>
+        </dl>
+      </details>
+    </header>
 
     {success ? (
       <div class="card mt-6 border-l-4 p-6" style="border-left-color:var(--teal)" role="status">
@@ -156,427 +155,444 @@ const CONTACT_PREF_OPTIONS = ['Email', 'Phone call', 'Text message', 'Any is fin
         </div>
       </div>
     ) : (
-      <form method="POST" action="/api/listings" class="card mt-6 space-y-8 p-5 sm:p-8" id="add-listing-form" data-motion="static">
-        <p class="hp-field" aria-hidden="true"><label>Leave this blank<input type="text" name="hp_company" tabindex="-1" autocomplete="off" /></label></p>
-        {error && <p class="rounded-xl bg-red-500/10 p-3 text-sm font-medium text-red-600" role="alert">{error}</p>}
-        <p id="form-status" class="form-status hidden" role="status" aria-live="polite"></p>
-        {!user && <p class="rounded-xl p-3 text-sm" style="background:rgba(216,149,34,.12)">You’re creating a listing as a guest. Add a contact email before publishing. <a href="/auth/signup" class="font-bold underline">Create a free account</a> to edit and manage this listing later.</p>}
-
-        <!-- Section 1: Organization Basics -->
-        <section id="section-basics" aria-labelledby="section-basics-heading" class="form-section pt-1">
-          <div class="flex items-baseline gap-3">
-            <span class="section-num" aria-hidden="true">01</span>
-            <div>
-              <h2 id="section-basics-heading" class="text-lg font-semibold leading-tight">Organization basics</h2>
+      <div class="builder mt-6">
+        <!-- Rail: step navigation + live preview. Stacks above the form on small
+             screens; sticks beside it from 1024px up. -->
+        <aside class="builder-rail" aria-label="Progress and preview">
+          <nav class="form-jump" aria-label="Form sections">
+            <a href="#section-basics" data-step="basics">Basics</a>
+            <a href="#section-category" data-step="category">Category</a>
+            <a href="#section-faith" data-step="faith">Faith</a>
+            <a href="#section-contact" data-step="contact">Contact</a>
+            <a href="#section-review" data-step="review">Review</a>
+          </nav>
+          <details class="disclose rail-preview" id="preview-panel" open>
+            <summary>
+              <span class="rail-title">Live preview</span>
+              <span class="rail-hint">Updates as you type</span>
+            </summary>
+            <div id="live-preview" class="review-preview">
+              <div class="flex items-start gap-3">
+                <div class="preview-logo" aria-hidden="true">Logo</div>
+                <div class="min-w-0">
+                  <p id="preview-name" class="truncate font-bold" style="color:var(--text-mute)">Your listing name</p>
+                  <p id="preview-type" class="mt-0.5 text-xs font-semibold" style="color:var(--text-mute)">No type selected yet</p>
+                  <p id="preview-category" class="mt-0.5 text-xs" style="color:var(--text-soft)">No category selected</p>
+                  <p id="preview-location" class="mt-0.5 text-xs" style="color:var(--text-mute)">Location not set</p>
+                </div>
+              </div>
             </div>
-          </div>
-          <p class="mt-1 text-sm" style="color:var(--text-soft)">Listing type — what you're offering or listing. Choose it first: it shapes which industry categories you can pick next.</p>
+            <p class="rail-help">Preview only. A published profile is labeled Owner-submitted. That is not a verification.</p>
+          </details>
+          <p class="rail-help rail-note">Free forever for the basic listing. No credit card required.</p>
+        </aside>
 
-          <fieldset class="mt-5 border-0 p-0">
-            <legend class="text-sm font-semibold">What best describes you? <span class="req" aria-hidden="true">*</span><span class="sr-only"> required</span></legend>
-            <p class="mt-0.5 text-xs" style="color:var(--text-mute)">Select the type that best fits — this filters categories to only relevant options.</p>
-            <div class="mt-3 grid gap-2.5 sm:grid-cols-2">
-              {PRIMARY_TYPES.map((t) => (
-                <button
-                  type="button"
-                  class="type-card flex flex-col rounded-xl border p-3 text-left transition-all focus:outline-none focus:ring-2 hover:border-[var(--accent)]"
-                  style="border-color:var(--border); background:var(--surface)"
-                  data-type={t.slug}
-                  data-selected="false"
-                  aria-pressed="false"
-                >
-                  <span class="flex items-center justify-between gap-2">
-                    <span class="font-bold text-sm">{t.label}</span>
+        <form method="POST" action="/api/listings" class="builder-form" id="add-listing-form" data-motion="static">
+          <p class="hp-field" aria-hidden="true"><label>Leave this blank<input type="text" name="hp_company" tabindex="-1" autocomplete="off" /></label></p>
+          {error && <p class="form-status is-error" role="alert">{error}</p>}
+          <p id="form-status" class="form-status hidden" role="status" aria-live="polite"></p>
+
+          <!-- Section 1: Organization Basics -->
+          <section id="section-basics" aria-labelledby="section-basics-heading" class="form-section card">
+            <div class="section-head">
+              <span class="section-num" aria-hidden="true">01</span>
+              <div class="section-head-copy">
+                <h2 id="section-basics-heading" class="section-title">Organization basics</h2>
+                <p class="section-lede">Listing type — what you're offering or listing. Choose it first: it shapes which industry categories you can pick next.</p>
+              </div>
+            </div>
+
+            <fieldset class="mt-5 min-w-0 border-0 p-0">
+              <legend class="field-label">What best describes you? <span class="req" aria-hidden="true">*</span><span class="sr-only"> required</span></legend>
+              <p class="field-help">Select the type that best fits — this filters categories to only relevant options.</p>
+              <div class="type-grid mt-3">
+                {PRIMARY_TYPES.map((t) => (
+                  <button
+                    type="button"
+                    class="type-card"
+                    data-type={t.slug}
+                    data-label={t.label}
+                    data-selected="false"
+                    aria-pressed="false"
+                  >
+                    <span class="type-icon" aria-hidden="true"><TypeGlyph name={typeBySlug(t.slug)?.icon ?? 'store'} size={20} /></span>
+                    <span class="type-copy">
+                      <span class="type-name">{t.label}</span>
+                      <span class="type-desc">{t.description}</span>
+                    </span>
                     <span class="type-check" aria-hidden="true">✓</span>
-                  </span>
-                  <span class="mt-0.5 text-xs" style="color:var(--text-mute)">{t.description}</span>
-                </button>
-              ))}
-            </div>
-            <input type="hidden" name="typeSlug" id="input-type-slug" value="" />
-            <p id="listing-type-error" class="mt-1.5 hidden text-xs font-semibold text-red-600" role="alert">Please select an organization type.</p>
-          </fieldset>
+                  </button>
+                ))}
+              </div>
+              <input type="hidden" name="typeSlug" id="input-type-slug" value="" />
+              <p id="listing-type-error" class="mt-1.5 hidden text-xs font-semibold text-red-600" role="alert">Please select an organization type.</p>
+            </fieldset>
 
-          <div class="mt-5 grid gap-4 sm:grid-cols-2">
-            <label class="text-sm font-medium" for="input-name">Listing name <span class="req" aria-hidden="true">*</span><span class="sr-only"> required</span>
-              <input name="name" id="input-name" required minlength="2" maxlength="240" class="input mt-1.5" placeholder="Grace Community Church" aria-required="true" />
-            </label>
-            <label class="text-sm font-medium">Tagline <span class="opt">Optional</span>
-              <input name="tagline" maxlength="280" class="input mt-1.5" placeholder="Brief summary of what your business does" />
-            </label>
-          </div>
-
-          <label class="mt-4 block text-sm font-medium">Description <span class="opt">Optional</span>
-            <textarea name="description" rows="4" maxlength="8000" class="input mt-1.5" placeholder="Describe what your business offers, who you serve, and what makes your business distinct..."></textarea>
-            <span class="mt-1 block text-xs" style="color:var(--text-mute)">Shown on your public profile — a sentence or two about what you do and who you serve.</span>
-          </label>
-
-          <details class="disclose org-card mt-5" data-open-if>
-            <summary>
-              <span>
-                <span class="block text-sm font-bold">About your organization</span>
-                <span class="mt-0.5 block text-xs font-medium" style="color:var(--text-mute)">Optional. Year, size, hours, service area, and price.</span>
-              </span>
-              <span class="opt">Optional</span>
-            </summary>
-            <div class="mt-4 grid gap-4 sm:grid-cols-2">
-              <label class="text-sm font-medium">Year founded
-                <input name="yearFounded" type="number" inputmode="numeric" min="1800" max={thisYear} class="input mt-1.5" placeholder="e.g. 1998" />
+            <div class="mt-5 grid gap-4 sm:grid-cols-2">
+              <label class="field-label" for="input-name">Listing name <span class="req" aria-hidden="true">*</span><span class="sr-only"> required</span>
+                <input name="name" id="input-name" required minlength="2" maxlength="240" class="input mt-1.5" placeholder="Grace Community Church" aria-required="true" />
               </label>
-              <label class="text-sm font-medium">Organization size
-                <select name="employeeCount" class="input mt-1.5">
-                  <option value="">Select size (optional)</option>
-                  {SIZE_OPTIONS.map((s) => <option value={s}>{s}</option>)}
-                </select>
-              </label>
-              <label class="text-sm font-medium">Ownership type
-                <select name="ownershipType" class="input mt-1.5">
-                  <option value="">Select ownership (optional)</option>
-                  {OWNERSHIP_OPTIONS.map((o) => <option value={o}>{o}</option>)}
-                </select>
-              </label>
-              <label class="text-sm font-medium">Operating hours
-                <select name="hours" class="input mt-1.5">
-                  <option value="">Select typical hours (optional)</option>
-                  {HOURS_OPTIONS.map((h) => <option value={h.value}>{h.label}</option>)}
-                </select>
-              </label>
-              <label class="text-sm font-medium">Service area <span class="opt">Optional</span>
-                <input name="serviceArea" maxlength="300" class="input mt-1.5" placeholder="e.g. Austin metro; delivery within 25 miles" />
-                <span class="mt-1 block text-xs" style="color:var(--text-mute)">Cities, counties, or regions you serve.</span>
-              </label>
-              <label class="text-sm font-medium">Price range <span class="opt">Optional</span>
-                <select name="priceRange" class="input mt-1.5 block w-full">
-                  <option value="">Select price range</option>
-                  <option value="$">$ (Inexpensive / Budget-friendly)</option>
-                  <option value="$$">$$ (Moderate / Standard)</option>
-                  <option value="$$$">$$$ (Upscale / Premium)</option>
-                  <option value="$$$$">$$$$ (High-end / Specialized)</option>
-                </select>
-                <span class="mt-1 block text-xs" style="color:var(--text-mute)">Used for price-based filtering across the directory.</span>
+              <label class="field-label">Tagline
+                <input name="tagline" maxlength="280" class="input mt-1.5" placeholder="Brief summary of what your business does" />
               </label>
             </div>
-          </details>
-        </section>
 
-        <!-- Section 2: Category (type-filtered, single searchable picker) -->
-        <section id="section-category" aria-labelledby="section-category-heading" class="form-section border-t pt-7" style="border-color:var(--border)">
-          <div class="flex flex-wrap items-center justify-between gap-2">
-            <div class="flex items-baseline gap-3">
+            <label class="field-label mt-4 block">Description
+              <textarea name="description" rows="4" maxlength="8000" class="input mt-1.5" placeholder="Describe what your business offers, who you serve, and what makes your business distinct..."></textarea>
+              <span class="field-help">Shown on your public profile — a sentence or two about what you do and who you serve.</span>
+            </label>
+
+            <details class="disclose org-card mt-5" data-open-if>
+              <summary>
+                <span>
+                  <span class="block text-sm font-bold">About your organization</span>
+                  <span class="mt-0.5 block text-xs font-medium" style="color:var(--text-mute)">Optional — year, size, hours, service area, and price.</span>
+                </span>
+              </summary>
+              <div class="mt-4 grid gap-4 sm:grid-cols-2">
+                <label class="field-label">Year founded
+                  <input name="yearFounded" type="number" inputmode="numeric" min="1800" max={thisYear} class="input mt-1.5" placeholder="e.g. 1998" />
+                </label>
+                <label class="field-label">Organization size
+                  <select name="employeeCount" class="input mt-1.5">
+                    <option value="">Select size (optional)</option>
+                    {SIZE_OPTIONS.map((s) => <option value={s}>{s}</option>)}
+                  </select>
+                </label>
+                <label class="field-label">Ownership type
+                  <select name="ownershipType" class="input mt-1.5">
+                    <option value="">Select ownership (optional)</option>
+                    {OWNERSHIP_OPTIONS.map((o) => <option value={o}>{o}</option>)}
+                  </select>
+                </label>
+                <label class="field-label">Operating hours
+                  <select name="hours" class="input mt-1.5">
+                    <option value="">Select typical hours (optional)</option>
+                    {HOURS_OPTIONS.map((h) => <option value={h.value}>{h.label}</option>)}
+                  </select>
+                </label>
+                <label class="field-label">Service area
+                  <input name="serviceArea" maxlength="300" class="input mt-1.5" placeholder="e.g. Austin metro; delivery within 25 miles" />
+                  <span class="field-help">Cities, counties, or regions you serve.</span>
+                </label>
+                <label class="field-label">Price range
+                  <select name="priceRange" class="input mt-1.5 block w-full">
+                    <option value="">Select price range</option>
+                    <option value="$">$ (Inexpensive / Budget-friendly)</option>
+                    <option value="$$">$$ (Moderate / Standard)</option>
+                    <option value="$$$">$$$ (Upscale / Premium)</option>
+                    <option value="$$$$">$$$$ (High-end / Specialized)</option>
+                  </select>
+                  <span class="field-help">Used for price-based filtering across the directory.</span>
+                </label>
+              </div>
+            </details>
+          </section>
+
+          <!-- Section 2: Category (type-filtered, single searchable picker) -->
+          <section id="section-category" aria-labelledby="section-category-heading" class="form-section card">
+            <div class="section-head">
               <span class="section-num" aria-hidden="true">02</span>
-              <div>
-                <h2 id="section-category-heading" class="text-lg font-semibold leading-tight">Industry &amp; business category</h2>
+              <div class="section-head-copy">
+                <h2 id="section-category-heading" class="section-title">Industry &amp; business category</h2>
+                <p class="section-lede">Where your listing belongs in the directory taxonomy — pick the most specific industry and category that describe it. Options are filtered to match the type selected above.</p>
               </div>
+              <span id="category-type-context" class="chip hidden !text-[11px]"></span>
             </div>
-            <span id="category-type-context" class="chip hidden !text-[11px]"></span>
-          </div>
-          <p class="mt-1 text-sm" style="color:var(--text-soft)">Where your listing belongs in the directory taxonomy — pick the most specific industry and category that describe it. This is separate from your listing type: the two work together, with options filtered to match the type selected above.</p>
 
-          <!-- Hidden inputs for submission -->
-          <input type="hidden" name="industrySlug" id="input-industry-slug" value="" />
-          <input type="hidden" name="categorySlug" id="input-category-slug" value="" />
+            <!-- Hidden inputs for submission -->
+            <input type="hidden" name="industrySlug" id="input-industry-slug" value="" />
+            <input type="hidden" name="categorySlug" id="input-category-slug" value="" />
 
-          <!-- Single searchable category picker (filtered by selected type) -->
-          <div class="mt-4">
-            <label for="category-search-input" class="text-sm font-medium">Search &amp; pick a category</label>
-            <p id="category-filter-help" class="mt-0.5 text-xs" style="color:var(--text-mute)">Please select an organization type first.</p>
-            <div class="relative mt-2">
-              <input
-                type="search"
-                id="category-search-input"
-                class="input w-full !pl-9"
-                placeholder="Search categories (e.g. Bakery, Plumbing, Roofing, Dental, Counseling)..."
-                autocomplete="off"
-                aria-describedby="category-filter-help"
-              />
-              <svg class="absolute left-3 top-3 h-4 w-4 text-[var(--text-mute)]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
-              <div id="category-search-results" class="hidden absolute left-0 right-0 top-full z-20 mt-1.5 max-h-[260px] overflow-y-auto rounded-xl border bg-[var(--surface)] shadow-lg" style="border-color:var(--border)"></div>
+            <!-- Single searchable category picker (filtered by selected type) -->
+            <div class="mt-5">
+              <label for="category-search-input" class="field-label">Search &amp; pick a category</label>
+              <p id="category-filter-help" class="field-help">Please select an organization type first.</p>
+              <div class="relative mt-2">
+                <input
+                  type="search"
+                  id="category-search-input"
+                  class="input w-full !pl-9"
+                  placeholder="Search categories (e.g. Bakery, Plumbing, Roofing, Dental, Counseling)..."
+                  autocomplete="off"
+                  aria-describedby="category-filter-help"
+                />
+                <svg class="absolute left-3 top-3 h-4 w-4 text-[var(--text-mute)]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+                <div id="category-search-results" class="hidden absolute left-0 right-0 top-full z-20 mt-1.5 max-h-[260px] overflow-y-auto rounded-xl border bg-[var(--surface)] shadow-lg" style="border-color:var(--border)"></div>
+              </div>
+              <div id="category-filter-status" class="mt-1.5 hidden text-xs font-semibold" style="color:var(--teal)" aria-live="polite"></div>
             </div>
-            <div id="category-filter-status" class="mt-1.5 hidden text-xs font-semibold" style="color:var(--teal)" aria-live="polite"></div>
-          </div>
 
-          <!-- Selected category chip -->
-          <div id="category-chips-primary" class="hidden mt-3 flex flex-wrap items-center gap-2">
-            <span class="chip !text-[11px] font-bold" style="border-color:var(--teal); color:var(--teal)">
-              <span id="category-chip-text"></span>
-              <button type="button" id="category-chip-clear" class="ml-1.5 hover:opacity-75 focus:outline-none" aria-label="Clear selected category">✕</button>
-            </span>
-          </div>
+            <!-- Selected category chip -->
+            <div id="category-chips-primary" class="hidden mt-3 flex flex-wrap items-center gap-2">
+              <span class="chip !text-[11px] font-bold" style="border-color:var(--teal); color:var(--teal)">
+                <span id="category-chip-text"></span>
+                <button type="button" id="category-chip-clear" class="ml-1.5 hover:opacity-75 focus:outline-none" aria-label="Clear selected category">✕</button>
+              </span>
+            </div>
 
-          <!-- Custom Category Input when 'Other' category is chosen -->
-          <div id="custom-category-wrap" class="hidden mt-3 rounded-xl p-3.5 border border-[var(--border)] bg-[var(--surface-2)]">
-            <label class="block text-xs font-medium">Custom category name *
-              <input name="customCategory" id="input-custom-category" class="input mt-1.5 w-full" placeholder="e.g. Specialty Gluten-Free Bakery, Stained Glass Restoration, etc." maxlength="180" />
-            </label>
-            <p class="text-[11px] mt-1" style="color:var(--text-mute)">Please specify your business's exact trade or service.</p>
-          </div>
+            <!-- Custom Category Input when 'Other' category is chosen -->
+            <div id="custom-category-wrap" class="hidden mt-3 rounded-xl p-3.5 border border-[var(--border)] bg-[var(--surface-2)]">
+              <label class="block text-xs font-medium">Custom category name *
+                <input name="customCategory" id="input-custom-category" class="input mt-1.5 w-full" placeholder="e.g. Specialty Gluten-Free Bakery, Stained Glass Restoration, etc." maxlength="180" />
+              </label>
+              <p class="text-[11px] mt-1" style="color:var(--text-mute)">Please specify your business's exact trade or service.</p>
+            </div>
 
-          <p id="category-type-warning" class="mt-3 hidden rounded-xl border border-amber-300 bg-amber-50 p-3 text-xs font-semibold text-amber-800" role="status">Category cleared — it doesn't match the new organization type. Please select a new category.</p>
-        </section>
+            <p id="category-type-warning" class="mt-3 hidden rounded-xl border border-amber-300 bg-amber-50 p-3 text-xs font-semibold text-amber-800" role="status">Category cleared — it doesn't match the new organization type. Please select a new category.</p>
+          </section>
 
-        <!-- Section 3: Faith Identity -->
-        <section id="section-faith" aria-labelledby="section-faith-heading" class="form-section border-t pt-7" style="border-color:var(--border)">
-          <div class="flex flex-wrap items-center justify-between gap-2">
-            <div class="flex items-baseline gap-3">
+          <!-- Section 3: Faith Identity -->
+          <section id="section-faith" aria-labelledby="section-faith-heading" class="form-section card">
+            <div class="section-head">
               <span class="section-num" aria-hidden="true">03</span>
-              <div>
-                <h2 id="section-faith-heading" class="text-lg font-semibold leading-tight">Faith identity &amp; denomination</h2>
+              <div class="section-head-copy">
+                <h2 id="section-faith-heading" class="section-title">Faith identity &amp; denomination</h2>
+                <p class="section-lede">Select up to two denominations that best represent this organization.</p>
               </div>
+              <span id="denom-counter" class="chip !text-[11px]">0 of 2 selected</span>
             </div>
-            <span id="denom-counter" class="chip !text-[11px]">0 of 2 selected</span>
-          </div>
-          <p class="mt-1 text-sm" style="color:var(--text-soft)">Select up to two denominations that best represent this organization.</p>
 
-          <!-- Active Selection Chips Display -->
-          <div id="denom-chips-container" class="mt-4 flex flex-wrap items-center gap-2 min-h-[38px] p-2.5 rounded-xl border border-dashed border-[var(--border)] bg-[var(--surface-2)]">
-            <span id="denom-empty-hint" class="text-xs" style="color:var(--text-mute)">No denominations selected yet. Choose up to two below.</span>
-          </div>
-
-          <!-- Hidden inputs for multi-denomination form submission -->
-          <div id="denom-hidden-inputs"></div>
-
-          <!-- Selection Controls: searchable denomination typeahead (same interaction as the category search) -->
-          <div class="mt-4">
-            <label for="denom-search-input" class="text-sm font-medium">Search denominations</label>
-            <div class="relative mt-2">
-              <input
-                type="search"
-                id="denom-search-input"
-                class="input w-full !pl-9"
-                placeholder="Search denominations (e.g. Baptist, Methodist, Non-Denominational)..."
-                autocomplete="off"
-                aria-describedby="denom-search-help"
-              />
-              <svg class="absolute left-3 top-3 h-4 w-4 text-[var(--text-mute)]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
-              <div id="denom-search-results" class="hidden absolute left-0 right-0 top-full z-20 mt-1.5 max-h-[260px] overflow-y-auto rounded-xl border bg-[var(--surface)] shadow-lg" style="border-color:var(--border)"></div>
+            <!-- Active Selection Chips Display -->
+            <div id="denom-chips-container" class="mt-5 flex flex-wrap items-center gap-2 min-h-[38px] p-2.5 rounded-xl border border-dashed border-[var(--border)] bg-[var(--surface-2)]">
+              <span id="denom-empty-hint" class="text-xs" style="color:var(--text-mute)">No denominations selected yet. Choose up to two below.</span>
             </div>
-            <p id="denom-search-help" class="mt-1.5 text-xs" style="color:var(--text-mute)">Type to filter denominations, then click to add — up to two. Pick "Other (specify custom denomination)" to enter your own.</p>
-          </div>
 
-          <!-- Custom Denomination Input when 'Other' is chosen -->
-          <div id="custom-denom-wrap" class="hidden mt-3 rounded-xl p-3 border border-[var(--border)] bg-[var(--surface-2)]">
-            <label class="block text-xs font-medium">Custom denomination or movement name *
-              <input
-                name="customDenomination"
-                id="custom-denom-input"
-                class="input mt-1.5 w-full"
-                placeholder="e.g. Calvary Chapel, Vineyard Movement, Independent Baptist..."
-                maxlength="180"
-              />
-            </label>
-          </div>
+            <!-- Hidden inputs for multi-denomination form submission -->
+            <div id="denom-hidden-inputs"></div>
 
-          <label class="mt-4 flex flex-wrap items-center gap-2.5 text-xs font-medium cursor-pointer">
-            <input type="checkbox" name="showDenomination" value="1" checked class="peer sr-only" />
-            <span class="relative inline-block h-6 w-11 shrink-0 rounded-full bg-gray-200 transition-colors after:absolute after:left-0.5 after:top-0.5 after:h-5 after:w-5 after:rounded-full after:bg-white after:shadow after:transition-transform after:content-[''] peer-checked:bg-[var(--accent)] peer-checked:after:translate-x-5 peer-focus-visible:ring-2 peer-focus-visible:ring-[var(--ring)] peer-focus-visible:ring-offset-2 peer-focus-visible:ring-offset-[var(--surface)]" aria-hidden="true"></span>
-            <span>Display faith affiliation publicly on listing</span>
-            <span class="rounded-full px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide bg-[var(--surface-2)] text-[var(--text-mute)] peer-checked:hidden">Off</span>
-            <span class="hidden rounded-full px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide bg-[var(--accent-soft)] text-[var(--accent)] peer-checked:inline-block">On</span>
-          </label>
-          <p class="mt-0.5 text-xs" style="color:var(--text-mute)">When unchecked, your denomination is stored privately and will not appear on your public listing.</p>
-
-          <details class="disclose mt-5" data-open-if>
-            <summary>
-              <span class="text-sm font-bold">Statement of faith</span>
-              <span class="opt">Optional</span>
-            </summary>
-            <label class="mt-3 block text-sm font-medium" for="input-statement">Shown on your profile if you add one
-              <textarea name="statementOfFaith" id="input-statement" rows="3" maxlength="8000" class="input mt-1.5" placeholder="Brief statement of faith, mission, or Christian core values..."></textarea>
-            </label>
-          </details>
-        </section>
-
-        <!-- Section 4: Contact and Visibility -->
-        <section id="section-contact" aria-labelledby="section-contact-heading" class="form-section border-t pt-7" style="border-color:var(--border)">
-          <div class="flex items-baseline gap-3">
-            <span class="section-num" aria-hidden="true">04</span>
-            <div>
-              <h2 id="section-contact-heading" class="text-lg font-semibold leading-tight">Contact and visibility</h2>
+            <!-- Selection Controls: searchable denomination typeahead (same interaction as the category search) -->
+            <div class="mt-4">
+              <label for="denom-search-input" class="field-label">Search denominations</label>
+              <div class="relative mt-2">
+                <input
+                  type="search"
+                  id="denom-search-input"
+                  class="input w-full !pl-9"
+                  placeholder="Search denominations (e.g. Baptist, Methodist, Non-Denominational)..."
+                  autocomplete="off"
+                  aria-describedby="denom-search-help"
+                />
+                <svg class="absolute left-3 top-3 h-4 w-4 text-[var(--text-mute)]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+                <div id="denom-search-results" class="hidden absolute left-0 right-0 top-full z-20 mt-1.5 max-h-[260px] overflow-y-auto rounded-xl border bg-[var(--surface)] shadow-lg" style="border-color:var(--border)"></div>
+              </div>
+              <p id="denom-search-help" class="field-help mt-1.5">Type to filter denominations, then click to add — up to two. Pick "Other (specify custom denomination)" to enter your own.</p>
             </div>
-          </div>
-          <p class="mt-1 text-sm" style="color:var(--text-soft)">Choose exactly which contact details appear publicly on your listing profile.</p>
 
-          <div class="card mt-4 p-3.5 text-xs leading-relaxed" style="background:var(--surface-2);color:var(--text-soft)">
-            <strong>Privacy note:</strong> Information you keep private is used for account administration and listing review. Private fields are not shown on public cards or in search. Keeping a field private is not a verification of that field.
-          </div>
-
-          <label class="mt-4 block text-sm font-medium">Preferred contact method <span class="opt">Optional</span>
-            <select name="contactPreference" class="input mt-1.5 block w-full">
-              <option value="">Select preference</option>
-              {CONTACT_PREF_OPTIONS.map((c) => <option value={c}>{c}</option>)}
-            </select>
-            <span class="mt-1.5 block text-xs" style="color:var(--text-mute)">How you'd rather receive inquiries through the directory.</span>
-          </label>
-
-          <div class="control-grid mt-4">
-            <article class="control-card">
-              <fieldset class="control-fieldset">
-                <legend class="control-title">Is this company hiring?</legend>
-                <div class="control-row">
-                  <div class="choice-group">
-                    <label class="choice-pill" for="input-hiring-no">
-                      <input type="radio" name="isHiring" value="0" id="input-hiring-no" checked class="sr-only" />
-                      <span class="choice-mark" aria-hidden="true"></span>
-                      <span class="choice-copy">No</span>
-                    </label>
-                    <label class="choice-pill" for="input-hiring-yes">
-                      <input type="radio" name="isHiring" value="1" id="input-hiring-yes" class="sr-only" />
-                      <span class="choice-mark" aria-hidden="true"></span>
-                      <span class="choice-copy">Yes</span>
-                    </label>
-                  </div>
-                </div>
-                <p class="control-help">Choose Yes only if this organization is currently hiring. The default is No.</p>
-              </fieldset>
-            </article>
-
-            <article id="online-toggle-wrap" class="control-card" data-online="off">
-              <fieldset class="control-fieldset">
-                <legend class="control-title">Is this an online-only listing?</legend>
-                <div class="control-row">
-                  <div class="choice-group">
-                    <label class="choice-pill" id="online-off-label" for="input-online-off" data-active="true">
-                      <input type="radio" name="isOnlineOnly" value="0" id="input-online-off" checked class="sr-only" aria-describedby="online-state-text" />
-                      <span class="choice-mark" aria-hidden="true"></span>
-                      <span class="choice-copy">In-person</span>
-                    </label>
-                    <label class="choice-pill" id="online-on-label" for="input-online" data-active="false">
-                      <input type="radio" name="isOnlineOnly" value="1" id="input-online" class="sr-only" aria-describedby="online-state-text" />
-                      <span class="choice-mark" aria-hidden="true"></span>
-                      <span class="choice-copy">Online-only</span>
-                    </label>
-                  </div>
-                </div>
-                <p id="online-state-text" class="control-help" aria-live="polite">This listing is for in-person services.</p>
-              </fieldset>
-            </article>
-          </div>
-
-          <div id="careers-url-field" class="control-card careers-card mt-4" hidden>
-            <label for="input-careers-url" class="control-label">Where can people view open positions? <span class="opt">Optional</span>
-              <input id="input-careers-url" name="careersUrl" type="text" inputmode="url" autocomplete="url" maxlength="2000" class="input mt-1.5" placeholder="https://example.com/careers" aria-describedby="careers-url-help careers-url-error" />
-            </label>
-            <p id="careers-url-help" class="control-help">Add a careers page or job-listing link. This is optional, even if hiring is set to Yes.</p>
-            <p id="careers-url-error" class="mt-1.5 text-xs font-semibold text-red-600" role="alert" hidden>Enter a valid http:// or https:// URL.</p>
-          </div>
-
-          <!-- Physical Location -->
-          <div id="location-fields" class="mt-4 space-y-2">
-            <div class="grid gap-4 sm:grid-cols-3">
-              <label class="text-sm font-medium">City
-                <input name="city" id="input-city" maxlength="120" class="input mt-1.5" placeholder="Enter city" />
-              </label>
-              <label class="text-sm font-medium">State / region
-                <input name="region" id="input-region" maxlength="120" class="input mt-1.5" placeholder="Enter state or region" />
-              </label>
-              <label class="text-sm font-medium">ZIP / Postal code
-                <input name="postalCode" maxlength="24" class="input mt-1.5" placeholder="Enter postal code" />
+            <!-- Custom Denomination Input when 'Other' is chosen -->
+            <div id="custom-denom-wrap" class="hidden mt-3 rounded-xl p-3 border border-[var(--border)] bg-[var(--surface-2)]">
+              <label class="block text-xs font-medium">Custom denomination or movement name *
+                <input
+                  name="customDenomination"
+                  id="custom-denom-input"
+                  class="input mt-1.5 w-full"
+                  placeholder="e.g. Calvary Chapel, Vineyard Movement, Independent Baptist..."
+                  maxlength="180"
+                />
               </label>
             </div>
 
-            <label class="flex flex-wrap items-center gap-2.5 text-xs font-medium cursor-pointer pt-1">
-              <input type="checkbox" name="showAddress" value="1" class="peer sr-only" />
-              <span class="relative inline-block h-6 w-11 shrink-0 rounded-full bg-gray-200 transition-colors after:absolute after:left-0.5 after:top-0.5 after:h-5 after:w-5 after:rounded-full after:bg-white after:shadow after:transition-transform after:content-[''] peer-checked:bg-[var(--accent)] peer-checked:after:translate-x-5 peer-focus-visible:ring-2 peer-focus-visible:ring-[var(--ring)] peer-focus-visible:ring-offset-2 peer-focus-visible:ring-offset-[var(--surface)]" aria-hidden="true"></span>
-              <span>Display postal code / full address publicly on listing</span>
-              <span class="rounded-full px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide bg-[var(--surface-2)] text-[var(--text-mute)] peer-checked:hidden">Off</span>
-              <span class="hidden rounded-full px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide bg-[var(--accent-soft)] text-[var(--accent)] peer-checked:inline-block">On</span>
+            <div class="setting-list mt-4">
+              <label class="setting-row">
+                <input type="checkbox" name="showDenomination" value="1" checked class="peer sr-only" />
+                <span class="setting-copy">
+                  <span class="setting-title">Display faith affiliation publicly on listing</span>
+                  <span class="setting-help">When off, your denomination is stored privately and will not appear on your public listing.</span>
+                </span>
+                <span class="setting-badge setting-badge-off">Off</span>
+                <span class="setting-badge setting-badge-on">On</span>
+                <span class="public-switch" aria-hidden="true"></span>
+              </label>
+            </div>
+
+            <details class="disclose mt-5" data-open-if>
+              <summary>
+                <span class="text-sm font-bold">Statement of faith</span>
+                <span class="disclose-hint">Optional</span>
+              </summary>
+              <label class="field-label mt-3 block" for="input-statement">Shown on your profile if you add one
+                <textarea name="statementOfFaith" id="input-statement" rows="3" maxlength="8000" class="input mt-1.5" placeholder="Brief statement of faith, mission, or Christian core values..."></textarea>
+              </label>
+            </details>
+          </section>
+
+          <!-- Section 4: Contact and Visibility -->
+          <section id="section-contact" aria-labelledby="section-contact-heading" class="form-section card">
+            <div class="section-head">
+              <span class="section-num" aria-hidden="true">04</span>
+              <div class="section-head-copy">
+                <h2 id="section-contact-heading" class="section-title">Contact and visibility</h2>
+                <p class="section-lede">Choose exactly which contact details appear publicly on your listing profile. Private fields are used for account administration and review only; keeping a field private is not a verification of that field.</p>
+              </div>
+            </div>
+
+            <label class="field-label mt-5 block">Preferred contact method
+              <select name="contactPreference" class="input mt-1.5 block w-full">
+                <option value="">Select preference</option>
+                {CONTACT_PREF_OPTIONS.map((c) => <option value={c}>{c}</option>)}
+              </select>
+              <span class="field-help">How you'd rather receive inquiries through the directory.</span>
             </label>
-            <p class="text-xs" style="color:var(--text-mute)">When unchecked, only your general city and state are displayed; specific postal codes remain private.</p>
-          </div>
-          <p id="location-disabled-note" class="hidden mt-3 rounded-xl border p-3 text-xs font-semibold" style="border-color:var(--border); background:var(--surface-2); color:var(--text-soft)">Location fields are hidden for online-only listings — you serve customers nationwide.</p>
 
-          <div class="mt-5 rounded-2xl border p-4 sm:p-5" style="border-color:var(--border); background:var(--surface-2)">
-            <h3 class="text-sm font-semibold">What the public sees</h3>
-            <p class="mt-1 text-xs" style="color:var(--text-mute)">Each detail stays private until you switch its toggle on.</p>
-            <div class="public-grid mt-4">
-              <article class="public-card">
-                <label class="public-label">Website URL
-                  <input name="website" type="url" class="input mt-1.5" placeholder="https://yourbusiness.com" />
-                </label>
-                <label class="public-toggle">
-                  <input type="checkbox" name="showWebsite" value="1" class="peer sr-only" />
-                  <span class="public-switch" aria-hidden="true"></span>
-                  <span class="public-toggle-copy">Display website publicly on listing</span>
-                  <span class="public-badge public-badge-off">Off</span>
-                  <span class="public-badge public-badge-on">On</span>
-                </label>
-                <p class="public-help">When checked, a direct "Website" link will appear on your public profile.</p>
-              </article>
-              <article class="public-card">
-                <label class="public-label">Phone number
-                  <input name="phone" maxlength="60" class="input mt-1.5" placeholder="Enter phone number" />
-                </label>
-                <label class="public-toggle">
-                  <input type="checkbox" name="showPhone" value="1" class="peer sr-only" />
-                  <span class="public-switch" aria-hidden="true"></span>
-                  <span class="public-toggle-copy">Display phone number publicly on listing</span>
-                  <span class="public-badge public-badge-off">Off</span>
-                  <span class="public-badge public-badge-on">On</span>
-                </label>
-                <p class="public-help">When unchecked, the phone number is stored for listing administration and is not shown to the public. Storing it does not confirm the number.</p>
-              </article>
-              <article class="public-card">
-                <label class="public-label">Contact email
-                  <input
-                    name="email"
-                    type="email"
-                    class="input mt-1.5"
-                    placeholder="contact@yourbusiness.com"
-                    value={user?.email ?? ''}
-                  />
-                </label>
-                <label class="public-toggle">
-                  <input type="checkbox" name="showEmail" value="1" class="peer sr-only" />
-                  <span class="public-switch" aria-hidden="true"></span>
-                  <span class="public-toggle-copy">Display email address publicly on listing</span>
-                  <span class="public-badge public-badge-off">Off</span>
-                  <span class="public-badge public-badge-on">On</span>
-                </label>
-                <p class="public-help">
-                  When unchecked, your email is kept strictly private. Prospective clients can still reach you securely using our on-site inquiry form without seeing your email address.
-                  {user?.email && <span class="public-note">Account email: <strong>{user.email}</strong>. Pre-filled for your convenience; feel free to change it to your organization's inquiry address.</span>}
-                </p>
-              </article>
-            </div>
-          </div>
-        </section>
-
-        <section id="section-review" aria-labelledby="section-review-heading" class="form-section border-t pt-7" style="border-color:var(--border)">
-          <div class="flex items-baseline gap-3">
-            <span class="section-num" aria-hidden="true">05</span>
-            <div>
-              <h2 id="section-review-heading" class="text-lg font-semibold leading-tight">Review and publish</h2>
-            </div>
-          </div>
-          <p class="mt-1 text-sm" style="color:var(--text-soft)">Check the summary, confirm the required statements, then publish. Publishing creates an owner-submitted listing. It does not verify faith, ownership, licenses, credentials, or service quality.</p>
-
-          <div class="review-layout mt-5">
-            <article class="review-card" aria-labelledby="review-summary-heading">
-              <div class="review-card-head">
-                <h3 id="review-summary-heading" class="text-sm font-semibold">Listing summary</h3>
-                <span class="opt">Preview</span>
-              </div>
-              <p class="text-xs leading-relaxed" style="color:var(--text-soft)">Preview only. A published profile is labeled Owner-submitted. That is not a verification.</p>
-              <div id="live-preview" class="review-preview">
-                <div class="flex items-start gap-4">
-                  <div class="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl border text-[10px] font-bold uppercase tracking-wide" style="border-color:var(--border); background:var(--surface-2); color:var(--text-mute)">Logo</div>
-                  <div class="min-w-0">
-                    <p id="preview-name" class="truncate font-bold" style="color:var(--text-mute)">Your listing name</p>
-                    <p id="preview-type" class="mt-0.5 text-xs font-semibold" style="color:var(--text-mute)">No type selected yet</p>
-                    <p id="preview-category" class="mt-0.5 text-xs" style="color:var(--text-soft)">No category selected</p>
-                    <p id="preview-location" class="mt-0.5 text-xs" style="color:var(--text-mute)">Location not set</p>
+            <div class="control-grid mt-4">
+              <article class="control-card">
+                <fieldset class="control-fieldset">
+                  <legend class="control-title">Is this company hiring?</legend>
+                  <div class="control-row">
+                    <div class="choice-group">
+                      <label class="choice-pill" for="input-hiring-no">
+                        <input type="radio" name="isHiring" value="0" id="input-hiring-no" checked class="sr-only" />
+                        <span class="choice-mark" aria-hidden="true"></span>
+                        <span class="choice-copy">No</span>
+                      </label>
+                      <label class="choice-pill" for="input-hiring-yes">
+                        <input type="radio" name="isHiring" value="1" id="input-hiring-yes" class="sr-only" />
+                        <span class="choice-mark" aria-hidden="true"></span>
+                        <span class="choice-copy">Yes</span>
+                      </label>
+                    </div>
                   </div>
-                </div>
-              </div>
-              <div class="review-links">
-                <a href="#section-basics">Edit basics</a>
-                <a href="#section-category">Edit category</a>
-                <a href="#section-faith">Edit faith</a>
-                <a href="#section-contact">Edit contact</a>
-              </div>
-            </article>
+                  <p class="control-help">Choose Yes only if this organization is currently hiring. The default is No.</p>
+                </fieldset>
+              </article>
 
-            <article class="review-card" aria-labelledby="review-required-heading">
+              <article id="online-toggle-wrap" class="control-card" data-online="off">
+                <fieldset class="control-fieldset">
+                  <legend class="control-title">Is this an online-only listing?</legend>
+                  <div class="control-row">
+                    <div class="choice-group">
+                      <label class="choice-pill" id="online-off-label" for="input-online-off" data-active="true">
+                        <input type="radio" name="isOnlineOnly" value="0" id="input-online-off" checked class="sr-only" aria-describedby="online-state-text" />
+                        <span class="choice-mark" aria-hidden="true"></span>
+                        <span class="choice-copy">In-person</span>
+                      </label>
+                      <label class="choice-pill" id="online-on-label" for="input-online" data-active="false">
+                        <input type="radio" name="isOnlineOnly" value="1" id="input-online" class="sr-only" aria-describedby="online-state-text" />
+                        <span class="choice-mark" aria-hidden="true"></span>
+                        <span class="choice-copy">Online-only</span>
+                      </label>
+                    </div>
+                  </div>
+                  <p id="online-state-text" class="control-help" aria-live="polite">This listing is for in-person services.</p>
+                </fieldset>
+              </article>
+            </div>
+
+            <div id="careers-url-field" class="control-card careers-card mt-4" hidden>
+              <label for="input-careers-url" class="control-label">Where can people view open positions?
+                <input id="input-careers-url" name="careersUrl" type="text" inputmode="url" autocomplete="url" maxlength="2000" class="input mt-1.5" placeholder="https://example.com/careers" aria-describedby="careers-url-help careers-url-error" />
+              </label>
+              <p id="careers-url-help" class="control-help">Add a careers page or job-listing link. This is optional, even if hiring is set to Yes.</p>
+              <p id="careers-url-error" class="mt-1.5 text-xs font-semibold text-red-600" role="alert" hidden>Enter a valid http:// or https:// URL.</p>
+            </div>
+
+            <!-- Physical Location -->
+            <div id="location-fields" class="mt-4 space-y-3">
+              <div class="grid gap-4 sm:grid-cols-3">
+                <label class="field-label">City
+                  <input name="city" id="input-city" maxlength="120" class="input mt-1.5" placeholder="Enter city" />
+                </label>
+                <label class="field-label">State / region
+                  <input name="region" id="input-region" maxlength="120" class="input mt-1.5" placeholder="Enter state or region" />
+                </label>
+                <label class="field-label">ZIP / Postal code
+                  <input name="postalCode" maxlength="24" class="input mt-1.5" placeholder="Enter postal code" />
+                </label>
+              </div>
+
+              <div class="setting-list">
+                <label class="setting-row">
+                  <input type="checkbox" name="showAddress" value="1" class="peer sr-only" />
+                  <span class="setting-copy">
+                    <span class="setting-title">Display postal code / full address publicly on listing</span>
+                    <span class="setting-help">When off, only your general city and state are displayed; specific postal codes remain private.</span>
+                  </span>
+                  <span class="setting-badge setting-badge-off">Off</span>
+                  <span class="setting-badge setting-badge-on">On</span>
+                  <span class="public-switch" aria-hidden="true"></span>
+                </label>
+              </div>
+            </div>
+            <p id="location-disabled-note" class="hidden mt-3 rounded-xl border p-3 text-xs font-semibold" style="border-color:var(--border); background:var(--surface-2); color:var(--text-soft)">Location fields are hidden for online-only listings — you serve customers nationwide.</p>
+
+            <div class="public-panel mt-5">
+              <h3 class="text-sm font-semibold">What the public sees</h3>
+              <p class="field-help">Each detail stays private until you switch its toggle on.</p>
+              <div class="public-list mt-3">
+                <article class="public-card">
+                  <label class="public-label">Website URL
+                    <input name="website" type="url" class="input mt-1.5" placeholder="https://yourbusiness.com" />
+                  </label>
+                  <label class="public-toggle setting-row">
+                    <input type="checkbox" name="showWebsite" value="1" class="peer sr-only" />
+                    <span class="setting-copy">
+                      <span class="setting-title public-toggle-copy">Display website publicly on listing</span>
+                      <span class="setting-help public-help">When on, a direct "Website" link appears on your public profile.</span>
+                    </span>
+                    <span class="setting-badge setting-badge-off">Off</span>
+                    <span class="setting-badge setting-badge-on">On</span>
+                    <span class="public-switch" aria-hidden="true"></span>
+                  </label>
+                </article>
+                <article class="public-card">
+                  <label class="public-label">Phone number
+                    <input name="phone" maxlength="60" class="input mt-1.5" placeholder="Enter phone number" />
+                  </label>
+                  <label class="public-toggle setting-row">
+                    <input type="checkbox" name="showPhone" value="1" class="peer sr-only" />
+                    <span class="setting-copy">
+                      <span class="setting-title public-toggle-copy">Display phone number publicly on listing</span>
+                      <span class="setting-help public-help">When off, the number is kept for listing administration only. Storing it does not confirm the number.</span>
+                    </span>
+                    <span class="setting-badge setting-badge-off">Off</span>
+                    <span class="setting-badge setting-badge-on">On</span>
+                    <span class="public-switch" aria-hidden="true"></span>
+                  </label>
+                </article>
+                <article class="public-card">
+                  <label class="public-label">Contact email{!user && <> <span class="req" aria-hidden="true">*</span><span class="sr-only"> required for guest listings</span></>}
+                    <input
+                      name="email"
+                      type="email"
+                      class="input mt-1.5"
+                      placeholder="contact@yourbusiness.com"
+                      value={user?.email ?? ''}
+                      required={!user}
+                      aria-required={user ? undefined : 'true'}
+                      aria-describedby="email-help"
+                    />
+                  </label>
+                  <p id="email-help" class="field-help">
+                    {user
+                      ? <>Account email <strong>{user.email}</strong> is pre-filled; change it to your organization's inquiry address if you prefer.</>
+                      : <>You’re creating a listing as a guest, so a contact email is required before publishing. <a href="/auth/signup" class="font-bold underline">Create a free account</a> to edit and manage this listing later.</>}
+                  </p>
+                  <label class="public-toggle setting-row">
+                    <input type="checkbox" name="showEmail" value="1" class="peer sr-only" />
+                    <span class="setting-copy">
+                      <span class="setting-title public-toggle-copy">Display email address publicly on listing</span>
+                      <span class="setting-help public-help">When off, your email stays private; people can still reach you through the on-site inquiry form.</span>
+                    </span>
+                    <span class="setting-badge setting-badge-off">Off</span>
+                    <span class="setting-badge setting-badge-on">On</span>
+                    <span class="public-switch" aria-hidden="true"></span>
+                  </label>
+                </article>
+              </div>
+            </div>
+          </section>
+
+          <!-- Section 5: Review and publish -->
+          <section id="section-review" aria-labelledby="section-review-heading" class="form-section card">
+            <div class="section-head">
+              <span class="section-num" aria-hidden="true">05</span>
+              <div class="section-head-copy">
+                <h2 id="section-review-heading" class="section-title">Review and publish</h2>
+                <p class="section-lede">Confirm the required statements, then publish. Publishing creates an owner-submitted listing. It does not verify faith, ownership, licenses, credentials, or service quality.</p>
+              </div>
+            </div>
+
+            <article class="review-card mt-5" aria-labelledby="review-required-heading">
               <div class="review-card-head">
                 <h3 id="review-required-heading" class="text-sm font-semibold">Required before publishing</h3>
                 <span class="req-pill">Required</span>
@@ -596,51 +612,49 @@ const CONTACT_PREF_OPTIONS = ['Email', 'Phone call', 'Text message', 'Any is fin
                 <span>I am authorized to list this organization, and I agree to the <a href="/terms" class="underline">Terms of Service</a> and <a href="/guidelines" class="underline">Community Guidelines</a>.</span>
               </label>
             </article>
-          </div>
 
-          <details class="disclose mt-4" data-open-if>
-            <summary>
-              <span class="text-sm font-bold">Discovery tags</span>
-              <span class="opt">Optional</span>
-            </summary>
-            <label class="mt-3 block text-sm font-medium">Hashtags <span class="opt">Optional</span>
-              <input name="hashtags" class="input mt-1.5" placeholder="e.g. ChristianOwned, FamilyOwned, VeteranOwned" />
-              <span class="mt-1 block text-xs font-medium" style="color:var(--text-mute)">Comma-separated. These help search. They are not a verification.</span>
-            </label>
-          </details>
+            <details class="disclose mt-4" data-open-if>
+              <summary>
+                <span class="text-sm font-bold">Discovery tags</span>
+                <span class="disclose-hint">Optional</span>
+              </summary>
+              <label class="field-label mt-3 block">Hashtags
+                <input name="hashtags" class="input mt-1.5" placeholder="e.g. ChristianOwned, FamilyOwned, VeteranOwned" />
+                <span class="field-help">Comma-separated. These help search. They are not a verification.</span>
+              </label>
+            </details>
 
-          <article class="review-card review-publish mt-4" aria-labelledby="review-publish-heading">
-            <div class="review-card-head">
-              <h3 id="review-publish-heading" class="text-sm font-semibold">Publish this listing</h3>
-              <span class="req-pill">Final step</span>
-            </div>
-            <p id="publish-help" class="text-sm leading-relaxed" style="color:var(--text-soft)">Publishing submits this form. If the required fields are valid, the listing goes live as owner-submitted. It does not start a verification, charge a fee, or endorse the organization. You can still save a draft instead.</p>
-            <p id="review-missing" class="review-missing" hidden></p>
-            <div class="review-actions">
-              <button type="submit" id="review-publish-btn" class="btn btn-primary" data-label="Publish" aria-describedby="publish-help">Publish</button>
-              <button type="button" id="review-draft-btn" class="btn btn-secondary">Save draft</button>
-            </div>
-            <p id="review-status" class="form-status hidden" aria-hidden="true"></p>
-          </article>
-        </section>
-      </form>
+            <article class="review-card review-publish mt-4" aria-labelledby="review-publish-heading">
+              <div class="review-card-head">
+                <h3 id="review-publish-heading" class="text-sm font-semibold">Publish this listing</h3>
+                <span class="req-pill">Final step</span>
+              </div>
+              <p id="publish-help" class="text-sm leading-relaxed" style="color:var(--text-soft)">Publishing submits this form. If the required fields are valid, the listing goes live as owner-submitted. It does not start a verification, charge a fee, or endorse the organization. You can still save a draft instead.</p>
+              <p id="review-missing" class="review-missing" hidden></p>
+              <div class="review-actions">
+                <button type="submit" id="review-publish-btn" class="btn btn-primary" data-label="Publish" aria-describedby="publish-help">Publish</button>
+                <button type="button" id="review-draft-btn" class="btn btn-secondary">Save draft</button>
+              </div>
+              <p id="review-status" class="form-status hidden" aria-hidden="true"></p>
+            </article>
+          </section>
+        </form>
+      </div>
     )}
 
     {!success && (
       <>
-        <!-- Sticky action bar -->
+        <!-- Sticky action bar: 2px progress line on top, one 56px row below -->
         <div id="sticky-bar" class="fixed inset-x-0 bottom-0 z-40 border-t backdrop-blur" style="border-color:var(--border); background:color-mix(in srgb, var(--surface) 94%, transparent)">
-          <div class="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-3 px-4 py-3">
-            <div class="min-w-[180px] flex-1">
-              <div class="h-2.5 w-full max-w-[240px] overflow-hidden rounded-full border" style="background:var(--surface-2);border-color:var(--border-strong)">
-                <div id="progress-bar" class="h-full rounded-full transition-all duration-300" style="background: var(--accent); width: 0%"></div>
-              </div>
-              <p id="progress-text" class="mt-1 text-xs font-medium" style="color:var(--text-soft)" aria-live="polite">0 of 4 sections complete</p>
-            </div>
-            <p id="sticky-status" class="form-status hidden w-full" aria-hidden="true"></p>
-            <div class="flex w-full gap-2 sm:w-auto sm:flex-wrap sm:justify-end sm:gap-2">
-              <button type="button" id="save-draft-btn" class="btn btn-secondary flex-1 sm:flex-none" form="add-listing-form">Save draft</button>
-              <button type="submit" id="publish-btn" class="btn btn-primary flex-1 sm:flex-none" form="add-listing-form" data-label="Publish" aria-describedby="publish-help">Publish</button>
+          <div class="sticky-progress" aria-hidden="true">
+            <div id="progress-bar" class="sticky-progress-fill" style="width: 0%"></div>
+          </div>
+          <div class="sticky-row mx-auto max-w-6xl px-4">
+            <p id="progress-text" class="sticky-text" aria-live="polite">0 of 4 sections complete</p>
+            <p id="sticky-status" class="form-status hidden" aria-hidden="true"></p>
+            <div class="sticky-actions">
+              <button type="button" id="save-draft-btn" class="btn btn-secondary" form="add-listing-form">Save draft</button>
+              <button type="submit" id="publish-btn" class="btn btn-primary" form="add-listing-form" data-label="Publish" aria-describedby="publish-help">Publish</button>
             </div>
           </div>
         </div>
@@ -691,6 +705,15 @@ const CONTACT_PREF_OPTIONS = ['Email', 'Phone call', 'Text message', 'Any is fin
     const progressText = document.getElementById('progress-text');
     const stickyBar = document.getElementById('sticky-bar');
     const saveDraftBtn = document.getElementById('save-draft-btn');
+    const previewPanel = document.getElementById('preview-panel');
+
+    // The live preview sits in the rail: open beside the form on wide screens,
+    // collapsed above it on small ones (the summary still toggles it).
+    if (previewPanel && 'matchMedia' in window) {
+      const wide = window.matchMedia('(min-width: 1024px)');
+      if (!wide.matches) previewPanel.open = false;
+      wide.addEventListener?.('change', (event) => { if (event.matches) previewPanel.open = true; });
+    }
 
     const flatCategories = [];
     industries.forEach((ind) => {
@@ -818,7 +841,7 @@ const CONTACT_PREF_OPTIONS = ['Email', 'Phone call', 'Text message', 'Any is fin
         }
         if (categoryTypeContext) {
           const typeCard = document.querySelector(`.type-card[data-type="${typeSlug}"]`);
-          const typeLabel = typeCard ? typeCard.querySelector('span span')?.textContent : '';
+          const typeLabel = typeCard ? (typeCard.dataset.label || typeCard.querySelector('.type-name')?.textContent || '') : '';
           categoryTypeContext.textContent = typeLabel ? `For: ${typeLabel}` : 'For your listing type';
           categoryTypeContext.classList.remove('hidden');
         }
@@ -1218,7 +1241,7 @@ const CONTACT_PREF_OPTIONS = ['Email', 'Phone call', 'Text message', 'Any is fin
       }
       if (previewType) {
         const card = typeCardsArr.find((c) => (c.getAttribute('data-type') || '') === selectedType);
-        const label = card ? card.querySelector('span span')?.textContent : '';
+        const label = card ? (card.dataset.label || card.querySelector('.type-name')?.textContent || '') : '';
         if (label) {
           previewType.textContent = label;
           previewType.style.color = 'var(--text-soft)';
@@ -1347,14 +1370,20 @@ const CONTACT_PREF_OPTIONS = ['Email', 'Phone call', 'Text message', 'Any is fin
     });
 
     // ---------------------------------------------------------------------
-    // Form submission guard — listing type is the only client-gated field;
-    // category selection is optional (server accepts listings without one).
+    // Submission. Listing type is the only client-gated field; category
+    // selection is optional (server accepts listings without one). The form
+    // keeps its native POST as the no-JS fallback; with JS the same payload is
+    // sent as JSON so a server-side rejection (rate limit, guest rules, spam
+    // check, duplicate, outage) is shown inline and the entries survive.
     // ---------------------------------------------------------------------
     const formStatus = document.getElementById('form-status');
     const reviewStatus = document.getElementById('review-status');
     const stickyStatus = document.getElementById('sticky-status');
     const publishBtn = document.getElementById('publish-btn');
     const reviewPublishBtn = document.getElementById('review-publish-btn');
+    const reviewDraftBtn = document.getElementById('review-draft-btn');
+    // Mirrors publishBlockReason() in src/lib/formGuards.mjs (server stays authoritative).
+    const LOCATION_RULE = 'Add a city or state, or mark the listing as online-only.';
     function showFormStatus(message, kind) {
       [formStatus, reviewStatus, stickyStatus].forEach((el) => {
         if (!el) return;
@@ -1375,11 +1404,109 @@ const CONTACT_PREF_OPTIONS = ['Email', 'Phone call', 'Text message', 'Any is fin
           button.textContent = button.dataset.label || 'Publish';
         }
       });
+      [saveDraftBtn, reviewDraftBtn].forEach((button) => {
+        if (button) button.disabled = busy;
+      });
+    }
+    function setDraftBusy(busy) {
+      [saveDraftBtn, reviewDraftBtn].forEach((button) => {
+        if (!button) return;
+        button.disabled = busy;
+        if (busy) {
+          button.setAttribute('aria-busy', 'true');
+          button.textContent = 'Saving…';
+        } else {
+          button.removeAttribute('aria-busy');
+          button.textContent = 'Save draft';
+        }
+      });
+    }
+    // One payload builder for publish and draft — shaped like listingInputSchema.
+    function collectListing() {
+      const fd = new FormData(form);
+      const str = (key) => String(fd.get(key) ?? '').trim();
+      const on = (key) => fd.get(key) === '1';
+      const year = str('yearFounded');
+      const industrySlug = str('industrySlug');
+      return {
+        name: str('name'),
+        typeSlug: str('typeSlug'),
+        tagline: str('tagline'),
+        description: str('description'),
+        website: str('website'),
+        phone: str('phone'),
+        email: str('email'),
+        showEmail: on('showEmail'),
+        showPhone: on('showPhone'),
+        showWebsite: on('showWebsite'),
+        showAddress: on('showAddress'),
+        showDenomination: on('showDenomination'),
+        city: str('city'),
+        region: str('region'),
+        postalCode: str('postalCode'),
+        industrySlug,
+        categorySlug: str('categorySlug'),
+        customCategory: str('customCategory'),
+        customDenomination: str('customDenomination'),
+        statementOfFaith: str('statementOfFaith'),
+        priceRange: str('priceRange'),
+        yearFounded: year ? Number(year) : undefined,
+        employeeCount: str('employeeCount'),
+        ownershipType: str('ownershipType'),
+        serviceArea: str('serviceArea'),
+        hours: str('hours'),
+        contactPreference: str('contactPreference'),
+        isOnlineOnly: on('isOnlineOnly'),
+        isHiring: on('isHiring'),
+        careersUrl: str('careersUrl'),
+        industries: industrySlug ? [industrySlug] : [],
+        denominations: Array.from(new Set(fd.getAll('denominations').map((v) => String(v).trim()).filter(Boolean))),
+        hashtags: str('hashtags').split(',').map((s) => s.trim().replace(/^#/, '')).filter(Boolean),
+      };
+    }
+    // Publish-only fields the server gate reads alongside the listing.
+    function publishGateFields() {
+      const fd = new FormData(form);
+      return {
+        attestation: Boolean(fd.get('attestation')),
+        terms: Boolean(fd.get('terms')),
+        hp_company: String(fd.get('hp_company') ?? '').trim(),
+      };
     }
     document.querySelectorAll('details[data-open-if]').forEach((panel) => {
       const filled = Array.from(panel.querySelectorAll('input, select, textarea')).some((el) => 'value' in el && String(el.value).trim() !== '');
       if (filled) panel.open = true;
     });
+    function publishFailed(message) {
+      setPublishBusy(false);
+      reviewAttempted = true;
+      updateReviewChecklist();
+      showFormStatus(message, 'error');
+    }
+    async function publishListing(listing) {
+      setPublishBusy(true);
+      showFormStatus('Publishing your listing…', 'ok');
+      let res;
+      try {
+        res = await fetch('/api/listings', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+          body: JSON.stringify(listing),
+        });
+      } catch {
+        publishFailed('Could not reach the server. Check your connection and try again — your entries are still here.');
+        return;
+      }
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && data && data.ok) {
+        const params = new URLSearchParams({ success: '1' });
+        if (data.slug) params.set('slug', data.slug);
+        if (data.status) params.set('status', data.status);
+        window.location.assign('/add-listing?' + params.toString());
+        return;
+      }
+      publishFailed((data && data.error) || 'Could not publish the listing. Please try again.');
+    }
     if (form) {
       form.addEventListener('invalid', (event) => {
         const field = event.target;
@@ -1424,11 +1551,21 @@ const CONTACT_PREF_OPTIONS = ['Email', 'Phone call', 'Text message', 'Any is fin
           showFormStatus(careersMessage, 'error');
           return;
         }
-        setPublishBusy(true);
-        if (saveDraftBtn) saveDraftBtn.disabled = true;
-        const reviewDraftBtn = document.getElementById('review-draft-btn');
-        if (reviewDraftBtn) reviewDraftBtn.disabled = true;
-        showFormStatus('Publishing your listing…', 'ok');
+        const listing = collectListing();
+        if (!listing.isOnlineOnly && !listing.city && !listing.region) {
+          e.preventDefault();
+          reviewAttempted = true;
+          updateReviewChecklist();
+          showFormStatus(LOCATION_RULE, 'error');
+          cityInput?.focus();
+          return;
+        }
+        if (publishBtn && publishBtn.disabled) {
+          e.preventDefault();
+          return;
+        }
+        e.preventDefault();
+        publishListing({ ...listing, ...publishGateFields() });
       });
     }
 
@@ -1437,50 +1574,13 @@ const CONTACT_PREF_OPTIONS = ['Email', 'Phone call', 'Text message', 'Any is fin
     // ---------------------------------------------------------------------
     if (saveDraftBtn && form) {
       saveDraftBtn.addEventListener('click', async () => {
-        const fd = new FormData(form);
-        const listing = {
-          name: String(fd.get('name') ?? ''),
-          typeSlug: String(fd.get('typeSlug') ?? ''),
-          tagline: String(fd.get('tagline') ?? ''),
-          description: String(fd.get('description') ?? ''),
-          website: String(fd.get('website') ?? ''),
-          phone: String(fd.get('phone') ?? ''),
-          email: String(fd.get('email') ?? ''),
-          city: String(fd.get('city') ?? ''),
-          region: String(fd.get('region') ?? ''),
-          postalCode: String(fd.get('postalCode') ?? ''),
-          industrySlug: String(fd.get('industrySlug') ?? ''),
-          categorySlug: String(fd.get('categorySlug') ?? ''),
-          customCategory: String(fd.get('customCategory') ?? ''),
-          statementOfFaith: String(fd.get('statementOfFaith') ?? ''),
-          priceRange: String(fd.get('priceRange') ?? ''),
-          yearFounded: fd.get('yearFounded') ? Number(fd.get('yearFounded')) : undefined,
-          employeeCount: String(fd.get('employeeCount') ?? ''),
-          ownershipType: String(fd.get('ownershipType') ?? ''),
-          serviceArea: String(fd.get('serviceArea') ?? ''),
-          hours: String(fd.get('hours') ?? ''),
-          contactPreference: String(fd.get('contactPreference') ?? ''),
-          isOnlineOnly: fd.get('isOnlineOnly') === '1',
-          isHiring: fd.get('isHiring') === '1',
-          careersUrl: String(fd.get('careersUrl') ?? ''),
-          denominations: fd.getAll('denominations').map((v) => String(v)),
-          hashtags: String(fd.get('hashtags') ?? '').split(',').map((s) => s.trim().replace(/^#/, '')).filter(Boolean),
-        };
+        const listing = collectListing();
         if (!listing.name || listing.name.trim().length < 2) {
           showFormStatus('Please enter a listing name before saving a draft.', 'error');
           nameInput?.focus();
           return;
         }
-        const draftLabel = saveDraftBtn.textContent;
-        const reviewDraftBtn = document.getElementById('review-draft-btn');
-        saveDraftBtn.disabled = true;
-        saveDraftBtn.setAttribute('aria-busy', 'true');
-        saveDraftBtn.textContent = 'Saving…';
-        if (reviewDraftBtn) {
-          reviewDraftBtn.disabled = true;
-          reviewDraftBtn.setAttribute('aria-busy', 'true');
-          reviewDraftBtn.textContent = 'Saving…';
-        }
+        setDraftBusy(true);
         showFormStatus('Saving draft…', 'ok');
         try {
           const res = await fetch('/api/submissions', {
@@ -1499,19 +1599,10 @@ const CONTACT_PREF_OPTIONS = ['Email', 'Phone call', 'Text message', 'Any is fin
         } catch {
           showFormStatus('Could not save the draft. Please try again.', 'error');
         } finally {
-          saveDraftBtn.disabled = false;
-          saveDraftBtn.removeAttribute('aria-busy');
-          saveDraftBtn.textContent = draftLabel;
-          const reviewDraftBtn = document.getElementById('review-draft-btn');
-          if (reviewDraftBtn) {
-            reviewDraftBtn.disabled = false;
-            reviewDraftBtn.removeAttribute('aria-busy');
-            reviewDraftBtn.textContent = 'Save draft';
-          }
+          setDraftBusy(false);
         }
       });
     }
-    const reviewDraftBtn = document.getElementById('review-draft-btn');
     if (reviewDraftBtn && saveDraftBtn) {
       reviewDraftBtn.addEventListener('click', () => saveDraftBtn.click());
     }
@@ -1522,37 +1613,151 @@ const CONTACT_PREF_OPTIONS = ['Email', 'Phone call', 'Text message', 'Any is fin
   </script>
 
   <style>
-    .section-num {
-      font-size: 0.7rem;
-      font-weight: 800;
-      letter-spacing: 0.14em;
-      color: var(--accent);
-      flex-shrink: 0;
+    /* ---- Page frame: form column + sticky rail (≥1024px) ---- */
+    .builder { display: grid; gap: 1.25rem; }
+    .builder-form { display: grid; gap: 1.25rem; min-width: 0; }
+    .builder-rail { display: grid; gap: 0.9rem; align-content: start; min-width: 0; }
+    @media (min-width: 1024px) {
+      .builder { grid-template-columns: minmax(0, 1fr) 288px; gap: 1.75rem; align-items: start; }
+      .builder-form { order: 1; }
+      .builder-rail {
+        order: 2;
+        position: sticky;
+        top: 5.5rem;
+        max-height: calc(100vh - 6.5rem);
+        overflow: auto;
+        overscroll-behavior: contain;
+      }
+      .form-jump { flex-direction: column; gap: 0.3rem; }
+      .form-jump a { justify-content: flex-start; border-radius: 0.75rem; padding: 0.2rem 0.7rem 0.2rem 0.5rem; }
     }
+    .rail-preview { background: var(--surface); }
+    .rail-preview > summary { min-height: 40px; }
+    .rail-title { font-size: 0.875rem; font-weight: 700; color: var(--text); }
+    .rail-hint { margin-left: auto; font-size: 0.72rem; font-weight: 600; color: var(--text-mute); }
+    .rail-preview > summary::after { margin-left: 0.5rem; }
+    .rail-help { margin: 0; font-size: 0.78rem; line-height: 1.45; color: var(--text-mute); }
+    .rail-preview .rail-help { margin-top: 0.65rem; }
+    .rail-note { padding: 0 0.25rem; font-weight: 500; color: var(--text-soft); }
+    .preview-logo {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 3.25rem;
+      height: 3.25rem;
+      flex: none;
+      border: 1px solid var(--border);
+      border-radius: 0.8rem;
+      background: var(--surface-2);
+      color: var(--text-mute);
+      font-size: 0.6rem;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+
+    /* ---- Trust disclosure as a thin info strip ---- */
+    details.disclose.info-strip {
+      padding: 0.35rem 0.85rem;
+      border-radius: 0.8rem;
+      background: transparent;
+    }
+    details.disclose.info-strip[open] { padding-bottom: 0.9rem; background: var(--surface-2); }
+    .info-strip > summary { min-height: 40px; }
+    .info-strip-title {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.8125rem;
+      font-weight: 600;
+      color: var(--text-soft);
+    }
+    .info-strip-icon { width: 1rem; height: 1rem; flex: none; color: var(--accent); }
+
+    /* ---- Sections as ledger cards ---- */
+    .form-section { scroll-margin-top: 5.5rem; }
+    .form-section.card { padding: 1.25rem; border-radius: 1.1rem; }
+    @media (min-width: 640px) { .form-section.card { padding: 1.5rem; } }
+    .section-head { display: flex; align-items: flex-start; gap: 0.85rem; }
+    .section-head-copy { min-width: 0; flex: 1 1 auto; }
+    .section-head > .chip { margin-left: auto; align-self: center; flex: none; }
+    .section-num {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 2rem;
+      height: 2rem;
+      flex: none;
+      border: 1px solid var(--border-strong);
+      border-radius: 999px;
+      background: var(--surface-2);
+      color: var(--text-soft);
+      font-size: 0.72rem;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+    }
+    .section-title { font-size: 1.125rem; font-weight: 600; line-height: 1.25; letter-spacing: -0.01em; }
+    .section-lede { margin-top: 0.3rem; max-width: 62ch; font-size: 0.875rem; line-height: 1.5; color: var(--text-soft); }
+    .field-label { display: block; font-size: 0.875rem; font-weight: 500; color: var(--text); }
+    .field-help { display: block; margin-top: 0.3rem; font-size: 0.78rem; line-height: 1.45; color: var(--text-mute); }
+    p.field-help { margin-bottom: 0; }
+    .req { color: var(--accent); }
+    .disclose-hint { flex: none; margin-left: auto; font-size: 0.72rem; font-weight: 600; color: var(--text-mute); }
+
+    /* ---- Type tiles ---- */
+    .type-grid { display: grid; gap: 0.6rem; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    @media (min-width: 640px) { .type-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
     .type-card {
       position: relative;
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr);
+      gap: 0.6rem;
+      align-items: start;
+      min-height: 4.5rem;
+      padding: 0.7rem 0.75rem;
+      border: 1px solid var(--border);
+      border-radius: 0.9rem;
+      background: var(--surface);
+      text-align: left;
+      transition: border-color 0.18s ease, background-color 0.18s ease, box-shadow 0.18s ease;
     }
+    .type-card:hover { border-color: var(--accent); }
+    .type-icon {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 2.25rem;
+      height: 2.25rem;
+      border-radius: 999px;
+      background: var(--surface-2);
+      color: var(--text-soft);
+      transition: background-color 0.18s ease, color 0.18s ease;
+    }
+    .type-copy { display: grid; gap: 0.15rem; min-width: 0; }
+    .type-name { padding-right: 1.2rem; font-size: 0.875rem; font-weight: 700; line-height: 1.25; color: var(--text); }
+    .type-desc { font-size: 0.72rem; line-height: 1.4; color: var(--text-mute); }
     .type-card .type-check {
+      position: absolute;
+      top: 0.6rem;
+      right: 0.6rem;
       display: none;
       align-items: center;
       justify-content: center;
-      height: 1.25rem;
-      min-width: 1.25rem;
-      padding: 0 0.35rem;
-      border-radius: 9999px;
+      width: 1.2rem;
+      height: 1.2rem;
+      border-radius: 999px;
       font-size: 0.65rem;
       font-weight: 800;
       background: var(--accent);
-      color: #fff;
+      color: var(--accent-ink);
     }
     .type-card[aria-pressed='true'] {
-      border-color: var(--accent) !important;
-      background: var(--accent-soft) !important;
+      border-color: var(--accent);
+      background: var(--accent-soft);
       box-shadow: 0 0 0 1px var(--accent);
     }
-    .type-card[aria-pressed='true'] .type-check {
-      display: inline-flex;
-    }
+    .type-card[aria-pressed='true'] .type-icon { background: var(--accent); color: var(--accent-ink); }
+    .type-card[aria-pressed='true'] .type-check { display: inline-flex; }
     .type-card:focus-visible {
       outline: none;
       box-shadow: 0 0 0 2px var(--ring);
@@ -1565,12 +1770,11 @@ const CONTACT_PREF_OPTIONS = ['Email', 'Phone call', 'Text message', 'Any is fin
       outline: 2px solid var(--accent);
       outline-offset: -2px;
     }
-    .org-card h3 {
-      letter-spacing: 0.01em;
-    }
     select.input {
       max-width: 100%;
     }
+
+    /* ---- Hiring / online control cards ---- */
     .control-grid {
       display: grid;
       gap: 1rem;
@@ -1584,13 +1788,13 @@ const CONTACT_PREF_OPTIONS = ['Email', 'Phone call', 'Text message', 'Any is fin
       display: flex;
       flex-direction: column;
       gap: 0.75rem;
-      height: 100%;
       min-width: 0;
       border: 1px solid var(--border);
       border-radius: 0.9rem;
       background: var(--surface);
       padding: 1rem;
     }
+    .control-card { height: 100%; }
     .control-fieldset {
       display: flex;
       flex-direction: column;
@@ -1618,7 +1822,7 @@ const CONTACT_PREF_OPTIONS = ['Email', 'Phone call', 'Text message', 'Any is fin
       font-weight: 700;
       line-height: 1.35;
     }
-    .control-label { display: block; }
+    .control-label { display: block; font-size: 0.875rem; font-weight: 500; }
     .control-row {
       display: flex;
       align-items: center;
@@ -1632,6 +1836,7 @@ const CONTACT_PREF_OPTIONS = ['Email', 'Phone call', 'Text message', 'Any is fin
       min-width: 0;
     }
     .choice-pill {
+      position: relative;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -1647,6 +1852,22 @@ const CONTACT_PREF_OPTIONS = ['Email', 'Phone call', 'Text message', 'Any is fin
       font-weight: 500;
       line-height: 1.2;
       text-align: center;
+      cursor: pointer;
+    }
+    /* The radio itself covers the pill: the whole control is its own hit target
+       (no label relay), so pointer clicks and automation land on the input. */
+    .choice-pill > input {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      padding: 0;
+      clip: auto;
+      clip-path: none;
+      overflow: visible;
+      white-space: normal;
+      opacity: 0;
       cursor: pointer;
     }
     label.choice-pill:hover {
@@ -1685,50 +1906,43 @@ const CONTACT_PREF_OPTIONS = ['Email', 'Phone call', 'Text message', 'Any is fin
       margin: 0;
       margin-top: auto;
       min-height: 2.6rem;
-      font-size: 0.75rem;
+      font-size: 0.78rem;
       line-height: 1.45;
       color: var(--text-mute);
     }
     .control-card[hidden],
     .careers-card[hidden] { display: none !important; }
-    .public-grid {
+
+    /* ---- Settings rows: copy left, state + switch right ---- */
+    .setting-list { display: grid; gap: 0.5rem; }
+    .setting-row {
       display: grid;
-      gap: 1rem;
-      align-items: stretch;
-    }
-    @media (min-width: 640px) {
-      .public-grid { grid-template-columns: 1fr 1fr; }
-    }
-    @media (min-width: 1024px) {
-      .public-grid { grid-template-columns: 1fr 1fr 1fr; }
-    }
-    .public-card {
-      display: flex;
-      flex-direction: column;
-      height: 100%;
-      gap: 0.75rem;
-      border: 1px solid var(--border);
-      border-radius: 0.9rem;
-      background: var(--surface);
-      padding: 1rem;
-    }
-    .public-label {
-      display: block;
-      font-size: 0.875rem;
-      font-weight: 650;
-    }
-    .public-toggle {
-      display: flex;
+      grid-template-columns: minmax(0, 1fr) auto auto;
       align-items: center;
-      gap: 0.55rem;
-      min-height: 44px;
-      margin-top: 0.15rem;
+      gap: 0.75rem;
+      min-height: 56px;
+      padding: 0.55rem 0.8rem;
+      border: 1px solid var(--border);
+      border-radius: 0.8rem;
+      background: var(--surface);
       cursor: pointer;
-      color: var(--text-soft);
-      font-size: 0.75rem;
-      font-weight: 650;
     }
-    .public-toggle-copy { min-width: 0; line-height: 1.35; }
+    .setting-row:hover { border-color: var(--border-strong); }
+    .setting-copy { display: grid; gap: 0.15rem; min-width: 0; }
+    .setting-title { font-size: 0.8125rem; font-weight: 600; line-height: 1.35; color: var(--text); }
+    .setting-help { font-size: 0.75rem; line-height: 1.4; color: var(--text-mute); }
+    .setting-badge {
+      border-radius: 999px;
+      padding: 0.12rem 0.4rem;
+      font-size: 0.65rem;
+      font-weight: 800;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+    .setting-badge-off { background: var(--surface-2); color: var(--text-mute); }
+    .setting-badge-on { display: none; background: var(--accent-soft); color: var(--accent); }
+    .setting-row .peer:checked ~ .setting-badge-off { display: none; }
+    .setting-row .peer:checked ~ .setting-badge-on { display: inline-block; }
     .public-switch {
       position: relative;
       display: inline-block;
@@ -1739,6 +1953,7 @@ const CONTACT_PREF_OPTIONS = ['Email', 'Phone call', 'Text message', 'Any is fin
       background: #d8d0ba;
       transition: background-color 0.2s ease;
     }
+    [data-theme='dark'] .public-switch { background: var(--border-strong); }
     .public-switch::after {
       content: '';
       position: absolute;
@@ -1751,42 +1966,44 @@ const CONTACT_PREF_OPTIONS = ['Email', 'Phone call', 'Text message', 'Any is fin
       box-shadow: 0 1px 2px rgba(15, 16, 20, 0.16);
       transition: transform 0.2s ease;
     }
-    .public-toggle .peer:checked + .public-switch { background: var(--accent); }
-    .public-toggle .peer:checked + .public-switch::after { transform: translateX(1.25rem); }
-    .public-toggle .peer:focus-visible + .public-switch {
+    .setting-row .peer:checked ~ .public-switch { background: var(--accent); }
+    .setting-row .peer:checked ~ .public-switch::after { transform: translateX(1.25rem); }
+    .setting-row .peer:focus-visible ~ .public-switch {
       outline: 2px solid var(--accent);
       outline-offset: 3px;
     }
-    .public-badge {
-      flex: none;
-      margin-left: auto;
-      border-radius: 999px;
-      padding: 0.12rem 0.4rem;
-      font-size: 0.65rem;
-      font-weight: 800;
-      letter-spacing: 0.04em;
-      text-transform: uppercase;
+    .public-panel {
+      border: 1px solid var(--border);
+      border-radius: 1rem;
+      background: var(--surface-2);
+      padding: 1rem;
     }
-    .public-badge-off { background: var(--surface-2); color: var(--text-mute); }
-    .public-badge-on { display: none; background: var(--accent-soft); color: var(--accent); }
-    .public-toggle .peer:checked ~ .public-badge-off { display: none; }
-    .public-toggle .peer:checked ~ .public-badge-on { display: inline-block; }
-    .public-help {
-      margin-top: auto;
-      min-height: 4.4rem;
-      font-size: 0.75rem;
-      line-height: 1.45;
-      color: var(--text-mute);
-    }
-    .public-note { display: block; margin-top: 0.35rem; color: var(--text-soft); }
-    .review-layout {
+    @media (min-width: 640px) { .public-panel { padding: 1.25rem; } }
+    .public-list { display: grid; gap: 0.75rem; }
+    .public-card {
       display: grid;
-      gap: 1rem;
-      align-items: stretch;
+      gap: 0.6rem;
+      min-width: 0;
+      border: 1px solid var(--border);
+      border-radius: 0.9rem;
+      background: var(--surface);
+      padding: 0.9rem 1rem 1rem;
     }
-    @media (min-width: 900px) {
-      .review-layout { grid-template-columns: 1.05fr 0.95fr; }
+    @media (min-width: 768px) {
+      .public-card { grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr); align-items: start; column-gap: 1rem; }
+      .public-card > .field-help { grid-column: 1; }
+      .public-card > .public-toggle { grid-column: 2; grid-row: 1 / span 2; }
     }
+    .public-label {
+      display: block;
+      font-size: 0.875rem;
+      font-weight: 500;
+    }
+    .public-toggle { margin: 0; }
+    .public-toggle-copy { min-width: 0; }
+    .public-help { min-height: 0; }
+
+    /* ---- Review ---- */
     .review-card-head {
       display: flex;
       align-items: center;
@@ -1810,29 +2027,11 @@ const CONTACT_PREF_OPTIONS = ['Email', 'Phone call', 'Text message', 'Any is fin
       background: var(--surface-2);
       padding: 0.9rem;
     }
-    .review-links,
     .review-actions {
       display: flex;
       flex-wrap: wrap;
       gap: 0.5rem;
     }
-    .review-links { margin-top: auto; }
-    .review-links a {
-      display: inline-flex;
-      align-items: center;
-      min-height: 44px;
-      border: 1px solid var(--border);
-      border-radius: 999px;
-      padding: 0.2rem 0.75rem;
-      background: var(--surface);
-      color: var(--text);
-      font-size: 0.75rem;
-      font-weight: 700;
-      text-decoration: underline;
-      text-underline-offset: 2px;
-    }
-    .review-links a:hover { border-color: var(--accent); }
-    .review-links a:focus-visible,
     .review-actions .btn:focus-visible,
     .review-check input:focus-visible {
       outline: 2px solid var(--accent);
@@ -1869,8 +2068,10 @@ const CONTACT_PREF_OPTIONS = ['Email', 'Phone call', 'Text message', 'Any is fin
       letter-spacing: 0.04em;
       text-transform: uppercase;
     }
+    .review-checklist li[data-state='needed'] .check-state { color: var(--text-mute); }
+    .review-checklist li[data-state='ready'] .check-state { color: var(--accent); }
     .review-checklist li[data-state='needed'] .check-state::before { content: '○ '; }
-    .review-checklist li[data-state='ready'] .check-state::before { content: '● '; }
+    .review-checklist li[data-state='ready'] .check-state::before { content: '✓ '; }
     .review-check {
       display: flex;
       align-items: flex-start;
@@ -1897,27 +2098,14 @@ const CONTACT_PREF_OPTIONS = ['Email', 'Phone call', 'Text message', 'Any is fin
       from { opacity: 0; transform: translateY(-4px); }
       to { opacity: 1; transform: none; }
     }
-    .req { color: var(--accent); }
-    .opt {
-      display: inline-flex;
-      margin-left: 0.35rem;
-      border-radius: 999px;
-      padding: 0.05rem 0.4rem;
-      background: var(--surface-2);
-      color: var(--text-mute);
-      font-size: 0.65rem;
-      font-weight: 700;
-      letter-spacing: 0.04em;
-      text-transform: uppercase;
-      vertical-align: 0.1em;
-    }
+
+    /* ---- Step navigation (pills on small screens, vertical stepper in the rail) ---- */
     .form-jump {
       display: flex;
       flex-wrap: wrap;
       gap: 0.4rem;
+      counter-reset: step;
     }
-    .form-section { scroll-margin-top: 5.5rem; }
-    .form-jump { counter-reset: step; }
     .form-jump a {
       display: inline-flex;
       min-height: 40px;
@@ -1939,10 +2127,17 @@ const CONTACT_PREF_OPTIONS = ['Email', 'Phone call', 'Text message', 'Any is fin
       width: 1.35rem; height: 1.35rem; border-radius: 999px;
       background: var(--surface-2); border: 1px solid var(--border-strong);
       font-size: 0.68rem; font-weight: 600; color: var(--text-soft);
+      transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
     }
     .form-jump a[data-complete='true']::before {
       content: '✓';
       background: var(--accent); border-color: var(--accent); color: var(--accent-ink);
+      animation: step-done 0.28s ease;
+    }
+    @keyframes step-done {
+      from { transform: scale(0.6); }
+      60% { transform: scale(1.12); }
+      to { transform: none; }
     }
     .form-jump a[aria-current='step'] {
       border-color: var(--accent);
@@ -1951,6 +2146,9 @@ const CONTACT_PREF_OPTIONS = ['Email', 'Phone call', 'Text message', 'Any is fin
       font-weight: 600;
     }
     .form-jump a:hover { border-color: var(--accent); color: var(--text); }
+    .form-jump a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+    /* ---- Disclosures ---- */
     details.disclose {
       border: 1px solid var(--border);
       border-radius: 1rem;
@@ -1978,6 +2176,8 @@ const CONTACT_PREF_OPTIONS = ['Email', 'Phone call', 'Text message', 'Any is fin
     }
     details.disclose[open] > summary::after { transform: rotate(225deg) translateY(-1px); }
     details.disclose > summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 0.5rem; }
+
+    /* ---- Status + buttons ---- */
     .form-status {
       border-radius: 0.85rem;
       padding: 0.75rem 0.9rem;
@@ -1988,12 +2188,42 @@ const CONTACT_PREF_OPTIONS = ['Email', 'Phone call', 'Text message', 'Any is fin
     .form-status.is-ok { background: var(--surface-2); color: var(--text); }
     .btn:disabled { cursor: not-allowed; opacity: 0.72; }
     .btn[aria-busy='true'] { cursor: progress; }
+
+    /* ---- Sticky action bar ---- */
+    .sticky-progress { height: 2px; width: 100%; background: var(--border); }
+    .sticky-progress-fill { height: 100%; background: var(--accent); transition: width 0.3s ease; }
+    .sticky-row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.5rem 0.75rem;
+      min-height: 56px;
+      padding-top: 0.5rem;
+      padding-bottom: 0.5rem;
+    }
+    .sticky-text { margin: 0; flex: 1 1 auto; min-width: 9rem; font-size: 0.78rem; font-weight: 600; color: var(--text-soft); }
+    #sticky-status { flex: 1 1 100%; order: 1; padding: 0.45rem 0.7rem; font-size: 0.8125rem; }
+    .sticky-actions { display: flex; gap: 0.5rem; margin-left: auto; order: 2; }
+    .sticky-actions .btn { min-height: 40px; padding-top: 0.5rem; padding-bottom: 0.5rem; }
+    @media (max-width: 639px) {
+      .sticky-actions { width: 100%; }
+      .sticky-actions .btn { flex: 1 1 0; }
+    }
+    @media (min-width: 640px) {
+      #sticky-status { flex: 0 1 auto; order: 0; }
+    }
+
     @media (prefers-reduced-motion: reduce) {
       .choice-pill,
       .choice-mark,
+      .type-card,
+      .type-icon,
       .public-switch,
       .public-switch::after,
       .form-status,
+      .form-jump a,
+      .form-jump a::before,
+      .sticky-progress-fill,
       details.disclose > summary::after {
         transition: none;
         animation: none;

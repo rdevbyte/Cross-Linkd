@@ -44,14 +44,16 @@ const extraTags = Math.max(0, l.hashtags.length - MAX_TAGS);
     const RING_W = 1.5;
     const n2 = (v: number) => (Math.round(v * 100) / 100).toString();
 
-    function fitTrace(svg: SVGSVGElement) {
-      const b = svg.getBoundingClientRect();
-      const w = b.width;
-      const h = b.height;
+    // Measure the layout box, never getBoundingClientRect(): while a card is
+    // mid-FLIP (search layout toggle) its transform scales the client rect to the
+    // *previous* layout, and a ring fitted to that stays wrong until the next resize.
+    function fitTrace(svg: SVGSVGElement, size?: { width: number; height: number }) {
+      const card = svg.closest('article');
+      const w = size?.width ?? (card ? card.clientWidth : svg.clientWidth);
+      const h = size?.height ?? (card ? card.clientHeight : svg.clientHeight);
       if (w < 24 || h < 24) return;
       svg.removeAttribute('viewBox');
       svg.removeAttribute('preserveAspectRatio');
-      const card = svg.closest('article');
       const cssRadius = card ? parseFloat(getComputedStyle(card).borderTopLeftRadius) || 0 : 12;
       // The SVG canvas starts just inside the card's 1px border, so the ring's
       // outer edge (centerline + RING_W/2) lands exactly on the card corner.
@@ -82,7 +84,7 @@ const extraTags = Math.max(0, l.hashtags.length - MAX_TAGS);
     }
 
     const traceRO = new ResizeObserver((entries) => {
-      for (const entry of entries) fitTrace(entry.target as SVGSVGElement);
+      for (const entry of entries) fitTrace(entry.target as SVGSVGElement, entry.contentRect);
     });
     document.querySelectorAll<SVGSVGElement>('.card-trace').forEach((svg) => {
       fitTrace(svg);

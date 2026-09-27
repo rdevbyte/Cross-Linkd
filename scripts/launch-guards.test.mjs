@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync, statSync } from 'node:fs';
+import { join } from 'node:path';
 import test from 'node:test';
 import { claimError, contactError, honeypotTripped, publishBlockReason, safeReturnPath } from '../src/lib/formGuards.mjs';
 import { rateLimit, resetRateLimit } from '../src/lib/rateLimit.mjs';
@@ -81,5 +82,27 @@ test('launch copy no longer promises an unstaffed inbox or a missing audit log',
   assert.doesNotMatch(about, /we will reply within 1–2 business days/);
   for (const path of ['../src/pages/guidelines.astro', '../src/pages/appeals.astro', '../src/pages/feedback.astro', '../src/pages/404.astro', '../src/pages/api/contact.ts', '../src/pages/api/claims.ts']) {
     assert.equal(readFileSync(new URL(path, import.meta.url), 'utf8').length > 0, true, path);
+  }
+});
+
+test('every .astro frontmatter fence is exactly three dashes', () => {
+  // A `------` fence (seen in Footer.astro) makes the compiler treat the extra
+  // dashes as page text, so a literal "---" rendered on every page.
+  const root = new URL('../src/', import.meta.url).pathname;
+  const files = [];
+  const walk = (dir) => {
+    for (const entry of readdirSync(dir)) {
+      const full = join(dir, entry);
+      if (statSync(full).isDirectory()) walk(full);
+      else if (entry.endsWith('.astro')) files.push(full);
+    }
+  };
+  walk(root);
+  assert.ok(files.length > 20, 'astro components found');
+  for (const file of files) {
+    const lines = readFileSync(file, 'utf8').split('\n');
+    const fences = lines.filter((line) => /^-{3,}\s*$/.test(line));
+    for (const fence of fences) assert.equal(fence.trim(), '---', `${file}: malformed frontmatter fence "${fence}"`);
+    if (lines[0] === '---') assert.ok(fences.length >= 2, `${file}: frontmatter is never closed`);
   }
 });

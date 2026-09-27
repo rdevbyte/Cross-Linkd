@@ -1,7 +1,7 @@
 import type { APIRoute } from 'astro';
 import { hasDatabase } from '@/db/client';
 import { listingInputSchema } from '@/lib/validation';
-import { saveListing } from '@/lib/submissions';
+import { duplicateExists, saveListing } from '@/lib/submissions';
 import { honeypotTripped, listingSpamReason, publishBlockReason } from '@/lib/formGuards.mjs';
 import { rateLimit } from '@/lib/rateLimit.mjs';
 
@@ -46,6 +46,17 @@ function listingGate(
  */
 const creationAction = (user: { id?: string } | null | undefined): 'publish' | 'submit' => (user?.id ? 'publish' : 'submit');
 
+/**
+ * Same owner-scoped duplicate rule as /api/submissions and PATCH /api/listings/[id]:
+ * one listing per (owner, name, city). Guests have no owner to scope by, so their
+ * repeats are left to moderation.
+ */
+const DUPLICATE_MESSAGE = 'You already have a listing with this name in this city.';
+async function ownerDuplicate(user: { id?: string } | null | undefined, name: string, city?: string | null) {
+  if (!user?.id || !hasDatabase()) return false;
+  return duplicateExists(user.id, name, city);
+}
+
 export const POST: APIRoute = async ({ request, locals, redirect }) => {
   const isJson = request.headers.get('content-type')?.includes('application/json');
 
@@ -87,6 +98,12 @@ export const POST: APIRoute = async ({ request, locals, redirect }) => {
     let status = '';
     if (hasDatabase()) {
       try {
+        if (await ownerDuplicate(locals.user, parsed.data.name, parsed.data.city)) {
+          return new Response(JSON.stringify({ ok: false, error: DUPLICATE_MESSAGE }), {
+            status: 409,
+            headers: { 'Content-Type': 'application/json' },
+          });
+        }
         const ownerId = locals.user?.id ?? null;
         const result = await saveListing(ownerId, parsed.data, { action: creationAction(locals.user) });
         createdSlug = result.slug;
@@ -168,6 +185,9 @@ export const POST: APIRoute = async ({ request, locals, redirect }) => {
   let status = '';
   if (hasDatabase()) {
     try {
+      if (await ownerDuplicate(locals.user, d.name, d.city)) {
+        return redirect(`/add-listing?error=${encodeURIComponent(DUPLICATE_MESSAGE)}`, 303);
+      }
       const ownerId = locals.user?.id ?? null;
       const result = await saveListing(ownerId, d, { action: creationAction(locals.user) });
       createdSlug = result.slug;

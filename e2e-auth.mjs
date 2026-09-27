@@ -169,7 +169,8 @@ try {
     method: 'PATCH', headers: { 'Content-Type': 'application/json', cookie },
     body: JSON.stringify({ action: 'save', listing: { name: 'Halo Granola Co.', typeSlug: 'business' } }),
   });
-  check('published listing locked for owner edits (409)', locked.status === 409, `status=${locked.status}`);
+  // Owners may keep editing a published listing (only suspended/archived are locked).
+  check('owner can edit a published listing in place (200)', locked.status === 200, `status=${locked.status}`);
 
   // ============ 4. Request changes → owner revises & resubmits ============
   await O.click('#listing-form-card summary');
@@ -178,7 +179,12 @@ try {
   await O.fill('#listing-form input[name="city"]', 'Austin');
   await O.fill('#listing-form input[name="region"]', 'TX');
   await O.fill('#listing-form input[name="email"]', 'hi@cedarsparrow.test');
-  await O.click('button[data-intent="submit"]');
+  // Wait for the submission response itself: networkidle resolves before a fetch
+  // that starts after the click, and the table row is rendered optimistically.
+  await Promise.all([
+    O.waitForResponse((res) => res.url().endsWith('/api/submissions') && res.request().method() === 'POST'),
+    O.click('button[data-intent="submit"]'),
+  ]);
   await O.waitForLoadState('networkidle');
   check('second listing pending', (await O.locator('tr:has-text("Cedar & Sparrow") .chip').first().innerText()).includes('Pending Review'));
 

@@ -18,6 +18,17 @@ const q = (text, params) => db.query(text, params);
 const browser = await chromium.launch();
 const stamp = Date.now().toString(36);
 
+// Guest submissions enter moderation (pending_review) and get no public page
+// yet, so the UI flow below runs as a signed-in owner, who publishes immediately.
+async function signup(page, u) {
+  await page.goto(`${BASE}/auth/signup`, { waitUntil: 'networkidle' });
+  await page.fill('input[name="displayName"]', u.name);
+  await page.fill('input[name="email"]', u.email);
+  await page.fill('input[name="password"]', u.password);
+  await page.check('form input[type="checkbox"]');
+  await Promise.all([page.waitForURL('**/dashboard**'), page.click('button[type="submit"]')]);
+}
+
 try {
   const context = await browser.newContext({ viewport: { width: 1280, height: 900 } });
   const page = await context.newPage();
@@ -27,10 +38,14 @@ try {
   // ---------------------------------------------------------------------------
   console.log('Testing Server-side API validation...');
 
+  // Guest JSON submissions pass the same publish gate as the form: both
+  // statements, a contact email, and a city/state (or online-only).
+  const guestGate = { attestation: true, terms: true, email: 'api-guest@example.test', city: 'Austin', region: 'TX' };
   const rejectRes = await fetch(`${BASE}/api/listings`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
+      ...guestGate,
       name: `Too Many Denoms ${stamp}`,
       typeSlug: 'business',
       description: 'Testing server validation to ensure at most two denominations can be submitted.',
@@ -47,6 +62,7 @@ try {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
+      ...guestGate,
       name: `Valid Two Denoms ${stamp}`,
       typeSlug: 'business',
       description: 'Testing valid submission with exactly two denominations and hierarchical category.',
@@ -63,6 +79,9 @@ try {
   check('DB: stores denominations_list jsonb with 2 items', Array.isArray(valid2Db.rows[0].denominations_list) && valid2Db.rows[0].denominations_list.length === 2);
   check('DB: stores industry_slug', valid2Db.rows[0].industry_slug === 'construction-skilled-trades');
   check('DB: stores category_slug', valid2Db.rows[0].category_slug === 'plumbing');
+  check('DB: guest API submission waits for moderation', valid2Db.rows[0].status === 'pending_review', `got=${valid2Db.rows[0].status}`);
+
+  await signup(page, { name: 'Denom Tester', email: `denoms-${stamp}@test.dev`, password: 'Sturdy-Pass-123' });
 
   // ---------------------------------------------------------------------------
   // 2. Type is required before categories are offered (single searchable picker)
@@ -264,10 +283,13 @@ try {
   await page.fill('input[name="postalCode"]', '60187');
   await page.fill('input[name="phone"]', '(630) 555-1234');
   await page.fill('input[name="email"]', 'inquiry@gracebookbinders.test');
-  // The agreement control is a peer-based toggle slider; toggle it programmatically
-  // (same pattern as the online-only toggle).
-  await page.evaluate(() => document.querySelector('form input[type="checkbox"][required]').click());
-  check('agreement toggle engaged before submit', await page.locator('form input[type="checkbox"][required]').isChecked());
+  // Both required statements must be checked or the browser will not submit.
+  await page.evaluate(() => {
+    document.querySelectorAll('#add-listing-form input[type="checkbox"][required]').forEach((box) => {
+      if (!box.checked) box.click();
+    });
+  });
+  check('agreement toggles engaged before submit', await page.locator('#input-attestation').isChecked() && await page.locator('#input-terms').isChecked());
 
   await Promise.all([
     page.waitForURL('**/add-listing?success=1**'),

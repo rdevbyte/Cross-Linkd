@@ -1,7 +1,9 @@
 import { existsSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import EmbeddedPostgres from 'embedded-postgres';
 
-const dbDir = '/home/user/crosslinkd/data/db';
+// Cluster lives in the repo's git-ignored data/db/ (override with CL_PG_DATA_DIR).
+const dbDir = process.env.CL_PG_DATA_DIR || fileURLToPath(new URL('../data/db', import.meta.url));
 const pg = new EmbeddedPostgres({
   databaseDir: dbDir,
   port: 5433,

@@ -4,6 +4,7 @@ import ListingCard from '@/components/ListingCard.astro';
 import SearchBar from '@/components/SearchBar';
 import EmptyState from '@/components/EmptyState.astro';
 import { searchListings } from '@/lib/search';
+import { withoutParams } from '@/lib/searchParams';
 import { getDbListings } from '@/lib/publicListings';
 import { isUsRegion } from '@/lib/trustCopy';
 import { LISTING_TYPES } from '@/data/listing-types';
@@ -106,13 +107,7 @@ const pageUrl = (p: number) => {
 };
 /** Same search minus one or more params — powers the removable "active filter" chips. */
 const urlWithout = (...drop: Array<[key: string, value?: string]>) => {
-  const sp = new URLSearchParams(params);
-  for (const [key, value] of drop) {
-    if (value === undefined) sp.delete(key);
-    else sp.delete(key, value);
-  }
-  sp.delete('page');
-  const qs = sp.toString();
+  const qs = withoutParams(params, ...drop, ['page']).toString();
   return qs ? `/search?${qs}` : '/search';
 };
 const activeFilters: { label: string; href: string }[] = [

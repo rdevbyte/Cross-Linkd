@@ -79,7 +79,7 @@ try {
   check('section heading is "Industry & business category"', (await page.locator('h2:has-text("Industry & business category")').count()) > 0);
   check('section 1 explains the listing type dimension', (await page.locator('text=Listing type — what you\'re offering or listing.').count()) > 0);
   check('type context chip hidden before a type is selected', await page.locator('#category-type-context').isHidden());
-  check('price range select has extra right-side padding', ((await page.locator('select[name="priceRange"]').getAttribute('class')) ?? '').includes('pr-10'));
+  check('price range select leaves room for its chevron', (await page.locator('select[name="priceRange"]').evaluate((el) => parseFloat(getComputedStyle(el).paddingRight))) >= 32);
 
   // Organization basics: expanded optional fields
   const yearFounded = page.locator('input[name="yearFounded"]');
@@ -95,12 +95,14 @@ try {
   check('contact preference offers four methods plus placeholder', (await page.locator('select[name="contactPreference"] option').count()) === 5, `got=${await page.locator('select[name="contactPreference"] option').count()}`);
 
   // Price range spacing: generous separation from later sections (no dropdown
-  // or denomination control visually attached to the price field)
+  // or denomination control visually attached to the price field). The field
+  // lives in the collapsed "About your organization" disclosure, so open it first.
+  await page.locator('details.org-card > summary').click();
   const priceBox = await page.locator('select[name="priceRange"]').boundingBox();
   const faithHeadingBox = await page.locator('#section-faith-heading').boundingBox();
   const gapFaith = priceBox && faithHeadingBox ? Math.round(faithHeadingBox.y - (priceBox.y + priceBox.height)) : -1;
   check('price range has clear vertical separation from the denomination section', gapFaith > 80, `gap=${gapFaith}px`);
-  check('price range sits inside its own spaced block', ((await page.locator('select[name="priceRange"]').evaluate((el) => el.closest('div').className)) ?? '').includes('mt-7'));
+  check('price range sits inside the optional organization disclosure', await page.locator('select[name="priceRange"]').evaluate((el) => Boolean(el.closest('details.org-card')?.open)));
 
   // Denomination typeahead replaces the old button grid
   check('denomination search field exists', (await page.locator('#denom-search-input').count()) === 1);
@@ -294,7 +296,8 @@ try {
   await page.fill('input[name="phone"]', '(512) 555-9876');
   await page.fill('input[name="website"]', 'https://harvesthandhearth.test');
 
-  // Organization basics: expanded fields
+  // Organization basics: expanded fields (inside the optional disclosure)
+  await page.locator('details.org-card > summary').click();
   await page.fill('input[name="yearFounded"]', '1998');
   await page.selectOption('select[name="employeeCount"]', '11–50');
   await page.selectOption('select[name="ownershipType"]', 'Family-owned');
@@ -387,6 +390,46 @@ try {
   await page.goto(`${BASE}/dashboard/listings`, { waitUntil: 'networkidle' });
   check('dashboard: listing table shows status', (await page.locator(`tr:has-text("${biz1Name}") .chip`).first().innerText()).match(/Published|Approved/) !== null);
   check('dashboard: View live link present', (await page.locator(`tr:has-text("${biz1Name}") a:has-text("View live")`).count()) > 0);
+
+  // ----------------------------------------------------
+  // 9. Rejected submissions keep the entries on the page (no empty-form redirect)
+  // ----------------------------------------------------
+  await page.goto(`${BASE}/add-listing`, { waitUntil: 'networkidle' });
+  await page.click('.type-card[data-type="business"]');
+  await page.fill('#input-name', biz1Name);
+  await page.evaluate(() => {
+    document.querySelectorAll('#add-listing-form input[type="checkbox"][required]').forEach((box) => {
+      if (!box.checked) box.click();
+    });
+  });
+  // Missing location is caught before the request is sent.
+  await page.click('#sticky-bar button[type="submit"]');
+  check('missing location: inline error names the rule', ((await page.locator('#form-status').textContent()) ?? '').includes('Add a city or state, or mark the listing as online-only.'));
+  check('missing location: nothing was submitted', page.url().endsWith('/add-listing'));
+  check('missing location: focus moves to the city field', await page.evaluate(() => document.activeElement?.id === 'input-city'));
+
+  // Same owner, same name, same city → the server refuses the duplicate and the
+  // form stays populated so the owner can adjust and retry.
+  await page.fill('#input-city', 'Austin');
+  await page.fill('#input-region', 'TX');
+  const duplicateResponse = page.waitForResponse((res) => res.url().endsWith('/api/listings') && res.request().method() === 'POST');
+  await page.click('#sticky-bar button[type="submit"]');
+  const dupRes = await duplicateResponse;
+  check('duplicate: server answers 409', dupRes.status() === 409, `got=${dupRes.status()}`);
+  await page.waitForFunction(() => document.getElementById('form-status')?.classList.contains('is-error'));
+  check('duplicate: inline error explains the conflict', ((await page.locator('#form-status').textContent()) ?? '').includes('already have a listing with this name in this city'));
+  check('duplicate: still on the form with entries intact', page.url().endsWith('/add-listing') && (await page.inputValue('#input-name')) === biz1Name && (await page.inputValue('#input-city')) === 'Austin');
+  check('duplicate: publish button is re-enabled for retry', await page.locator('#publish-btn').isEnabled() && (await page.locator('#publish-btn').textContent())?.trim() === 'Publish');
+  check('duplicate: no second row was created', (await q('select count(*)::int as n from listings where name = $1', [biz1Name])).rows[0].n === 1);
+
+  // Changing the city clears the conflict and the retry publishes.
+  await page.fill('#input-city', 'Round Rock');
+  await Promise.all([
+    page.waitForURL('**/add-listing?success=1**'),
+    page.click('#sticky-bar button[type="submit"]'),
+  ]);
+  check('retry after fixing the conflict succeeds', page.url().includes('success=1'));
+  check('DB: retry created the second listing', (await q('select count(*)::int as n from listings where name = $1', [biz1Name])).rows[0].n === 2);
 
   await context.close();
 } finally {
