@@ -2,8 +2,8 @@
 import DashboardLayout from '@/layouts/DashboardLayout.astro';
 import { requireAdminPage } from '@/lib/guards';
 import { getDb, hasDatabase } from '@/db/client';
-import { listings, reviews, users, listingClaims } from '@/db/schema';
-import { sql } from 'drizzle-orm';
+import { listings, reviews, users, listingClaims, searchLogs, listingAnalyticsEvents } from '@/db/schema';
+import { and, desc, eq, gte, isNotNull, ne, sql } from 'drizzle-orm';
 
 const __adminGate = requireAdminPage(Astro);
 if (__adminGate) return __adminGate;
@@ -13,30 +13,67 @@ let totalListings = 0;
 let totalReviews = 0;
 let totalUsers = 0;
 let totalClaims = 0;
+let searches7d = 0;
+let zeroResults7d = 0;
+let searchRows: Array<{ query: string; searches: number; zeroResults: number }> = [];
+let listingEventCounts: Record<string, number> = {};
+let analyticsAvailable = false;
 
 if (hasDatabase()) {
   const db = getDb();
   if (db) {
     try {
-      const [lCount, rCount, uCount, cCount] = await Promise.all([
+      const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+      const [lCount, rCount, uCount, cCount, searchTotals, topNoResultQueries, listingEvents] = await Promise.all([
         db.select({ count: sql<number>`count(*)::int` }).from(listings),
         db.select({ count: sql<number>`count(*)::int` }).from(reviews),
         db.select({ count: sql<number>`count(*)::int` }).from(users),
         db.select({ count: sql<number>`count(*)::int` }).from(listingClaims),
+        db.select({
+          total: sql<number>`count(*)::int`,
+          zero: sql<number>`count(*) FILTER (WHERE COALESCE(${searchLogs.resultCount}, 0) = 0)::int`,
+        }).from(searchLogs).where(gte(searchLogs.createdAt, since)),
+        db.select({
+          query: searchLogs.query,
+          searches: sql<number>`count(*)::int`,
+          zeroResults: sql<number>`count(*) FILTER (WHERE COALESCE(${searchLogs.resultCount}, 0) = 0)::int`,
+        }).from(searchLogs)
+          .where(and(
+            gte(searchLogs.createdAt, since),
+            isNotNull(searchLogs.query),
+            ne(searchLogs.query, ''),
+            eq(searchLogs.resultCount, 0),
+          ))
+          .groupBy(searchLogs.query)
+          .orderBy(desc(sql`count(*)`))
+          .limit(10),
+        db.select({ eventName: listingAnalyticsEvents.eventName, total: sql<number>`count(*)::int` })
+          .from(listingAnalyticsEvents)
+          .where(gte(listingAnalyticsEvents.createdAt, since))
+          .groupBy(listingAnalyticsEvents.eventName),
       ]);
       totalListings = lCount[0]?.count ?? 0;
       totalReviews = rCount[0]?.count ?? 0;
       totalUsers = uCount[0]?.count ?? 0;
       totalClaims = cCount[0]?.count ?? 0;
+      searches7d = searchTotals[0]?.total ?? 0;
+      zeroResults7d = searchTotals[0]?.zero ?? 0;
+      searchRows = topNoResultQueries.flatMap((row) => row.query ? [{
+        query: row.query,
+        searches: Number(row.searches),
+        zeroResults: Number(row.zeroResults),
+      }] : []);
+      listingEventCounts = Object.fromEntries(listingEvents.map((row) => [row.eventName, Number(row.total)]));
+      analyticsAvailable = true;
     } catch (err) {
-      console.error('[admin/analytics] query failed:', err);
+      console.error('[admin/analytics] query failed:', err instanceof Error ? err.message : err);
     }
   }
 }
 ---
 <DashboardLayout user={user} admin active="analytics" seo={{ title: 'Admin: Analytics', description: 'Platform analytics.', path: '/admin/analytics', noindex: true }}>
   <h1 class="text-2xl font-bold">Platform analytics</h1>
-  <p class="mt-1 text-sm" style="color:var(--text-soft)">Live database records and platform usage metrics.</p>
+  <p class="mt-1 text-sm" style="color:var(--text-soft)">Live database records and search activity from the last seven days.</p>
 
   <div class="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
     {[
@@ -44,18 +81,67 @@ if (hasDatabase()) {
       ['Submitted reviews', totalReviews],
       ['Registered members', totalUsers],
       ['Ownership claims', totalClaims],
-    ].map(([l, v]) => (
+    ].map(([label, value]) => (
       <div class="card p-4">
-        <p class="text-[13px]" style="color:var(--text-mute)">{l}</p>
-        <p class="text-2xl font-bold">{v}</p>
+        <p class="text-[13px]" style="color:var(--text-mute)">{label}</p>
+        <p class="text-2xl font-bold">{value}</p>
       </div>
     ))}
   </div>
 
-  <div class="card mt-6 p-6">
-    <h2 class="font-semibold">Search & discovery insights</h2>
-    <p class="mt-2 text-sm leading-relaxed" style="color:var(--text-soft)">
-      Search telemetry is aggregated as visitors explore categories, denominations, and regional directories. Search queries yielding zero matches are monitored to inform category expansion.
-    </p>
-  </div>
+  <section class="card mt-6 p-6" aria-labelledby="search-insights-title">
+    <h2 id="search-insights-title" class="font-semibold">Search &amp; discovery · last 7 days</h2>
+    {analyticsAvailable ? (
+      <>
+        <div class="mt-4 grid gap-3 sm:grid-cols-2">
+          <div class="rounded-xl bg-[var(--surface-2)] p-4">
+            <p class="text-sm" style="color:var(--text-soft)">Searches recorded</p>
+            <p class="text-2xl font-bold">{searches7d}</p>
+          </div>
+          <div class="rounded-xl bg-[var(--surface-2)] p-4">
+            <p class="text-sm" style="color:var(--text-soft)">Searches with no matches</p>
+            <p class="text-2xl font-bold">{zeroResults7d}</p>
+          </div>
+        </div>
+        <h3 class="mt-5 text-sm font-semibold">Common zero-result searches</h3>
+        {searchRows.length ? (
+          <div class="mt-2 overflow-x-auto">
+            <table class="w-full text-left text-sm">
+              <thead><tr class="border-b" style="border-color:var(--border)"><th scope="col" class="py-2 pr-3">Search term</th><th scope="col" class="py-2 pr-3">No-result searches</th></tr></thead>
+              <tbody>{searchRows.map((row) => <tr class="border-b" style="border-color:var(--border)"><td class="py-2 pr-3">{row.query}</td><td class="py-2 pr-3">{row.searches}</td></tr>)}</tbody>
+            </table>
+          </div>
+        ) : <p class="mt-2 text-sm" style="color:var(--text-soft)">No zero-result search terms have been recorded in this period.</p>}
+        <p class="mt-4 text-xs leading-relaxed" style="color:var(--text-mute)">Search terms are stored after redacting email addresses, URLs, and phone-like number sequences. Records older than 90 days are pruned periodically during search activity. IP addresses and user IDs are not attached to these search records.</p>
+      </>
+    ) : <p class="mt-2 text-sm" style="color:var(--text-soft)">Search analytics are unavailable because the database query failed or no database is configured. Check the server logs for an error.</p>}
+  </section>
+
+  <section class="card mt-6 p-6" aria-labelledby="listing-events-title">
+    <h2 id="listing-events-title" class="font-semibold">Listing engagement · last 7 days</h2>
+    <p class="mt-1 text-xs" style="color:var(--text-mute)">Aggregate events only; no visitor identifiers, raw IP addresses, or referrers are stored.</p>
+    {analyticsAvailable ? (
+      <div class="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        {[
+          ['Updated-card impressions', 'recent_impression'],
+          ['Updated-card clicks', 'recent_card_click'],
+          ['Listing detail views', 'detail_view'],
+          ['Website clicks', 'website_click'],
+          ['Social clicks', 'social_click'],
+          ['Phone clicks', 'phone_click'],
+          ['Email clicks', 'email_click'],
+          ['Contact form submits', 'contact_click'],
+          ['Favorites added', 'favorite_add'],
+          ['Favorites removed', 'favorite_remove'],
+          ['Recently Updated sort uses', 'recent_filter'],
+          ['Owner shares', 'owner_share'],
+        ].map(([label, eventName]) => (
+          <div class="rounded-xl bg-[var(--surface-2)] p-4">
+            <p class="text-sm" style="color:var(--text-soft)">{label}</p>
+            <p class="text-2xl font-bold">{listingEventCounts[eventName] ?? 0}</p>
+          </div>
+        ))}
+      </div>
+    ) : <p class="mt-2 text-sm" style="color:var(--text-soft)">Listing engagement analytics are unavailable because the database query failed or no database is configured.</p>}
+  </section>
 </DashboardLayout>

@@ -50,11 +50,11 @@ if (hasDatabase()) {
 ---
 <DashboardLayout user={user} admin active="claims" seo={{ title: 'Admin: Claims', description: 'Saved listing claim requests.', path: '/admin/claims', noindex: true }}>
   <h1 class="text-2xl font-bold">Listing claims</h1>
-  <p class="section-sub">A saved claim is not an ownership verification. Claims for listings that are not in the database are stored with the other reports.</p>
+  <p class="section-sub">A saved claim is only a pending request, not an ownership verification. Requests are accepted only for live, unowned, unclaimed listings.</p>
   {unavailable ? (
     <p class="card mt-6 p-5 text-sm" role="status" style="color:var(--text-soft)">The directory database is not connected, so claims cannot be listed.</p>
   ) : rows.length === 0 ? (
-    <p class="card mt-6 p-5 text-sm" role="status" style="color:var(--text-soft)">No claim rows yet. Check <a href="/admin/reports" class="underline">reports</a> for requests that could not be tied to a database listing.</p>
+    <p class="card mt-6 p-5 text-sm" role="status" style="color:var(--text-soft)">No claim requests have been submitted yet. Listing problems reported by visitors appear under <a href="/admin/reports" class="underline">reports</a>.</p>
   ) : (
     <div class="mt-4 space-y-3">
       {rows.map((row) => (

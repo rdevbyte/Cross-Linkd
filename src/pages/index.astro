@@ -3,15 +3,43 @@ import BaseLayout from '@/layouts/BaseLayout.astro';
 import Section from '@/components/Section.astro';
 import ListingCard from '@/components/ListingCard.astro';
 import SearchBar from '@/components/SearchBar';
-import { getPublicListings } from '@/lib/publicListings';
+import { getDbListings, getPublicListings } from '@/lib/publicListings';
 import { ARTICLES } from '@/data/articles';
 import { industryBySlug } from '@/data/industries';
 import { LISTING_TYPES } from '@/data/listing-types';
 import { slugify } from '@/lib/slug';
 import { isUsRegion } from '@/lib/trustCopy';
+import { calculateHomepageMetrics, formatMetricCount, metricNoun } from '@/lib/homeMetrics.mjs';
 
 const user = Astro.locals.user;
-const corpus = await getPublicListings();
+const [corpus, publishedDatabaseListings] = await Promise.all([getPublicListings(), getDbListings()]);
+const homepageMetrics = calculateHomepageMetrics(publishedDatabaseListings);
+const metricCards = [
+  {
+    label: 'Location coverage',
+    value: formatMetricCount(homepageMetrics.statesRepresented, 'state', 'states'),
+    detail: `${formatMetricCount(homepageMetrics.citiesRepresented, 'city', 'cities')} across the U.S.`,
+  },
+  {
+    label: 'Top location',
+    value: homepageMetrics.topState?.name ?? '—',
+    detail: homepageMetrics.topState && homepageMetrics.topCity
+      ? `${homepageMetrics.topCity.city}, ${homepageMetrics.topCity.state} · ${formatMetricCount(homepageMetrics.topState.listingCount, 'listing', 'listings')} statewide · ${homepageMetrics.topCity.listingCount.toLocaleString()} in the city`
+      : homepageMetrics.topState
+        ? `${formatMetricCount(homepageMetrics.topState.listingCount, 'listing', 'listings')} statewide · No city data`
+        : 'No U.S. location data yet',
+  },
+  {
+    label: `Recent ${metricNoun(homepageMetrics.recentlyAdded, 'listing', 'listings')}`,
+    value: homepageMetrics.recentlyAdded.toLocaleString(),
+    detail: 'Added in the past 30 days',
+  },
+  {
+    label: `Active ${metricNoun(homepageMetrics.activeListings, 'listing', 'listings')}`,
+    value: homepageMetrics.activeListings.toLocaleString(),
+    detail: 'Live in the directory now',
+  },
+];
 
 interface ActiveLocation {
   city: string;
@@ -48,7 +76,7 @@ const locationChoices = [
   })),
 ];
 
-const available = [...corpus].sort((a, b) => a.addedDaysAgo - b.addedDaysAgo).slice(0, 6);
+const available = [...corpus].sort((a, b) => (a.addedDaysAgo ?? Number.POSITIVE_INFINITY) - (b.addedDaysAgo ?? Number.POSITIVE_INFINITY)).slice(0, 6);
 
 const industryCounts = new Map<string, { label: string; count: number; href: string }>();
 for (const listing of corpus) {
@@ -149,23 +177,23 @@ const seo = {
               ))}
             </div>
           ) : <span />}
-          <p class="text-[13px] sm:text-right" style="color:var(--text-mute)">
-            {corpus.length > 0
-              ? <><strong class="font-semibold" style="color:var(--text)">{corpus.length}</strong> published {corpus.length === 1 ? 'listing' : 'listings'} · search covers published listings only</>
-              : 'No listings are published yet.'}
-          </p>
+          <p class="text-[13px] sm:text-right" style="color:var(--text-mute)">Search covers published listings only.</p>
         </div>
       </div>
 
     </div>
   </section>
 
-  <section class="mx-auto mt-8 max-w-3xl px-4" aria-labelledby="trust-heading">
-    <div class="card p-5 sm:p-6" style="border-left:4px solid var(--navy)">
-      <h2 id="trust-heading" class="text-lg font-semibold">How to read a listing</h2>
-      <p class="mt-2 text-[15px] leading-relaxed" style="color:var(--text-soft)">
-        Listings are submitted by businesses, churches, ministries, and community members. CrossLinkd reviews submissions for completeness but does not guarantee quality, credentials, licensing, outcomes, or theological agreement.
-      </p>
+  <section class="mx-auto mt-6 max-w-7xl px-4" aria-labelledby="directory-metrics-heading" aria-label="Directory metrics">
+    <h2 id="directory-metrics-heading" class="sr-only">Directory at a glance</h2>
+    <div class="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
+      {metricCards.map((metric) => (
+        <article class="card min-w-0 p-4 sm:p-5">
+          <p class="text-xs font-semibold" style="color:var(--text-mute)">{metric.label}</p>
+          <p class="mt-2 truncate text-xl font-bold sm:text-2xl" title={metric.value}>{metric.value}</p>
+          <p class="mt-1 text-xs leading-relaxed" style="color:var(--text-soft)">{metric.detail}</p>
+        </article>
+      ))}
     </div>
   </section>
 
@@ -189,11 +217,12 @@ const seo = {
         <p class="mx-auto mt-2 max-w-lg text-sm leading-relaxed" style="color:var(--text-soft)">
           There is nothing to browse yet. A free listing is owner-submitted. Publishing it does not verify the organization.
         </p>
+        <a href="/add-listing" class="btn btn-primary mt-4 inline-flex">Submit a real listing</a>
       </div>
     )}
   </Section>
 
-  <Section title="Browse what is published" sub={hasInternational
+  <Section id="browse-published" title="Browse what is published" sub={hasInternational
     ? 'Categories and places appear only when a published listing uses them. Some places are outside the United States. This is not a coverage map or a verification.'
     : 'Categories and places appear only when a published listing uses them. This is not a national network or a verification.'}
   >

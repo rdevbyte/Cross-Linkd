@@ -2,7 +2,7 @@ import type { APIRoute } from 'astro';
 import { getDb, hasDatabase } from '@/db/client';
 import { reviews } from '@/db/schema';
 import { reviewInputSchema } from '@/lib/validation';
-import { rateLimit } from '@/lib/rateLimit.mjs';
+import { sharedRateLimit } from '@/lib/sharedRateLimit';
 import { clientIp } from '@/lib/clientIp';
 
 /** POST /api/reviews — submit a review (starts in `pending` for moderation). */
@@ -16,7 +16,7 @@ export const POST: APIRoute = async ({ request, locals, redirect }) => {
   });
   if (!parsed.success) return redirect('/search?error=invalid-review', 303);
   const key = locals.user?.id ? `review:user:${locals.user.id}` : `review:ip:${clientIp(request)}`;
-  if (!rateLimit(key, locals.user?.id ? 20 : 5, 60 * 60 * 1000)) {
+  if (!(await sharedRateLimit(key, locals.user?.id ? 20 : 5, 60 * 60 * 1000))) {
     return redirect('/search?error=review-rate-limited', 303);
   }
 

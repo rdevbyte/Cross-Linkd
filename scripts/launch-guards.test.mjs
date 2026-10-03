@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict';
-import { readdirSync, readFileSync, statSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import test from 'node:test';
-import { claimError, contactError, honeypotTripped, publishBlockReason, safeReturnPath } from '../src/lib/formGuards.mjs';
+import { claimError, contactError, honeypotTripped, publishBlockReason, safeLocalPath, safeReturnPath } from '../src/lib/formGuards.mjs';
 import { rateLimit, resetRateLimit } from '../src/lib/rateLimit.mjs';
 
 test('signed-in complete listing can publish immediately', () => {
@@ -11,10 +11,19 @@ test('signed-in complete listing can publish immediately', () => {
     email: 'owner@example.com',
     city: 'Austin',
     region: 'TX',
+    denominations: ['baptist'],
     isOnlineOnly: false,
     attestation: 'on',
     terms: 'on',
   }), '');
+});
+
+test('faith identity is required for publishing and accepts a denomination or statement', () => {
+  const complete = { user: { id: 'user-1' }, city: 'Austin', region: 'TX', attestation: 'on', terms: 'on' };
+  assert.match(publishBlockReason(complete), /denomination or add a statement of faith/);
+  assert.equal(publishBlockReason({ ...complete, denominations: ['baptist'] }), '');
+  assert.equal(publishBlockReason({ ...complete, statementOfFaith: 'We follow the teachings of Jesus.' }), '');
+  assert.equal(publishBlockReason({ ...complete, denominations: ['other'], customDenomination: 'Independent fellowship' }), '');
 });
 
 test('guest publish needs a contact email and a place or online-only', () => {
@@ -25,6 +34,7 @@ test('guest publish needs a contact email and a place or online-only', () => {
     email: 'guest@example.com',
     city: '',
     region: '',
+    denominations: ['baptist'],
     isOnlineOnly: true,
     attestation: 'on',
     terms: 'on',
@@ -62,6 +72,13 @@ test('return paths stay on known pages', () => {
   assert.equal(safeReturnPath('/directory/../admin', '/contact'), '/contact');
 });
 
+test('auth return paths reject protocol-relative and backslash-based external URLs', () => {
+  assert.equal(safeLocalPath('/dashboard?tab=listings', '/dashboard'), '/dashboard?tab=listings');
+  assert.equal(safeLocalPath('//evil.example', '/dashboard'), '/dashboard');
+  assert.equal(safeLocalPath('/\\evil.example', '/dashboard'), '/dashboard');
+  assert.equal(safeLocalPath('https://evil.example', '/dashboard'), '/dashboard');
+});
+
 test('rate limit allows the signed-in e2e volume and then blocks', () => {
   resetRateLimit();
   assert.equal(rateLimit('publish:user:one', 30, 1000, 1_000), true);
@@ -83,6 +100,79 @@ test('launch copy no longer promises an unstaffed inbox or a missing audit log',
   for (const path of ['../src/pages/guidelines.astro', '../src/pages/appeals.astro', '../src/pages/feedback.astro', '../src/pages/404.astro', '../src/pages/api/contact.ts', '../src/pages/api/claims.ts']) {
     assert.equal(readFileSync(new URL(path, import.meta.url), 'utf8').length > 0, true, path);
   }
+});
+
+
+test('session validation fails closed if revocation cannot be checked', () => {
+  const middleware = readFileSync(new URL('../src/middleware.ts', import.meta.url), 'utf8');
+  const failurePath = middleware.match(/console\.error\('\[middleware\] session check failed:[\s\S]*?sessionCheckFailed = true;/)?.[0] ?? '';
+  assert.match(failurePath, /user = null;/);
+  assert.match(middleware, /else if \(process\.env\.NODE_ENV === 'production'\)[\s\S]*?user = null;[\s\S]*?sessionCheckFailed = true;/);
+  assert.match(middleware, /if \(token && !user && !sessionCheckFailed\)/);
+});
+
+test('unscoped legacy listing write routes are not exposed', () => {
+  for (const path of [
+    '../src/pages/api/listings/update.ts',
+    '../src/pages/api/listings/deactivate.ts',
+  ]) {
+    assert.equal(existsSync(new URL(path, import.meta.url)), false, `${path} must remain removed`);
+  }
+});
+
+test('owner responses stay private until staff moderation approves them', () => {
+  const submitRoute = readFileSync(new URL('../src/pages/api/reviews/respond.ts', import.meta.url), 'utf8');
+  const moderationRoute = readFileSync(new URL('../src/pages/api/admin/reviews/[id].ts', import.meta.url), 'utf8');
+  const adminPage = readFileSync(new URL('../src/pages/admin/reviews.astro', import.meta.url), 'utf8');
+  const publicListings = readFileSync(new URL('../src/lib/publicListings.ts', import.meta.url), 'utf8');
+  const policy = readFileSync(new URL('../src/pages/reviews-policy.astro', import.meta.url), 'utf8');
+  assert.match(submitRoute, /ownerRespondedAt: null/);
+  assert.match(moderationRoute, /publish_response/);
+  assert.match(adminPage, /Owner responses awaiting moderation/);
+  assert.match(publicListings, /review\.ownerRespondedAt \?/);
+  assert.match(policy, /moderated identically/);
+});
+
+test('optional taxonomy suggestions preserve manual custom values and fail open', () => {
+  const addForm = readFileSync(new URL('../src/pages/add-listing.astro', import.meta.url), 'utf8');
+  const dashboardForm = readFileSync(new URL('../src/pages/dashboard/listings.astro', import.meta.url), 'utf8');
+  const controller = readFileSync(new URL('../src/scripts/taxonomyRecommendationController.ts', import.meta.url), 'utf8');
+  assert.match(addForm, /taxonomyRecommendationController/);
+  assert.match(dashboardForm, /taxonomyRecommendationController/);
+  for (const source of [addForm, dashboardForm]) {
+    assert.match(source, /customProfessionText/);
+    assert.match(source, /customServiceText/);
+  }
+  assert.match(controller, /Checking local taxonomy suggestions/);
+  assert.match(controller, /Suggestions are temporarily unavailable[\s\S]*save your listing normally/);
+  assert.match(controller, /taxonomy-recommendations-refresh/);
+});
+
+test('homepage shows four distinct live-data metrics in the requested order', () => {
+  const home = readFileSync(new URL('../src/pages/index.astro', import.meta.url), 'utf8');
+  assert.match(home, /getDbListings\(\)/);
+  assert.match(home, /calculateHomepageMetrics\(publishedDatabaseListings\)/);
+  const cards = home.match(/const metricCards = \[([\s\S]*?)\n\];/)?.[1] ?? '';
+  const positions = [
+    "label: 'Location coverage'",
+    "label: 'Top location'",
+    'metricNoun(homepageMetrics.recentlyAdded',
+    'metricNoun(homepageMetrics.activeListings',
+  ].map((marker) => cards.indexOf(marker));
+  assert.ok(positions.every((position) => position >= 0), 'all four homepage metrics are present');
+  assert.deepEqual(positions, [...positions].sort((a, b) => a - b), 'homepage metrics use the requested order');
+  assert.match(cards, /value: formatMetricCount\(homepageMetrics\.statesRepresented, 'state', 'states'\)/);
+  assert.match(cards, /formatMetricCount\(homepageMetrics\.citiesRepresented, 'city', 'cities'\)\} across the U\.S\./);
+  assert.match(cards, /value: homepageMetrics\.topState\?\.name \?\? '—'/);
+  assert.match(cards, /\$\{homepageMetrics\.topCity\.city\}, \$\{homepageMetrics\.topCity\.state\} · \$\{formatMetricCount\(homepageMetrics\.topState\.listingCount, 'listing', 'listings'\)\} statewide/);
+  assert.match(cards, /homepageMetrics\.topCity\.listingCount\.toLocaleString\(\)\} in the city/);
+  assert.match(cards, /detail: 'Added in the past 30 days'/);
+  assert.match(cards, /detail: 'Live in the directory now'/);
+  assert.doesNotMatch(cards, /Leading state:|Leading city:|service offerings/i);
+  assert.match(home, /class="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4"/);
+  assert.match(home, /class="card min-w-0 p-4 sm:p-5"/);
+  assert.match(home, /title=\{metric\.value\}/);
+  assert.doesNotMatch(home, /service offerings|homepageMetrics\.serviceOfferings|verifiedCount/i);
 });
 
 test('every .astro frontmatter fence is exactly three dashes', () => {

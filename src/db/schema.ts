@@ -153,6 +153,8 @@ export const industries = pgTable('industries', {
   slug: varchar('slug', { length: 120 }).notNull().unique(),
   name: varchar('name', { length: 160 }).notNull(),
   description: text('description'),
+  aliases: jsonb('aliases').$type<string[]>().default([]).notNull(),
+  keywords: jsonb('keywords').$type<string[]>().default([]).notNull(),
   parentId: uuid('parent_id'),
   level: smallint('level').default(0).notNull(),
   sortOrder: integer('sort_order').default(0).notNull(),
@@ -166,6 +168,8 @@ export const industryCategories = pgTable('industry_categories', {
   slug: varchar('slug', { length: 120 }).notNull().unique(),
   name: varchar('name', { length: 160 }).notNull(),
   description: text('description'),
+  aliases: jsonb('aliases').$type<string[]>().default([]).notNull(),
+  keywords: jsonb('keywords').$type<string[]>().default([]).notNull(),
   sortOrder: integer('sort_order').default(0).notNull(),
   isActive: boolean('is_active').default(true).notNull(),
   ...timestamps,
@@ -179,6 +183,8 @@ export const professions = pgTable('professions', {
   name: varchar('name', { length: 160 }).notNull(),
   description: text('description'),
   aliases: jsonb('aliases').$type<string[]>().default([]),
+  keywords: jsonb('keywords').$type<string[]>().default([]).notNull(),
+  serviceExamples: jsonb('service_examples').$type<string[]>().default([]).notNull(),
   requiresLicense: boolean('requires_license').default(false).notNull(),
   sortOrder: integer('sort_order').default(0).notNull(),
   isActive: boolean('is_active').default(true).notNull(),
@@ -249,6 +255,7 @@ export const listings = pgTable('listings', {
   industrySlug: varchar('industry_slug', { length: 120 }),
   categorySlug: varchar('category_slug', { length: 120 }),
   customCategory: varchar('custom_category', { length: 180 }),
+  customProfessions: jsonb('custom_professions').$type<string[]>().default([]).notNull(),
   status: listingStatusEnum('status').default('published').notNull(),
   isClaimed: boolean('is_claimed').default(false).notNull(),
   isOnlineOnly: boolean('is_online_only').default(false).notNull(),
@@ -276,6 +283,7 @@ export const listings = pgTable('listings', {
   hours: jsonb('hours').$type<Record<string, string>>().default({}),
   holidayHours: jsonb('holiday_hours').$type<Record<string, string>>().default({}),
   socialLinks: jsonb('social_links').$type<Record<string, string>>().default({}),
+  photos: jsonb('photos').$type<Array<{ url: string; caption?: string; alt?: string }>>().default([]).notNull(),
   accessibility: jsonb('accessibility').$type<string[]>().default([]),
   amenities: jsonb('amenities').$type<string[]>().default([]),
   serviceArea: jsonb('service_area').$type<string[]>().default([]),
@@ -289,6 +297,8 @@ export const listings = pgTable('listings', {
   completenessScore: smallint('completeness_score').default(0).notNull(),
   featuredRank: integer('featured_rank').default(0).notNull(),
   lastVerifiedAt: timestamp('last_verified_at', { withTimezone: true }),
+  /** Last successfully published owner edit with a meaningful public-profile change. */
+  recentlyUpdatedAt: timestamp('recently_updated_at', { withTimezone: true }),
   publishedAt: timestamp('published_at', { withTimezone: true }),
   deletedAt: timestamp('deleted_at', { withTimezone: true }),
   // Moderation trail (latest decision surfaced to the owner)
@@ -304,6 +314,7 @@ export const listings = pgTable('listings', {
   index('listings_org_idx').on(t.organizationId),
   index('listings_featured_idx').on(t.featuredRank),
   index('listings_rating_idx').on(t.avgRating),
+  index('listings_recent_updated_idx').on(t.recentlyUpdatedAt),
   // Full-text GIN index is created in the migration SQL (search_vector).
 ]);
 
@@ -330,6 +341,7 @@ export const listingLocations = pgTable('listing_locations', {
 
 export const listingServices = pgTable('listing_services', {
   id: id(),
+  professionId: uuid('profession_id').references(() => professions.id, { onDelete: 'set null' }),
   listingId: uuid('listing_id').notNull().references(() => listings.id, { onDelete: 'cascade' }),
   name: varchar('name', { length: 200 }).notNull(),
   description: text('description'),
@@ -339,7 +351,7 @@ export const listingServices = pgTable('listing_services', {
   isOnline: boolean('is_online').default(false).notNull(),
   sortOrder: integer('sort_order').default(0).notNull(),
   ...timestamps,
-}, (t) => [index('services_listing_idx').on(t.listingId)]);
+}, (t) => [index('services_listing_idx').on(t.listingId), index('services_profession_idx').on(t.professionId)]);
 
 export const listingMedia = pgTable('listing_media', {
   id: id(),
@@ -443,6 +455,7 @@ export const reviews = pgTable('reviews', {
   verifiedInteraction: boolean('verified_interaction').default(false).notNull(),
   status: reviewStatusEnum('status').default('pending').notNull(),
   ownerResponse: text('owner_response'),
+  // Null marks a submitted response as awaiting moderation; non-null closes the one-response review decision.
   ownerRespondedAt: timestamp('owner_responded_at', { withTimezone: true }),
   helpfulCount: integer('helpful_count').default(0).notNull(),
   deletedAt: timestamp('deleted_at', { withTimezone: true }),
@@ -640,6 +653,18 @@ export const searchLogs = pgTable('search_logs', {
   ...timestamps,
 }, (t) => [index('searchlogs_created_idx').on(t.createdAt)]);
 
+/** Shared fixed-window counters for API rate limits. Keys are SHA-256 digests, never raw IPs/emails. */
+export const sharedRateLimits = pgTable('shared_rate_limits', {
+  bucketKey: varchar('bucket_key', { length: 64 }).notNull(),
+  windowStart: timestamp('window_start', { withTimezone: true }).notNull(),
+  hitCount: integer('hit_count').default(0).notNull(),
+  expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+  ...timestamps,
+}, (t) => [
+  primaryKey({ columns: [t.bucketKey, t.windowStart] }),
+  index('shared_rate_limits_expiry_idx').on(t.expiresAt),
+]);
+
 export const listingViews = pgTable('listing_views', {
   id: id(),
   listingId: uuid('listing_id').notNull().references(() => listings.id, { onDelete: 'cascade' }),
@@ -647,6 +672,17 @@ export const listingViews = pgTable('listing_views', {
   referrer: text('referrer'),
   ...timestamps,
 }, (t) => [index('views_listing_idx').on(t.listingId)]);
+
+/** Privacy-minimized listing events; no visitor IDs, raw IPs, or referrers are stored. */
+export const listingAnalyticsEvents = pgTable('listing_analytics_events', {
+  id: id(),
+  listingId: uuid('listing_id').references(() => listings.id, { onDelete: 'cascade' }),
+  eventName: varchar('event_name', { length: 40 }).notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  index('listing_analytics_listing_created_idx').on(t.listingId, t.createdAt),
+  index('listing_analytics_event_created_idx').on(t.eventName, t.createdAt),
+]);
 
 export const auditLogs = pgTable('audit_logs', {
   id: id(),

@@ -17,6 +17,8 @@ let userReviews: Array<{
   body: string;
   when: string;
   responded: boolean;
+  responsePending: boolean;
+  responseRejected: boolean;
   ownerResponse: string | null;
 }> = [];
 
@@ -31,6 +33,7 @@ if (hasDatabase()) {
           body: reviews.body,
           createdAt: reviews.createdAt,
           ownerResponse: reviews.ownerResponse,
+          ownerRespondedAt: reviews.ownerRespondedAt,
           listingName: listings.name,
         })
         .from(reviews)
@@ -45,7 +48,9 @@ if (hasDatabase()) {
         rating: r.rating,
         body: r.body ?? '',
         when: new Date(r.createdAt).toLocaleDateString(),
-        responded: Boolean(r.ownerResponse),
+        responded: Boolean(r.ownerResponse && r.ownerRespondedAt),
+        responsePending: Boolean(r.ownerResponse && !r.ownerRespondedAt),
+        responseRejected: Boolean(!r.ownerResponse && r.ownerRespondedAt),
         ownerResponse: r.ownerResponse,
       }));
     } catch (err) {
@@ -56,7 +61,22 @@ if (hasDatabase()) {
 ---
 <DashboardLayout user={user} active="reviews" seo={{ title: 'Reviews — Dashboard', description: 'Respond to reviews.', path: '/dashboard/reviews', noindex: true }}>
   <h1 class="text-2xl font-bold">Reviews & recommendations</h1>
-  <p class="mt-1 text-sm" style="color:var(--text-soft)">Customer reviews for your listings. Respond with grace — one response per review.</p>
+  <p class="mt-1 text-sm" style="color:var(--text-soft)">Customer reviews for your listings. Owner responses are moderated before publication, with one response allowed per review.</p>
+
+  {Astro.url.searchParams.has('submitted') && (
+    <p class="card mt-4 border-l-4 p-4 text-sm" role="status" style="border-left-color:var(--teal)">Your response was submitted for moderation. It will appear publicly if approved.</p>
+  )}
+  {Astro.url.searchParams.has('error') && (
+    <p class="card mt-4 border-l-4 p-4 text-sm" role="alert" style="border-left-color:var(--accent)">
+      {Astro.url.searchParams.get('error') === 'already-responded'
+        ? 'A response has already been submitted for this review. The one-response limit applies.'
+        : Astro.url.searchParams.get('error') === 'response-length'
+          ? 'Responses must be between 2 and 2,000 characters.'
+          : Astro.url.searchParams.get('error') === 'not-available'
+            ? 'This review is no longer available for response.'
+            : 'We could not save your response. Please try again.'}
+    </p>
+  )}
 
   {userReviews.length === 0 ? (
     <div class="card mt-6 p-8 text-center sm:p-12">
@@ -78,12 +98,16 @@ if (hasDatabase()) {
           </div>
           <p class="mt-1 text-sm" style="color:var(--text-soft)">{r.body}</p>
           {r.responded ? (
-            <p class="mt-2 rounded-xl p-3 text-sm" style="background:var(--surface-2)"><strong>Your response:</strong> {r.ownerResponse}</p>
+            <p class="mt-2 rounded-xl p-3 text-sm" style="background:var(--surface-2)"><strong>Your approved response:</strong> {r.ownerResponse}</p>
+          ) : r.responsePending ? (
+            <p class="mt-2 rounded-xl p-3 text-sm" role="status" style="background:var(--surface-2)">Your response is awaiting moderation.</p>
+          ) : r.responseRejected ? (
+            <p class="mt-2 rounded-xl p-3 text-sm" role="status" style="background:var(--surface-2)">Your response was not approved. The one-response limit still applies.</p>
           ) : (
             <form method="POST" action="/api/reviews/respond" class="mt-2 flex gap-2">
               <input type="hidden" name="reviewId" value={r.id} />
-              <input name="response" required class="input" placeholder="Write a response…" aria-label="Response" />
-              <button class="btn btn-primary !py-2 !text-sm" type="submit">Respond</button>
+              <input name="response" required minlength="2" maxlength="2000" class="input" placeholder="Write a response…" aria-label="Response" />
+              <button class="btn btn-primary !py-2 !text-sm" type="submit">Submit for moderation</button>
             </form>
           )}
         </div>

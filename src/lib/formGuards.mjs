@@ -10,6 +10,18 @@ export function honeypotTripped(value) {
   return String(value ?? '').trim().length > 0;
 }
 
+export function faithIdentityReason(input) {
+  const statement = String(input.statementOfFaith ?? '').trim();
+  const customDenomination = String(input.customDenomination ?? '').trim();
+  const denominations = Array.isArray(input.denominations)
+    ? input.denominations.map((value) => String(value ?? '').trim()).filter(Boolean)
+    : [];
+  const hasDenomination = denominations.some((slug) => slug.toLowerCase() !== 'other') || customDenomination.length > 0;
+  return hasDenomination || statement
+    ? ''
+    : 'Choose at least one denomination or add a statement of faith before publishing.';
+}
+
 export function publishBlockReason(input) {
   const email = String(input.email ?? '').trim();
   const city = String(input.city ?? '').trim();
@@ -23,6 +35,8 @@ export function publishBlockReason(input) {
   if (!input.user && !email) {
     return 'Add a contact email before publishing as a guest.';
   }
+  const faithMessage = faithIdentityReason(input);
+  if (faithMessage) return faithMessage;
   return '';
 }
 
@@ -70,4 +84,18 @@ export function safeReturnPath(value, fallback) {
   if (path === '/contact' || path === '/feedback' || path === '/appeals' || path === '/claim-listing') return path;
   if (/^\/directory\/[a-z0-9-]{1,200}$/.test(path)) return path;
   return fallback;
+}
+
+/** Accept a same-origin absolute path only; reject URL-parser backslash quirks and header controls. */
+export function safeLocalPath(value, fallback = '/') {
+  const path = String(value ?? '');
+  if (!path.startsWith('/') || path.startsWith('//') || path.includes('\\') || [...path].some((char) => char.charCodeAt(0) < 32 || char.charCodeAt(0) === 127)) return fallback;
+  try {
+    const base = 'https://crosslinkd.invalid';
+    const target = new URL(path, base);
+    if (target.origin !== base) return fallback;
+    return `${target.pathname}${target.search}${target.hash}`;
+  } catch {
+    return fallback;
+  }
 }

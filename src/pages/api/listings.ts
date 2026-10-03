@@ -1,9 +1,9 @@
 import type { APIRoute } from 'astro';
 import { hasDatabase } from '@/db/client';
 import { listingInputSchema } from '@/lib/validation';
-import { duplicateExists, saveListing } from '@/lib/submissions';
+import { duplicateExists, saveListing, TaxonomyCatalogUnavailableError } from '@/lib/submissions';
 import { honeypotTripped, listingSpamReason, publishBlockReason } from '@/lib/formGuards.mjs';
-import { rateLimit } from '@/lib/rateLimit.mjs';
+import { sharedRateLimit } from '@/lib/sharedRateLimit';
 
 function clientIp(request: Request) {
   return request.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
@@ -11,17 +11,17 @@ function clientIp(request: Request) {
     || 'unknown';
 }
 
-function listingGate(
+async function listingGate(
   request: Request,
   user: { id?: string } | null | undefined,
-  data: { email?: string | null; city?: string | null; region?: string | null; isOnlineOnly?: boolean; name?: string | null; description?: string | null; tagline?: string | null },
+  data: { email?: string | null; city?: string | null; region?: string | null; isOnlineOnly?: boolean; name?: string | null; description?: string | null; tagline?: string | null; denominations?: string[]; customDenomination?: string | null; statementOfFaith?: string | null },
   attestation: unknown,
   terms: unknown,
   honeypot: unknown,
 ) {
   if (honeypotTripped(honeypot)) return { status: 400, message: 'Please check your entries and try again.' };
   const key = user?.id ? `publish:user:${user.id}` : `publish:ip:${clientIp(request)}`;
-  if (!rateLimit(key, user?.id ? 30 : 3, 60 * 60 * 1000)) {
+  if (!(await sharedRateLimit(key, user?.id ? 30 : 3, 60 * 60 * 1000))) {
     return { status: 429, message: 'Too many listing submissions from this network. Wait an hour and try again.' };
   }
   const spam = listingSpamReason(`${data.name ?? ''} ${data.tagline ?? ''} ${data.description ?? ''}`);
@@ -32,6 +32,9 @@ function listingGate(
     city: data.city,
     region: data.region,
     isOnlineOnly: data.isOnlineOnly,
+    denominations: data.denominations,
+    customDenomination: data.customDenomination,
+    statementOfFaith: data.statementOfFaith,
     attestation,
     terms,
   });
@@ -58,6 +61,13 @@ async function ownerDuplicate(user: { id?: string } | null | undefined, name: st
 }
 
 export const POST: APIRoute = async ({ request, locals, redirect }) => {
+  if (!hasDatabase()) {
+    const message = 'Listings cannot be saved while the database is unavailable. Please try again later.';
+    if (request.headers.get('content-type')?.includes('application/json')) {
+      return new Response(JSON.stringify({ ok: false, error: message }), { status: 503, headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' } });
+    }
+    return redirect(`/add-listing?error=${encodeURIComponent(message)}`, 303);
+  }
   const isJson = request.headers.get('content-type')?.includes('application/json');
 
   if (isJson) {
@@ -86,7 +96,7 @@ export const POST: APIRoute = async ({ request, locals, redirect }) => {
         { status: 400, headers: { 'Content-Type': 'application/json' } },
       );
     }
-    const jsonGate = listingGate(request, locals.user, parsed.data, body.attestation, body.terms, body.hp_company);
+    const jsonGate = await listingGate(request, locals.user, parsed.data, body.attestation, body.terms, body.hp_company);
     if (jsonGate) {
       return new Response(JSON.stringify({ ok: false, error: jsonGate.message }), {
         status: jsonGate.status,
@@ -110,9 +120,10 @@ export const POST: APIRoute = async ({ request, locals, redirect }) => {
         status = result.status;
       } catch (err) {
         console.error('[api/listings] json insert failed', err instanceof Error ? err.name : 'error');
-        return new Response(JSON.stringify({ ok: false, error: 'Could not save listing.' }), {
-          status: 500,
-          headers: { 'Content-Type': 'application/json' },
+        const catalogError = err instanceof TaxonomyCatalogUnavailableError;
+        return new Response(JSON.stringify({ ok: false, error: catalogError ? err.message : 'Could not save listing.' }), {
+          status: catalogError ? 503 : 500,
+          headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' },
         });
       }
     }
@@ -170,6 +181,9 @@ export const POST: APIRoute = async ({ request, locals, redirect }) => {
     priceRange: get('priceRange'),
     statementOfFaith: get('statementOfFaith'),
     industries: get('industrySlug') ? [get('industrySlug')] : (get('industries') ? [get('industries')] : []),
+    professions: form.getAll('professions').map((value) => String(value).trim()).filter(Boolean),
+    customProfessions: get('customProfessions').split(/[\n;,]+/).map((value) => value.trim()).filter(Boolean),
+    services: [...form.getAll('services').map((value) => String(value).trim()), ...get('customServices').split(/[\n;,]+/).map((value) => value.trim())].filter(Boolean),
     denominations: denoms,
     hashtags: get('hashtags') ? get('hashtags').split(',').map((s) => s.trim().replace(/^#/, '')).filter(Boolean) : [],
   });
@@ -178,7 +192,7 @@ export const POST: APIRoute = async ({ request, locals, redirect }) => {
     return redirect(`/add-listing?error=${encodeURIComponent(parsed.error.errors[0]?.message ?? 'Please check your entries.')}`, 303);
   }
   const d = parsed.data;
-  const formGate = listingGate(request, locals.user, d, form.get('attestation'), form.get('terms'), form.get('hp_company'));
+  const formGate = await listingGate(request, locals.user, d, form.get('attestation'), form.get('terms'), form.get('hp_company'));
   if (formGate) return redirect(`/add-listing?error=${encodeURIComponent(formGate.message)}`, 303);
 
   let createdSlug = '';
@@ -194,7 +208,8 @@ export const POST: APIRoute = async ({ request, locals, redirect }) => {
       status = result.status;
     } catch (err) {
       console.error('[api/listings] insert failed:', err instanceof Error ? err.name : 'error');
-      return redirect(`/add-listing?error=${encodeURIComponent('Something went wrong saving your listing. Please try again.')}`, 303);
+      const message = err instanceof TaxonomyCatalogUnavailableError ? err.message : 'Something went wrong saving your listing. Please try again.';
+      return redirect(`/add-listing?error=${encodeURIComponent(message)}`, 303);
     }
   }
 

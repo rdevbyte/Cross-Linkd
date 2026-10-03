@@ -2,18 +2,19 @@
  * Search engine — parses natural language + hashtags, applies filters,
  * scores relevance, sorts, and paginates.
  *
- * Production path: Postgres full-text (tsvector) + trigram fallback
- * (see /api/search.ts). Demo path: this in-memory engine over sample data
- * with identical filter semantics so UI code never changes.
+ * Production paths use src/lib/dbSearch.ts so filtering, counting, sorting,
+ * and pagination happen in Postgres before page-only hydration. This in-memory
+ * engine remains for the explicitly gated sample-data preview and unit tests.
  */
 import { SAMPLE_LISTINGS, type SampleListing } from '@/data/listings';
 import { includeSamples } from '@/lib/sampleGate';
 import { DENOMINATIONS } from '@/data/denominations';
-import { INDUSTRIES } from '@/data/industries';
+import { taxonomyTermsForSlug, listingMatchesIndustry, categoryBySlug, canonicalProfessionSlug } from '@/data/industries';
 import { FOCUS_CITIES, resolveLocation } from '@/data/locations';
 import { parseQuery } from './hashtags';
 import { distanceMi, geocodeCity } from './geo';
 import type { SearchFilters } from './validation';
+import { recentlyUpdatedState } from '@/lib/recentlyUpdated.mjs';
 
 export interface SearchHit extends SampleListing {
   distanceMiles?: number;
@@ -70,6 +71,7 @@ function haystack(l: SampleListing): string {
     l.name, l.tagline, l.description, l.city, l.region,
     l.industrySlug ?? '', l.categorySlug ?? '', l.customCategory ?? '',
     ...l.services, ...l.hashtags, ...l.industries, ...l.professions, ...l.denominations,
+    ...[l.industrySlug, l.categorySlug, ...l.industries, ...l.professions].filter(Boolean).flatMap((slug) => taxonomyTermsForSlug(String(slug))),
   ].join(' ').toLowerCase();
 }
 
@@ -96,34 +98,22 @@ function tagMatchesListing(tag: string, l: SampleListing): boolean {
   return pools.some((p) => p === t || p.includes(t) || t.includes(p));
 }
 
-/**
- * Sub-industry (category) index — powers the hierarchical Listing-type
- * filter. Listings may carry industry-level OR category-level slugs in
- * their `industries` array, so matching accepts both.
- */
-const CATEGORY_INDEX = new Map<string, { industry: string; professions: Set<string> }>();
-const INDUSTRY_CATS = new Map<string, Set<string>>();
-for (const ind of INDUSTRIES) {
-  INDUSTRY_CATS.set(ind.slug, new Set(ind.categories.map((c) => c.slug)));
-  for (const cat of ind.categories) {
-    CATEGORY_INDEX.set(cat.slug, { industry: ind.slug, professions: new Set(cat.professions.map((p) => p.slug)) });
-  }
-}
-
+/** Hierarchical filter matching uses the shared taxonomy/alias resolver. */
 function listingInIndustry(l: SampleListing, industrySlug: string): boolean {
-  if (l.industrySlug === industrySlug || l.industries.includes(industrySlug)) return true;
-  const cats = INDUSTRY_CATS.get(industrySlug);
-  return cats ? ((l.categorySlug && cats.has(l.categorySlug)) || l.industries.some((i) => cats.has(i))) : false;
+  return listingMatchesIndustry(l, industrySlug);
 }
 
 function listingInCategory(l: SampleListing, catSlug: string): boolean {
-  if (l.categorySlug === catSlug || l.industries.includes(catSlug)) return true;
-  const cat = CATEGORY_INDEX.get(catSlug);
-  if (!cat) return false;
-  if (l.industrySlug && l.industrySlug === cat.industry) return true;
-  if (!l.industries.includes(cat.industry)) return false;
-  if (l.professions.length === 0) return true;
-  return l.professions.some((p) => cat.professions.has(p));
+  const target = categoryBySlug(catSlug);
+  if (!target) return false;
+  const listingCategory = l.categorySlug ? categoryBySlug(l.categorySlug) : undefined;
+  if (listingCategory?.category.slug === target.category.slug) return true;
+  if (l.industries.some((slug) => categoryBySlug(slug)?.category.slug === target.category.slug)) return true;
+  if (l.professions.length === 0) return false;
+  return l.professions.some((slug) => {
+    const canonical = canonicalProfessionSlug(slug);
+    return target.category.professions.some((profession) => profession.slug === canonical);
+  });
 }
 
 export function searchListings(rawFilters: Partial<SearchFilters> & { q?: string; near?: string }, extra: SampleListing[] = []): SearchResult {
@@ -190,13 +180,15 @@ export function searchListings(rawFilters: Partial<SearchFilters> & { q?: string
   if (f.type?.length) pool = pool.filter((l) => f.type!.includes(l.typeSlug));
   if (f.denomination?.length) pool = pool.filter((l) => l.denominations.some((d) => f.denomination!.includes(d)));
   if (f.industry?.length) pool = pool.filter((l) => f.industry!.some((d) => listingInIndustry(l, d)));
-  if (f.profession?.length) pool = pool.filter((l) => l.professions.some((d) => f.profession!.includes(d)));
+  if (f.profession?.length) pool = pool.filter((l) => l.professions.some((d) => f.profession!.some((value) => canonicalProfessionSlug(value) === canonicalProfessionSlug(d))));
   if (f.category?.length) pool = pool.filter((l) => f.category!.some((c) => listingInCategory(l, c)));
+  if (f.service?.length) pool = pool.filter((l) => f.service!.every((query) => l.services.some((service) => service.toLocaleLowerCase('en-US').includes(query.toLocaleLowerCase('en-US')))));
   if (f.city) pool = pool.filter((l) => l.city.toLowerCase().includes(f.city!.toLowerCase()));
   if (f.region) pool = pool.filter((l) => l.region.toLowerCase() === f.region!.toLowerCase());
+  if (f.postal) pool = pool.filter((l) => (l.postalCode ?? '').toLowerCase().includes(f.postal!.toLowerCase()));
   if (f.verifiedOnly) pool = pool.filter((l) => l.verified);
   if (f.onlineOnly) pool = pool.filter((l) => l.isOnlineOnly || l.hashtags.includes('OnlineServices'));
-  if (f.openNow) pool = pool.filter((l) => l.openNow);
+  if (f.openNow) pool = pool.filter((l) => Object.values(l.hours ?? {}).some((hours) => /24[ -]?hours?|24h/i.test(hours)));
   if (f.minRating) pool = pool.filter((l) => l.rating >= f.minRating!);
   if (f.price?.length) pool = pool.filter((l) => l.priceRange && f.price!.includes(l.priceRange));
   if (f.languages?.length) pool = pool.filter((l) => f.languages!.every((x) => l.languages.includes(x)));
@@ -217,23 +209,36 @@ export function searchListings(rawFilters: Partial<SearchFilters> & { q?: string
   // --- geo ---
   let origin: { lat: number; lng: number } | null = null;
   if (typeof f.lat === 'number' && typeof f.lng === 'number') origin = { lat: f.lat, lng: f.lng };
-  else if (f.city) origin = geocodeCity(f.city);
+  else if (nearRaw && f.city) origin = geocodeCity(f.city);
   if (origin) {
     const radius = f.radiusMi ?? 25;
     pool = pool
       .map((l) => ({
         ...l,
-        distanceMiles: l.lat && l.lng ? distanceMi(origin!.lat, origin!.lng, l.lat, l.lng) : 9999,
+        distanceMiles: l.lat != null && l.lng != null ? distanceMi(origin!.lat, origin!.lng, l.lat, l.lng) : undefined,
       }))
-      .filter((l) => (l.distanceMiles ?? 9999) <= radius || l.isOnlineOnly);
+      .filter((l) => {
+        if (l.isOnlineOnly || (l.distanceMiles ?? Infinity) <= radius) return true;
+        // A saved city/state match remains visible if the listing has no coordinates yet.
+        return l.distanceMiles === undefined && Boolean(f.city && l.city.toLowerCase().includes(f.city.toLowerCase()) && (!f.region || l.region.toLowerCase() === f.region.toLowerCase()));
+      });
   }
 
   // --- sorting ---
   const sort = filters.sort ?? 'relevance';
+  const recentSortNow = Date.now();
   pool.sort((a, b) => {
     switch (sort) {
       case 'rating': return b.rating - a.rating || b.reviewCount - a.reviewCount;
-      case 'newest': return a.addedDaysAgo - b.addedDaysAgo;
+      case 'newest': return (a.addedDaysAgo ?? Number.POSITIVE_INFINITY) - (b.addedDaysAgo ?? Number.POSITIVE_INFINITY);
+      case 'recently-updated': {
+        const recentA = recentlyUpdatedState(a.recentlyUpdatedAt, recentSortNow)?.timestamp;
+        const recentB = recentlyUpdatedState(b.recentlyUpdatedAt, recentSortNow)?.timestamp;
+        if (recentA && recentB) return Date.parse(recentB) - Date.parse(recentA);
+        if (recentA) return -1;
+        if (recentB) return 1;
+        return (b.featured ? 1 : 0) - (a.featured ? 1 : 0) || b.score - a.score || b.rating - a.rating;
+      }
       case 'featured': return (b.featured ? 1 : 0) - (a.featured ? 1 : 0) || (b.verified ? 1 : 0) - (a.verified ? 1 : 0) || b.rating - a.rating;
       case 'recommended': return b.recommendations - a.recommendations;
       case 'popular': return b.views - a.views;
@@ -257,7 +262,7 @@ export function searchListings(rawFilters: Partial<SearchFilters> & { q?: string
  * When a search comes up empty, suggest real pages that DO have results:
  * the same category in each focus city, or popular categories citywide.
  */
-function buildAltLinks(filters: Partial<SearchFilters> & { q?: string; near?: string }, hitCount: number): AltLink[] {
+export function buildAltLinks(filters: Partial<SearchFilters> & { q?: string; near?: string }, hitCount: number): AltLink[] {
   if (hitCount > 0) return [];
   const links: AltLink[] = [];
   const category = filters.industry?.[0] ?? filters.profession?.[0]
@@ -280,7 +285,7 @@ function buildAltLinks(filters: Partial<SearchFilters> & { q?: string; near?: st
   return links.slice(0, 4);
 }
 
-function buildSuggestions(q: string, hitCount: number): string[] {
+export function buildSuggestions(q: string, hitCount: number): string[] {
   if (hitCount > 0 || !q.trim()) {
     return ['bakery #Baptist', 'Christian counselor', 'plumber Dallas', 'accountant Nashville'].filter((s) => s !== q).slice(0, 3);
   }

@@ -3,7 +3,7 @@ import { getPublicListings } from '@/lib/publicListings';
 import { SAMPLE_EVENTS } from '@/data/events';
 import { includeSamples } from '@/lib/sampleGate';
 import { FOCUS_STATES } from '@/data/locations';
-import { INDUSTRIES } from '@/data/industries';
+import { INDUSTRIES, listingMatchesIndustry } from '@/data/industries';
 import { DENOMINATIONS } from '@/data/denominations';
 
 /** GET /sitemap.xml — only substantive pages (no thin/duplicate URLs). Merges live DB listings with curated samples. */
@@ -22,7 +22,7 @@ export const GET: APIRoute = async ({ site }) => {
     ...listings.map((l) => `/directory/${l.slug}`),
     ...(includeSamples() ? SAMPLE_EVENTS : []).map((e) => `/events/${e.slug}`),
     // Only index taxonomy pages with real listings behind them:
-    ...INDUSTRIES.filter((i) => listings.some((l) => l.industries.includes(i.slug))).map((i) => `/industries/${i.slug}`),
+    ...INDUSTRIES.filter((industry) => listings.some((listing) => listingMatchesIndustry(listing, industry.slug))).map((industry) => `/industries/${industry.slug}`),
     ...DENOMINATIONS.filter((d) => listings.some((l) => l.denominations.includes(d.slug))).map((d) => `/denominations/${d.slug}`),
   ].filter(Boolean);
   const xml = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${

@@ -3,7 +3,7 @@ import { and, eq, isNull } from 'drizzle-orm';
 import { getDb, hasDatabase } from '@/db/client';
 import { listings, reports } from '@/db/schema';
 import { contactError, honeypotTripped, safeReturnPath } from '@/lib/formGuards.mjs';
-import { rateLimit } from '@/lib/rateLimit.mjs';
+import { sharedRateLimit } from '@/lib/sharedRateLimit';
 
 function clientIp(request: Request) {
   return request.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
@@ -21,7 +21,7 @@ export const POST: APIRoute = async ({ request, locals, redirect }) => {
   const fail = (message: string) => redirect(`${back}?error=${encodeURIComponent(message)}`, 303);
 
   if (honeypotTripped(form.get('hp_company'))) return fail('Please check your entries and try again.');
-  if (!rateLimit(`contact:${clientIp(request)}`, 8, 60 * 60 * 1000)) {
+  if (!(await sharedRateLimit(`contact:${clientIp(request)}`, 8, 60 * 60 * 1000))) {
     return fail('Too many messages from this network. Wait an hour and try again.');
   }
 

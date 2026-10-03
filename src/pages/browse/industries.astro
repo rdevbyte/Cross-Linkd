@@ -1,11 +1,11 @@
 ---
 import BaseLayout from '@/layouts/BaseLayout.astro';
-import { INDUSTRIES } from '@/data/industries';
+import { INDUSTRIES, listingMatchesIndustry } from '@/data/industries';
 import { getPublicListings } from '@/lib/publicListings';
 
 const corpus = await getPublicListings();
 const user = Astro.locals.user;
-const countFor = (slug: string) => corpus.filter((l) => l.industries.includes(slug)).length;
+const countFor = (slug: string) => corpus.filter((listing) => listingMatchesIndustry(listing, slug)).length;
 const publishedCount = INDUSTRIES.reduce((sum, industry) => sum + countFor(industry.slug), 0);
 ---
 <BaseLayout user={user} seo={{ title: 'Browse Industries — CrossLinkd', description: 'Explore every industry in the directory, from skilled trades to healthcare to creative services.', path: '/browse/industries' }}>

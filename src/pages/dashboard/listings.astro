@@ -1,22 +1,38 @@
 ---
 import DashboardLayout from '@/layouts/DashboardLayout.astro';
-import { and, eq, desc, isNull, inArray } from 'drizzle-orm';
+import HoursEditor from '@/components/HoursEditor.astro';
+import { and, eq, desc, gte, isNull, inArray, sql } from 'drizzle-orm';
 import { getDb, hasDatabase } from '@/db/client';
-import { listings, listingLocations, listingDenominations, denominations } from '@/db/schema';
+import { listings, listingLocations, listingDenominations, denominations, listingProfessions, professions, listingServices, listingAnalyticsEvents } from '@/db/schema';
 import { STATUS_LABEL, STATUS_CHIP } from '@/lib/submissions';
 import { requireUserPage } from '@/lib/guards';
 import { DENOMINATIONS } from '@/data/denominations';
 import { INDUSTRIES } from '@/data/industries';
+import { recentlyUpdatedState } from '@/lib/recentlyUpdated.mjs';
 
 const gate = requireUserPage(Astro);
 if (gate) return gate;
 const user = Astro.locals.user!;
 
+const socialDomains: Record<string, string> = { facebook: 'facebook.com', instagram: 'instagram.com', youtube: 'youtube.com', x: 'x.com', linkedin: 'linkedin.com' };
+const hoursEditorText = (hours?: Record<string, string> | null) => Object.entries(hours ?? {}).map(([day, value]) => `${day}: ${value}`).join('\n');
+const socialLinkInput = (network: string, raw?: string | null) => {
+  const value = String(raw ?? '').trim();
+  if (!value) return '';
+  if (/^https?:\/\//i.test(value)) return value;
+  const handle = value.replace(/^@/, '');
+  const path = network === 'linkedin' && !/^(company|school|in)\//i.test(handle) ? `company/${handle}` : handle;
+  return `https://${socialDomains[network] ?? network}/${path}`;
+};
 const dbReady = hasDatabase();
+type OwnerListingMetrics = { views: number; websiteClicks: number; contactClicks: number; favorites: number; shares: number };
+const emptyMetrics = (): OwnerListingMetrics => ({ views: 0, websiteClicks: 0, contactClicks: 0, favorites: 0, shares: 0 });
+let ownerMetricsAvailable = false;
 let rows: Array<{
   id: string; slug: string; name: string; typeSlug: string; status: string;
   reviewNote?: string | null;
-  city: string | null; region: string | null; updatedAt: Date;
+  city: string | null; region: string | null; updatedAt: Date; recentlyUpdatedAt: Date | null;
+  metrics: OwnerListingMetrics;
   data: Record<string, unknown>;
 }> = [];
 
@@ -32,7 +48,37 @@ if (dbReady) {
         .orderBy(desc(listings.updatedAt));
 
       const ids = mine.map((m) => m.listing.id);
+      const metricsByListing = new Map<string, OwnerListingMetrics>();
+      if (ids.length) {
+        try {
+          const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+          const eventRows = await db.select({
+            listingId: listingAnalyticsEvents.listingId,
+            eventName: listingAnalyticsEvents.eventName,
+            count: sql<number>`count(*)::int`,
+          }).from(listingAnalyticsEvents)
+            .where(and(inArray(listingAnalyticsEvents.listingId, ids), gte(listingAnalyticsEvents.createdAt, since)))
+            .groupBy(listingAnalyticsEvents.listingId, listingAnalyticsEvents.eventName);
+          ownerMetricsAvailable = true;
+          for (const event of eventRows) {
+            if (!event.listingId) continue;
+            const metrics = metricsByListing.get(event.listingId) ?? emptyMetrics();
+            const count = Number(event.count);
+            if (event.eventName === 'detail_view') metrics.views += count;
+            else if (event.eventName === 'website_click') metrics.websiteClicks += count;
+            else if (['phone_click', 'email_click', 'contact_click'].includes(event.eventName)) metrics.contactClicks += count;
+            else if (event.eventName === 'favorite_add') metrics.favorites += count;
+            else if (event.eventName === 'owner_share') metrics.shares += count;
+            metricsByListing.set(event.listingId, metrics);
+          }
+        } catch {
+          // Keep listings usable if aggregate events are not available yet (e.g. migration not applied).
+          ownerMetricsAvailable = false;
+        }
+      }
       const denomsByListing = new Map<string, string[]>();
+      const professionsByListing = new Map<string, string[]>();
+      const servicesByListing = new Map<string, string[]>();
       if (ids.length) {
         const denomRows = await db
           .select({ listingId: listingDenominations.listingId, slug: denominations.slug })
@@ -44,6 +90,15 @@ if (dbReady) {
           list.push(d.slug);
           denomsByListing.set(d.listingId, list);
         }
+      }
+
+      if (ids.length) {
+        const [professionRows, serviceRows] = await Promise.all([
+          db.select({ listingId: listingProfessions.listingId, slug: professions.slug }).from(listingProfessions).innerJoin(professions, eq(listingProfessions.professionId, professions.id)).where(inArray(listingProfessions.listingId, ids)),
+          db.select({ listingId: listingServices.listingId, name: listingServices.name }).from(listingServices).where(inArray(listingServices.listingId, ids)),
+        ]);
+        for (const row of professionRows) { const list = professionsByListing.get(row.listingId) ?? []; list.push(row.slug); professionsByListing.set(row.listingId, list); }
+        for (const row of serviceRows) { const list = servicesByListing.get(row.listingId) ?? []; list.push(row.name); servicesByListing.set(row.listingId, list); }
       }
 
       rows = mine.map(({ listing: l, loc }) => {
@@ -60,17 +115,49 @@ if (dbReady) {
           city: loc?.city ?? null,
           region: loc?.region ?? null,
           updatedAt: l.updatedAt,
+          recentlyUpdatedAt: l.recentlyUpdatedAt,
+          metrics: metricsByListing.get(l.id) ?? emptyMetrics(),
           data: {
             name: l.name,
             typeSlug: l.typeSlug,
             industrySlug: l.industrySlug ?? '',
             categorySlug: l.categorySlug ?? '',
             customCategory: l.customCategory ?? '',
+            professions: professionsByListing.get(l.id) ?? [],
+            customProfessions: l.customProfessions ?? [],
+            services: servicesByListing.get(l.id) ?? [],
             tagline: l.tagline ?? '',
             description: l.description ?? '',
             website: l.website ?? '',
+            logoUrl: l.logoUrl ?? '',
+            coverUrl: l.coverUrl ?? '',
+            socialFacebook: socialLinkInput('facebook', l.socialLinks?.facebook),
+            socialInstagram: socialLinkInput('instagram', l.socialLinks?.instagram),
+            socialYoutube: socialLinkInput('youtube', l.socialLinks?.youtube),
+            socialX: socialLinkInput('x', l.socialLinks?.x),
+            socialLinkedin: socialLinkInput('linkedin', l.socialLinks?.linkedin),
+            photos: l.photos ?? [],
+            photoUrls: (l.photos ?? []).map((photo) => photo.url).join('\n'),
             phone: l.phone ?? '',
             email: l.email ?? '',
+            statementOfFaith: l.statementOfFaith ?? '',
+            coreBeliefsText: (l.coreBeliefs ?? []).join('\n'),
+            ministryFocusText: (l.ministryFocus ?? []).join('\n'),
+            worshipStyle: l.worshipStyle ?? '',
+            baptismPractice: l.baptismPractice ?? '',
+            communionPractice: l.communionPractice ?? '',
+            serviceArea: Array.isArray(l.serviceArea) ? l.serviceArea.join('\n') : '',
+            serviceAreaRadiusMi: l.serviceAreaRadiusMi ?? '',
+            hours: l.hours ?? {},
+            holidayHoursText: hoursEditorText(l.holidayHours),
+            languagesText: (l.languages ?? []).join('\n'),
+            accessibilityText: (l.accessibility ?? []).join('\n'),
+            isHiring: l.isHiring,
+            careersUrl: l.careersUrl ?? '',
+            yearFounded: l.yearFounded ?? '',
+            employeeCount: l.employeeCount ?? '',
+            ownershipType: l.ownershipType ?? '',
+            contactPreference: l.contactPreference ?? '',
             showEmail: l.showEmail,
             showPhone: l.showPhone,
             showWebsite: l.showWebsite,
@@ -100,6 +187,14 @@ const notices: Record<string, { title: string; body: string; tone: string }> = {
   'listing-saved': { title: 'Changes saved', body: 'Your listing updates have been saved.', tone: 'var(--teal)' },
 };
 const banner = notices[notice];
+const listingCounts = {
+  total: rows.length,
+  published: rows.filter((row) => row.status === 'published').length,
+  drafts: rows.filter((row) => row.status === 'draft').length,
+  inReview: rows.filter((row) => row.status === 'pending_review').length,
+  attention: rows.filter((row) => row.status === 'changes_requested' || row.status === 'rejected').length,
+};
+const attentionListings = rows.filter((row) => row.status === 'changes_requested' || row.status === 'rejected');
 
 const popularDenominations = [
   { slug: 'non-denominational', name: 'Non-Denominational' },
@@ -126,7 +221,7 @@ const allOtherDenominations = [...DENOMINATIONS]
   <div class="flex flex-wrap items-center justify-between gap-3">
     <div>
       <h1 class="text-2xl font-bold">My listings</h1>
-      <p class="section-sub">Create, edit, and manage your business listings. Active listings are published live in the directory.</p>
+      <p class="section-sub">Create, edit, and manage your business listings. Active listings are published live in the directory. Use each listing’s Actions column to edit or permanently delete it.</p>
     </div>
   </div>
 
@@ -144,8 +239,44 @@ const allOtherDenominations = [...DENOMINATIONS]
     </div>
   )}
 
+  <section class="mt-5" aria-labelledby="listing-overview-heading">
+    <div class="flex flex-wrap items-end justify-between gap-2">
+      <div><h2 id="listing-overview-heading" class="text-lg font-semibold">Your listing overview</h2><p class="text-xs" style="color:var(--text-mute)">Select a status to filter your listings below.</p></div>
+    </div>
+    <div class="mt-3 grid grid-cols-2 gap-3 lg:grid-cols-5">
+      {[
+        ['All listings', listingCounts.total, ''],
+        ['Published', listingCounts.published, 'published'],
+        ['Drafts', listingCounts.drafts, 'draft'],
+        ['In review', listingCounts.inReview, 'pending_review'],
+        ['Needs attention', listingCounts.attention, 'attention'],
+      ].map(([label, count, status]) => (
+        <button type="button" data-status-shortcut={status} class="card p-4 text-left transition hover:border-[var(--accent)] focus-visible:outline">
+          <span class="block text-xs" style="color:var(--text-mute)">{label}</span>
+          <span class="mt-1 block text-2xl font-bold">{count}</span>
+        </button>
+      ))}
+    </div>
+    <div class="card mt-3 p-4" aria-live="polite">
+      <h3 class="text-sm font-semibold">Needs attention</h3>
+      {attentionListings.length ? (
+        <ul class="mt-2 flex flex-wrap gap-2">
+          {attentionListings.map((row) => <li><button type="button" class="chip hover:border-[var(--accent)]" data-status-shortcut={row.status}>{row.name} · {STATUS_LABEL[row.status] ?? row.status} — show</button></li>)}
+        </ul>
+      ) : <p class="mt-1 text-sm" style="color:var(--text-soft)">Nothing needs your attention right now.</p>}
+    </div>
+  </section>
+
   <div id="form-banner" class="card mt-4 hidden border-l-4 p-4" role="alert" style="border-left-color:var(--accent)">
     <p id="form-banner-text" class="text-sm font-bold"></p>
+    <div id="recent-update-share" class="hidden mt-3 rounded-xl border p-3" style="border-color:var(--border);background:var(--surface-2)">
+      <p class="text-sm">Share your updated listing with your customers.</p>
+      <div class="mt-2 flex flex-wrap gap-2">
+        <button id="recent-update-share-button" type="button" class="btn btn-secondary !min-h-10 !px-3 !py-2 !text-sm">Share updated listing</button>
+        <a id="recent-update-view-link" class="btn btn-ghost !min-h-10 !px-3 !py-2 !text-sm" target="_blank" rel="noopener">View public listing</a>
+      </div>
+      <p id="recent-update-share-status" class="mt-2 text-xs" role="status" aria-live="polite"></p>
+    </div>
   </div>
 
   <!-- New / edit listing card -->
@@ -154,7 +285,7 @@ const allOtherDenominations = [...DENOMINATIONS]
       <span class="font-bold" id="form-title">+ Create a new listing</span>
       <span class="text-sm" style="color:var(--text-mute)"> — your business profile goes live immediately.</span>
     </summary>
-    <form id="listing-form" class="mt-5 space-y-5" data-listing-id="">
+    <form id="listing-form" class="mt-5 space-y-5" data-listing-id="" data-taxonomy-recommendation-form>
       <!-- Section 1: Overview -->
       <div class="grid gap-4 sm:grid-cols-2">
         <label class="block text-sm font-medium">Business name *
@@ -179,6 +310,20 @@ const allOtherDenominations = [...DENOMINATIONS]
         <textarea name="description" rows="4" minlength="30" maxlength="8000" class="input mt-1 w-full" placeholder="Describe what your business offers, who you serve, and what makes your business distinct"></textarea>
       </label>
 
+
+      <section class="card p-4 sm:p-5" data-taxonomy-recommendation-panel aria-labelledby="taxonomy-recommendation-heading">
+        <div class="flex flex-wrap items-start justify-between gap-2">
+          <div><h2 id="taxonomy-recommendation-heading" class="text-sm font-bold">Optional taxonomy suggestions</h2>
+            <p class="mt-1 text-xs" style="color:var(--text-mute)">Local suggestions use listing details only; website contents are not fetched. Nothing changes unless you choose a suggestion.</p></div>
+          <span class="chip !text-[10px]">Suggestions only</span>
+        </div>
+        <div class="mt-3" data-taxonomy-recommendation-results aria-live="polite"><p class="text-xs" style="color:var(--text-mute)">Start typing listing details to see relevant taxonomy paths.</p></div>
+        <div class="mt-3 flex flex-wrap items-center gap-2">
+          <button type="button" class="btn btn-secondary !min-h-9 !px-3 !py-1.5 !text-xs" data-taxonomy-none>None of these fit</button>
+          <button type="button" class="hidden btn btn-secondary !min-h-9 !px-3 !py-1.5 !text-xs" data-taxonomy-show-matches>Show ranked matches</button>
+        </div>
+        <p class="mt-2 text-xs" style="color:var(--text-mute)" data-taxonomy-recommendation-status role="status" aria-live="polite"></p>
+      </section>
       <!-- Section 2: Expandable Hierarchical Industry & Category Selector -->
       <div class="rounded-2xl p-4 border" style="border-color:var(--border);background:var(--surface-2)">
         <div class="flex flex-wrap items-center justify-between gap-2">
@@ -189,14 +334,15 @@ const allOtherDenominations = [...DENOMINATIONS]
           <span id="dash-category-badge" class="chip !text-[11px] font-bold">Category required</span>
         </div>
 
-        <input type="hidden" name="industrySlug" id="dash-input-industry-slug" value="" />
-        <input type="hidden" name="categorySlug" id="dash-input-category-slug" value="" />
+        <input type="hidden" name="industrySlug" id="dash-input-industry-slug" value="" data-selection-source="manual" />
+        <input type="hidden" name="categorySlug" id="dash-input-category-slug" value="" data-selection-source="manual" />
 
         <!-- Selected Category Display Banner -->
         <div id="dash-category-selected-card" class="hidden mt-3 p-3 rounded-xl border border-[var(--teal)] bg-[rgba(46,146,131,0.08)]">
           <div class="flex items-center justify-between">
             <div>
               <span class="text-xs uppercase font-bold tracking-wide" style="color:var(--teal)">Selected Category</span>
+              <span id="dash-taxonomy-source" class="ml-2 rounded-full border px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide">Manual</span>
               <p class="font-bold text-sm mt-0.5" id="dash-category-selected-text"></p>
             </div>
             <button type="button" class="btn btn-secondary !py-1 !px-3 !text-xs font-semibold" id="dash-change-category-btn">Change category</button>
@@ -249,6 +395,8 @@ const allOtherDenominations = [...DENOMINATIONS]
                         data-industry-name={ind.name}
                         data-category-slug={cat.slug}
                         data-category-name={cat.name}
+                        data-category-search={`${cat.name} ${cat.slug} ${(cat.aliases ?? []).join(' ')} ${(cat.keywords ?? []).join(' ')} ${cat.professions.map((p) => `${p.name} ${p.slug} ${(p.aliases ?? []).join(' ')} ${(p.services ?? []).join(' ')}`).join(' ')}`}
+                        data-professions={JSON.stringify(cat.professions.map((p) => ({ slug: p.slug, name: p.name, services: p.services ?? [] })))}
                       >
                         <span class="dash-subcat-name">{cat.name}</span>
                         <span class="select-indicator text-xs font-bold opacity-0 transition-opacity" style="color:var(--teal)">✓</span>
@@ -260,6 +408,19 @@ const allOtherDenominations = [...DENOMINATIONS]
             ))}
           </div>
         </div>
+      </div>
+
+      <div class="rounded-2xl p-4 border" style="border-color:var(--border);background:var(--surface-2)">
+        <h3 class="text-sm font-semibold">Professions &amp; services</h3>
+        <p class="mt-1 text-xs" style="color:var(--text-mute)">Choose professions and service examples for this category, or add custom values.</p>
+        <div id="dash-profession-options" class="mt-3 grid gap-2 sm:grid-cols-2"><p class="text-xs" style="color:var(--text-mute)">Select a category above first.</p></div>
+        <label class="mt-3 block text-xs font-medium">Custom profession(s)
+          <textarea name="customProfessions" id="dash-custom-professions" rows="2" maxlength="600" class="input mt-1 w-full" placeholder="One per line"></textarea>
+        </label>
+        <div class="mt-3"><p class="text-xs font-medium">Services</p><div id="dash-service-options" class="mt-2 grid gap-2 sm:grid-cols-2"><p class="text-xs" style="color:var(--text-mute)">Select a profession to see services.</p></div></div>
+        <label class="mt-3 block text-xs font-medium">Custom service(s)
+          <textarea name="customServices" id="dash-custom-services" rows="2" maxlength="1000" class="input mt-1 w-full" placeholder="One per line"></textarea>
+        </label>
       </div>
 
       <!-- Section 3: Faith & Multi-Denomination Selector (Max 2) -->
@@ -347,6 +508,70 @@ const allOtherDenominations = [...DENOMINATIONS]
         Online only — serves nationwide (no physical storefront)
       </label>
 
+      <details class="rounded-2xl border p-4" style="border-color:var(--border);background:var(--surface-2)">
+        <summary class="cursor-pointer text-sm font-semibold">Hours, service area &amp; organization details</summary>
+        <div class="mt-3 grid gap-3 sm:grid-cols-2">
+          <label class="block text-xs font-medium">Service area (one place per line)
+            <textarea name="serviceAreaText" rows="2" maxlength="300" class="input mt-1 w-full" placeholder="Dallas, TX"></textarea>
+          </label>
+          <label class="block text-xs font-medium">Service radius in miles
+            <input name="serviceAreaRadiusMi" type="number" min="1" max="500" step="1" class="input mt-1 w-full" placeholder="25" />
+          </label>
+          <HoursEditor id="dashboard-hours-editor" />
+          <label class="block text-xs font-medium sm:col-span-2">Holiday / special hours (one “Day: hours” entry per line)
+            <textarea name="holidayHoursText" rows="2" maxlength="2000" class="input mt-1 w-full" placeholder={'Thanksgiving: Closed\nChristmas Eve: 9 AM–1 PM'}></textarea>
+          </label>
+          <label class="block text-xs font-medium">Languages spoken (one per line)
+            <textarea name="languagesText" rows="2" maxlength="1000" class="input mt-1 w-full" placeholder="English"></textarea>
+          </label>
+          <label class="block text-xs font-medium">Accessibility details (one per line)
+            <textarea name="accessibilityText" rows="2" maxlength="1000" class="input mt-1 w-full" placeholder="Wheelchair accessible"></textarea>
+          </label>
+          <div class="sm:col-span-2">
+            <label class="flex items-center gap-2 text-xs font-medium cursor-pointer"><input type="checkbox" name="isHiring" value="1" class="h-4 w-4 accent-[var(--accent)]" /> Currently hiring</label>
+            <label class="mt-2 block text-xs font-medium">Careers URL
+              <input name="careersUrl" type="url" maxlength="2000" class="input mt-1 w-full" placeholder="https://example.com/careers" />
+            </label>
+          </div>
+          <label class="block text-xs font-medium">Year founded
+            <input name="yearFounded" type="number" min="1800" max={new Date().getFullYear()} step="1" class="input mt-1 w-full" />
+          </label>
+          <label class="block text-xs font-medium">Team size
+            <select name="employeeCount" class="input mt-1 w-full">
+              <option value="">Choose (optional)</option><option>Solo (just me)</option><option>2–10</option><option>11–50</option><option>51–200</option><option>201–500</option><option>500+</option>
+            </select>
+          </label>
+          <label class="block text-xs font-medium">Ownership / organization type
+            <select name="ownershipType" class="input mt-1 w-full">
+              <option value="">Choose (optional)</option><option>Privately owned</option><option>Family-owned</option><option>Partnership</option><option>Corporation</option><option>Cooperative</option><option>Nonprofit / ministry-run</option><option>Government / public</option>
+            </select>
+          </label>
+          <label class="block text-xs font-medium">Preferred contact method
+            <select name="contactPreference" class="input mt-1 w-full">
+              <option value="">Choose (optional)</option><option>Email</option><option>Phone call</option><option>Text message</option><option>Any is fine</option>
+            </select>
+          </label>
+          <label class="block text-xs font-medium sm:col-span-2">Statement of faith (optional)
+            <textarea name="statementOfFaith" rows="3" maxlength="8000" class="input mt-1 w-full"></textarea>
+          </label>
+          <label class="block text-xs font-medium">Core beliefs (one per line)
+            <textarea name="coreBeliefsText" rows="2" maxlength="2000" class="input mt-1 w-full"></textarea>
+          </label>
+          <label class="block text-xs font-medium">Ministry / organization focus (one per line)
+            <textarea name="ministryFocusText" rows="2" maxlength="2000" class="input mt-1 w-full"></textarea>
+          </label>
+          <label class="block text-xs font-medium">Worship style
+            <input name="worshipStyle" maxlength="120" class="input mt-1 w-full" />
+          </label>
+          <label class="block text-xs font-medium">Baptism practice
+            <input name="baptismPractice" maxlength="160" class="input mt-1 w-full" />
+          </label>
+          <label class="block text-xs font-medium">Communion practice
+            <input name="communionPractice" maxlength="160" class="input mt-1 w-full" />
+          </label>
+        </div>
+      </details>
+
       <!-- Section 5: Contact & Privacy Controls -->
       <div class="rounded-2xl p-4 border" style="border-color:var(--border)">
         <h3 class="text-sm font-semibold">Contact information &amp; privacy controls</h3>
@@ -389,6 +614,30 @@ const allOtherDenominations = [...DENOMINATIONS]
           </label>
         </div>
 
+        <div class="mt-4 rounded-xl border p-3" style="border-color:var(--border);background:var(--surface-2)">
+          <h4 class="text-sm font-semibold">Logo, photos &amp; social links</h4>
+          <div class="mt-2 grid gap-3 sm:grid-cols-2">
+            <label class="block text-xs font-medium">Logo image URL
+              <input name="logoUrl" type="url" maxlength="2000" class="input mt-1 w-full" placeholder="https://example.com/logo.png" />
+            </label>
+            <label class="block text-xs font-medium">Cover image URL
+              <input name="coverUrl" type="url" maxlength="2000" class="input mt-1 w-full" placeholder="https://example.com/cover.jpg" />
+            </label>
+          </div>
+          <label class="mt-3 block text-xs font-medium">Photo URLs (one per line, up to 12)
+            <textarea name="photoUrls" rows="3" maxlength="24000" class="input mt-1 w-full" placeholder="https://example.com/photo-1.jpg"></textarea>
+          </label>
+          <p class="mt-1 text-[11px]" style="color:var(--text-mute)">Use public http(s) image URLs. CrossLinkd does not fetch website text.</p>
+          <p class="mt-3 text-xs font-medium">Social profile URLs</p>
+          <div class="mt-2 grid gap-2 sm:grid-cols-2">
+            <label class="text-xs">Facebook<input name="socialFacebook" type="url" maxlength="2000" class="input mt-1 w-full" placeholder="https://facebook.com/your-page" /></label>
+            <label class="text-xs">Instagram<input name="socialInstagram" type="url" maxlength="2000" class="input mt-1 w-full" placeholder="https://instagram.com/your-page" /></label>
+            <label class="text-xs">YouTube<input name="socialYoutube" type="url" maxlength="2000" class="input mt-1 w-full" placeholder="https://youtube.com/@your-channel" /></label>
+            <label class="text-xs">X<input name="socialX" type="url" maxlength="2000" class="input mt-1 w-full" placeholder="https://x.com/your-profile" /></label>
+            <label class="text-xs">LinkedIn<input name="socialLinkedin" type="url" maxlength="2000" class="input mt-1 w-full" placeholder="https://linkedin.com/company/your-page" /></label>
+          </div>
+        </div>
+
         <!-- Price Range -->
         <div class="mt-4">
           <label class="block text-sm font-medium">Price range
@@ -412,32 +661,76 @@ const allOtherDenominations = [...DENOMINATIONS]
     </form>
   </details>
 
+  <section id="listings-view" class="card mt-5 p-4" aria-label="Filter your listings">
+    <div class="grid gap-3 sm:grid-cols-[minmax(0,1fr)_220px]">
+      <label class="block text-sm font-medium">Search listings
+        <input id="listing-search" type="search" class="input mt-1 w-full" placeholder="Search by business name or location" autocomplete="off" />
+      </label>
+      <label class="block text-sm font-medium">Status
+        <select id="listing-status-filter" class="input mt-1 w-full">
+          <option value="">All statuses</option><option value="published">Published</option><option value="draft">Draft</option><option value="pending_review">In review</option><option value="changes_requested">Changes requested</option><option value="rejected">Rejected</option><option value="archived">Archived</option><option value="attention">Needs attention</option>
+        </select>
+      </label>
+    </div>
+    <p id="listing-filter-status" class="mt-2 text-xs" style="color:var(--text-mute)" role="status" aria-live="polite">Showing {rows.length} {rows.length === 1 ? 'listing' : 'listings'}.</p>
+    <p id="listing-action-status" class="sr-only" role="status" aria-live="polite"></p>
+    {ownerMetricsAvailable ? <p class="mt-1 text-[11px]" style="color:var(--text-mute)">Engagement totals cover the last 30 days and are aggregate only; no visitor-level activity is shown.</p> : <p class="mt-1 text-[11px]" style="color:var(--text-mute)">Engagement metrics are currently unavailable.</p>}
+  </section>
+
+  <div id="owner-listings-mobile" class="mt-3 space-y-3 md:hidden">
+    {rows.length === 0 ? (
+      <div class="card p-6 text-center"><p class="font-semibold">No listings yet</p><p class="mt-1 text-sm" style="color:var(--text-soft)">Create your first listing above.</p></div>
+    ) : rows.map((r) => (
+      <article class="card p-4" data-owner-listing data-owner-view="mobile" data-id={r.id} data-name={r.name} data-location={`${r.city ?? ''} ${r.region ?? ''}`} data-status={r.status}>
+        <div class="flex items-start justify-between gap-3">
+          <div class="min-w-0"><h2 class="font-semibold">{r.name}</h2><p class="text-xs" style="color:var(--text-mute)">{r.typeSlug} · {r.city || '—'}{r.region ? `, ${r.region}` : ''}</p></div>
+          <span class={`chip shrink-0 !text-[11px] ${STATUS_CHIP[r.status] ?? ''}`} style={r.status === 'published' ? 'color:var(--teal)' : ''}>{STATUS_LABEL[r.status] ?? r.status}</span>
+        </div>
+        {r.reviewNote && <p class="mt-2 rounded-lg bg-[var(--surface-2)] p-2 text-xs" style="color:var(--text-soft)"><strong>Reviewer note:</strong> {r.reviewNote}</p>}
+        {recentlyUpdatedState(r.recentlyUpdatedAt) && <p class="mt-2 text-xs font-medium" style="color:var(--teal)">Recently Updated · {recentlyUpdatedState(r.recentlyUpdatedAt)?.label}</p>}
+        <p class="mt-2 text-xs" style="color:var(--text-mute)">Updated {r.updatedAt.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</p>
+        {r.status === 'published' && <p class="mt-2 text-xs leading-relaxed" style="color:var(--text-soft)">Last 30 days: {r.metrics.views} views · {r.metrics.websiteClicks} website clicks · {r.metrics.contactClicks} contact clicks · {r.metrics.favorites} favorites · {r.metrics.shares} shares</p>}
+        <div class="mt-3 flex flex-wrap gap-2" role="group" aria-label={`Actions for ${r.name}`} data-actions data-listing={JSON.stringify(r.data)} data-id={r.id} data-name={r.name} data-status={r.status} data-slug={r.slug}>
+          <button type="button" class="btn btn-secondary !min-h-11 !px-3 !py-2 !text-xs" data-act="edit" aria-label={`Edit ${r.name}`}>Edit</button>
+          {r.status === 'changes_requested' && <button type="button" class="btn btn-primary !min-h-11 !px-3 !py-2 !text-xs" data-act="resubmit">Review changes</button>}
+          {r.status === 'draft' && <button type="button" class="btn btn-primary !min-h-11 !px-3 !py-2 !text-xs" data-act="submit">Submit</button>}
+          {r.status === 'published' && <><a href={`/directory/${r.slug}`} class="btn btn-ghost !min-h-11 !px-3 !py-2 !text-xs" target="_blank" rel="noopener">View</a><button type="button" class="btn btn-ghost !min-h-11 !px-3 !py-2 !text-xs" data-act="share" aria-label={`Share ${r.name}`}>Share</button></>}
+          <button type="button" class="btn btn-ghost !min-h-11 !px-3 !py-2 !text-xs" data-act="delete" aria-label={`Permanently delete ${r.name}`} style="color:var(--accent)">Delete</button>
+        </div>
+      </article>
+    ))}
+  </div>
+
+  <p id="listing-no-results" class="card mt-3 hidden p-5 text-center text-sm" role="status" style="color:var(--text-soft)">No listings match those filters. Try a different name or status.</p>
+
   <!-- Listings table -->
-  <div class="card mt-5 overflow-x-auto" id="listings-table-card">
-    <table class="w-full min-w-[680px] text-sm">
+  <div class="card mt-5 hidden overflow-x-auto md:block" id="listings-table-card">
+    <table class="w-full min-w-[900px] text-sm">
       <thead>
         <tr class="text-left text-xs uppercase" style="color:var(--text-mute)">
           <th class="p-3">Business</th>
           <th class="p-3">Location</th>
           <th class="p-3">Status</th>
           <th class="p-3">Updated</th>
-          <th class="p-3 text-right">Actions</th>
+          <th class="p-3">Engagement · 30 days</th>
+          <th scope="col" class="sticky right-0 z-10 bg-[var(--surface)] p-3 text-right">Actions</th>
         </tr>
       </thead>
       <tbody>
         {rows.length === 0 ? (
           <tr id="empty-table-row">
-            <td colspan="5" class="p-8 text-center">
+            <td colspan="6" class="p-8 text-center">
               <p class="font-bold">No listings yet</p>
               <p class="mt-1 text-sm" style="color:var(--text-soft)">Create your first business listing above — it goes live immediately.</p>
             </td>
           </tr>
         ) : (
           rows.map((r) => (
-            <tr class="border-t align-top" style="border-color:var(--border)" data-row-id={r.id}>
+            <tr class="border-t align-top" style="border-color:var(--border)" data-row-id={r.id} data-owner-listing data-owner-view="desktop" data-id={r.id} data-name={r.name} data-location={`${r.city ?? ''} ${r.region ?? ''}`} data-status={r.status}>
               <td class="p-3">
                 <p class="font-medium">{r.name}</p>
                 <p class="text-xs" style="color:var(--text-mute)">{r.typeSlug}</p>
+                {recentlyUpdatedState(r.recentlyUpdatedAt) && <p class="mt-1 text-xs font-medium" style="color:var(--teal)">Recently Updated · {recentlyUpdatedState(r.recentlyUpdatedAt)?.label}</p>}
                 {r.reviewNote && (
                   <p class="mt-1 text-xs text-amber-600 font-medium">Reviewer note: {r.reviewNote}</p>
                 )}
@@ -451,9 +744,12 @@ const allOtherDenominations = [...DENOMINATIONS]
               <td class="p-3 text-xs" style="color:var(--text-mute)">
                 {r.updatedAt.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
               </td>
-              <td class="p-3">
-                <div class="flex flex-wrap justify-end gap-1.5" data-actions data-listing={JSON.stringify(r.data)} data-id={r.id} data-name={r.name} data-status={r.status}>
-                  <button type="button" class="btn btn-ghost !px-2.5 !py-1 !text-xs" data-act="edit">Edit</button>
+              <td class="p-3 text-xs leading-relaxed" style="color:var(--text-soft)">
+                {r.status === 'published' ? <>{r.metrics.views} views<br />{r.metrics.websiteClicks} website clicks<br />{r.metrics.contactClicks} contact clicks<br />{r.metrics.favorites} favorites · {r.metrics.shares} shares</> : <span style="color:var(--text-mute)">Available when published</span>}
+              </td>
+              <td class="sticky right-0 z-[1] p-3" style="background:var(--surface);box-shadow:-8px 0 12px -10px rgba(15,16,20,.35)">
+                <div class="flex flex-wrap justify-end gap-1.5" role="group" aria-label={`Actions for ${r.name}`} data-actions data-listing={JSON.stringify(r.data)} data-id={r.id} data-name={r.name} data-status={r.status} data-slug={r.slug}>
+                  <button type="button" class="btn btn-ghost !min-h-11 !px-3 !py-2 !text-xs" data-act="edit" aria-label={`Edit ${r.name}`} title={`Edit ${r.name}`}>Edit</button>
                   {r.status === 'draft' && (
                     <button type="button" class="btn btn-primary !px-2.5 !py-1 !text-xs" data-act="submit">Submit</button>
                   )}
@@ -461,9 +757,9 @@ const allOtherDenominations = [...DENOMINATIONS]
                     <button type="button" class="btn btn-primary !px-2.5 !py-1 !text-xs" data-act="resubmit">Resubmit</button>
                   )}
                   {r.status === 'published' && (
-                    <a href={`/directory/${r.slug}`} class="btn btn-secondary !px-2.5 !py-1 !text-xs" target="_blank">View live</a>
+                    <><a href={`/directory/${r.slug}`} class="btn btn-secondary !min-h-11 !px-3 !py-2 !text-xs" target="_blank" rel="noopener">View</a><button type="button" class="btn btn-ghost !min-h-11 !px-3 !py-2 !text-xs" data-act="share" aria-label={`Share ${r.name}`}>Share</button></>
                   )}
-                  <button type="button" class="btn btn-ghost !px-2.5 !py-1 !text-xs" data-act="delete" style="color:var(--accent)">Delete</button>
+                  <button type="button" class="btn btn-ghost !min-h-11 !px-3 !py-2 !text-xs" data-act="delete" aria-label={`Permanently delete ${r.name}`} title={`Permanently delete ${r.name}`} style="color:var(--accent)">Delete</button>
                 </div>
               </td>
             </tr>
@@ -474,6 +770,7 @@ const allOtherDenominations = [...DENOMINATIONS]
   </div>
 
   <script>
+    import { readHoursSchedule, setHoursSchedule } from '@/scripts/hoursEditor';
     const form = document.getElementById('listing-form') as HTMLFormElement | null;
     const statusEl = document.getElementById('form-status');
     const banner = document.getElementById('form-banner');
@@ -482,6 +779,10 @@ const allOtherDenominations = [...DENOMINATIONS]
     const formSubmitBtn = document.getElementById('form-submit-btn') as HTMLButtonElement | null;
     const formCancelBtn = document.getElementById('form-cancel-btn') as HTMLButtonElement | null;
     const formCard = document.getElementById('listing-form-card') as HTMLDetailsElement | null;
+    const recentUpdateSharePanel = document.getElementById('recent-update-share');
+    const recentUpdateShareButton = document.getElementById('recent-update-share-button') as HTMLButtonElement | null;
+    const recentUpdateViewLink = document.getElementById('recent-update-view-link') as HTMLAnchorElement | null;
+    const recentUpdateShareStatus = document.getElementById('recent-update-share-status');
 
     // -------------------------------------------------------------------------
     // Accordion Category State
@@ -511,9 +812,50 @@ const allOtherDenominations = [...DENOMINATIONS]
       });
     });
 
-    function setCategorySelection(indSlug: string, indName: string, catSlug: string, catName: string) {
-      if (inputIndustrySlug) inputIndustrySlug.value = indSlug;
-      if (inputCategorySlug) inputCategorySlug.value = catSlug;
+    function renderDashProfessions(catSlug: string, selectedSlugs: string[] = [], selectedServices: string[] = []) {
+      const categoryButton = document.querySelector<HTMLButtonElement>(`.dash-subcat-option-btn[data-category-slug="${catSlug}"]`);
+      const professionOptions = document.getElementById('dash-profession-options');
+      const serviceOptions = document.getElementById('dash-service-options');
+      if (!professionOptions || !serviceOptions) return;
+      let professions: Array<{ slug: string; name: string; services: string[] }> = [];
+      try { professions = JSON.parse(categoryButton?.dataset.professions || '[]'); } catch { professions = []; }
+      professionOptions.innerHTML = '';
+      serviceOptions.innerHTML = '';
+      const selectedServiceNames = new Set(selectedServices);
+      const selectedServiceSources = new Map(selectedServices.map((name) => [name, 'manual']));
+      if (!professions.length) { professionOptions.textContent = 'Add a custom profession below.'; serviceOptions.textContent = 'Add a custom service below.'; return; }
+      for (const profession of professions) {
+        const label = document.createElement('label'); label.className = 'flex items-center gap-2 rounded-xl border p-2 text-xs';
+        const input = document.createElement('input'); input.type = 'checkbox'; input.name = 'professions'; input.value = profession.slug; input.checked = selectedSlugs.includes(profession.slug); input.dataset.selectionSource = 'manual';
+        const title = document.createElement('span'); title.textContent = profession.name; label.append(input, title); professionOptions.append(label);
+      }
+      const refreshServices = () => {
+        const chosen = Array.from(professionOptions.querySelectorAll<HTMLInputElement>('input[name="professions"]:checked')).map((input) => input.value);
+        const examples = [...new Set(professions.filter((p) => chosen.includes(p.slug)).flatMap((p) => p.services))];
+        serviceOptions.innerHTML = '';
+        for (const name of examples) {
+          const label = document.createElement('label'); label.className = 'flex items-center gap-2 rounded-xl border p-2 text-xs';
+          const input = document.createElement('input'); input.type = 'checkbox'; input.name = 'services'; input.value = name; input.checked = selectedServiceNames.has(name); input.dataset.selectionSource = selectedServiceSources.get(name) || 'manual';
+          input.addEventListener('change', () => {
+            const source = input.dataset.settingSuggestion === 'true' ? 'suggested' : 'manual';
+            input.dataset.selectionSource = source;
+            if (input.checked) { selectedServiceNames.add(name); selectedServiceSources.set(name, source); }
+            else { selectedServiceNames.delete(name); selectedServiceSources.delete(name); }
+          });
+          const title = document.createElement('span'); title.textContent = name; label.append(input, title); serviceOptions.append(label);
+        }
+        if (!examples.length) serviceOptions.textContent = 'Choose a profession to see service examples.';
+      };
+      professionOptions.querySelectorAll<HTMLInputElement>('input').forEach((input) => input.addEventListener('change', () => { if (input.dataset.settingSuggestion !== 'true') input.dataset.selectionSource = 'manual'; refreshServices(); }));
+      refreshServices();
+    }
+
+    function setCategorySelection(indSlug: string, indName: string, catSlug: string, catName: string, selectedSlugs: string[] = [], selectedServices: string[] = [], source = 'manual') {
+      if (inputIndustrySlug) { inputIndustrySlug.value = indSlug; inputIndustrySlug.dataset.selectionSource = source; }
+      if (inputCategorySlug) { inputCategorySlug.value = catSlug; inputCategorySlug.dataset.selectionSource = source; }
+      const sourceBadge = document.getElementById('dash-taxonomy-source');
+      if (sourceBadge) { sourceBadge.textContent = source === 'suggested' ? 'Suggested' : 'Manual'; sourceBadge.classList.remove('hidden'); }
+      renderDashProfessions(catSlug, selectedSlugs, selectedServices);
 
       if (selectedText) selectedText.textContent = `${indName} › ${catName}`;
       selectedCard?.classList.remove('hidden');
@@ -536,6 +878,38 @@ const allOtherDenominations = [...DENOMINATIONS]
         categoryBadge.style.color = 'var(--teal)';
       }
     }
+
+    form?.addEventListener('taxonomy-recommendation-apply', (event) => {
+      const custom = event as CustomEvent<{ recommendation: { industrySlug: string; categorySlug: string; professionSlug: string; serviceNames: string[] }; result?: { applied: boolean; message?: string } }>;
+      const recommendation = custom.detail.recommendation;
+      const currentIndustry = inputIndustrySlug?.value || '';
+      const currentCategory = inputCategorySlug?.value || '';
+      const currentSource = inputCategorySlug?.dataset.selectionSource || 'manual';
+      const manualChoices = Array.from(form?.querySelectorAll<HTMLInputElement>('input[name="professions"]:checked,input[name="services"]:checked') ?? []).some((input) => input.dataset.selectionSource !== 'suggested');
+      const customProfessionField = form?.elements.namedItem('customProfessions');
+      const customServiceField = form?.elements.namedItem('customServices');
+      const customProfessionText = customProfessionField instanceof HTMLTextAreaElement ? customProfessionField.value.trim() : '';
+      const customServiceText = customServiceField instanceof HTMLTextAreaElement ? customServiceField.value.trim() : '';
+      const samePath = currentIndustry === recommendation.industrySlug && currentCategory === recommendation.categorySlug;
+      const customCategoryText = inputCustomCategory?.value?.trim() || '';
+      if (!samePath && (Boolean(currentCategory && currentSource === 'manual') || manualChoices || customCategoryText || customProfessionText || customServiceText)) {
+        custom.detail.result = { applied: false, message: 'Your manual taxonomy choices are preserved. Change or clear them yourself before applying a different path.' };
+        return;
+      }
+      const option = document.querySelector<HTMLButtonElement>(`.dash-subcat-option-btn[data-industry-slug="${recommendation.industrySlug}"][data-category-slug="${recommendation.categorySlug}"]`);
+      if (!option) { custom.detail.result = { applied: false, message: 'That category is not available in this form.' }; return; }
+      if (!samePath) setCategorySelection(recommendation.industrySlug, option.dataset.industryName || recommendation.industrySlug, recommendation.categorySlug, option.dataset.categoryName || recommendation.categorySlug, [], [], 'suggested');
+      const profession = Array.from(form?.querySelectorAll<HTMLInputElement>('input[name="professions"]') ?? []).find((input) => input.value === recommendation.professionSlug);
+      if (profession && !profession.checked) {
+        profession.dataset.settingSuggestion = 'true'; profession.dataset.selectionSource = 'suggested'; profession.checked = true;
+        profession.dispatchEvent(new Event('change', { bubbles: true })); profession.dataset.settingSuggestion = 'false';
+      }
+      for (const name of recommendation.serviceNames) {
+        const service = Array.from(form?.querySelectorAll<HTMLInputElement>('input[name="services"]') ?? []).find((input) => input.value === name);
+        if (service && !service.checked) { service.dataset.settingSuggestion = 'true'; service.dataset.selectionSource = 'suggested'; service.checked = true; service.dispatchEvent(new Event('change', { bubbles: true })); service.dataset.settingSuggestion = 'false'; }
+      }
+      custom.detail.result = { applied: true, message: 'Suggestion selected. Any manual values already chosen were preserved.' };
+    });
 
     document.querySelectorAll<HTMLButtonElement>('.dash-subcat-option-btn').forEach((btn) => {
       btn.addEventListener('click', () => {
@@ -565,7 +939,8 @@ const allOtherDenominations = [...DENOMINATIONS]
 
         subcatBtns.forEach((subBtn) => {
           const name = (subBtn.dataset.categoryName || '').toLowerCase();
-          const match = !q || name.includes(q);
+          const searchable = (subBtn.dataset.categorySearch || name).toLowerCase();
+          const match = !q || searchable.includes(q);
           subBtn.classList.toggle('hidden', !match);
           if (match) hasMatch = true;
         });
@@ -688,6 +1063,9 @@ const allOtherDenominations = [...DENOMINATIONS]
       if (!form) return;
       form.reset();
       form.dataset.listingId = '';
+      form.dataset.currentStatus = '';
+      form.dataset.currentPhotos = '[]';
+      form.dataset.submitAction = 'publish';
       if (formTitle) formTitle.textContent = '+ Create a new listing';
       if (formSubmitBtn) formSubmitBtn.textContent = 'Publish listing';
       formCancelBtn?.classList.add('hidden');
@@ -699,6 +1077,14 @@ const allOtherDenominations = [...DENOMINATIONS]
       selectedCard?.classList.add('hidden');
       accordionWrapper?.classList.remove('hidden');
       customCategoryWrap?.classList.add('hidden');
+      const profOptions = document.getElementById('dash-profession-options');
+      const serviceOptions = document.getElementById('dash-service-options');
+      if (profOptions) profOptions.innerHTML = '<p class="text-xs" style="color:var(--text-mute)">Select a category above first.</p>';
+      if (serviceOptions) serviceOptions.innerHTML = '<p class="text-xs" style="color:var(--text-mute)">Select a profession to see services.</p>';
+      const customProfessionField = document.getElementById('dash-custom-professions') as HTMLTextAreaElement | null;
+      const customServiceField = document.getElementById('dash-custom-services') as HTMLTextAreaElement | null;
+      if (customProfessionField) customProfessionField.value = '';
+      if (customServiceField) customServiceField.value = '';
       if (categoryBadge) {
         categoryBadge.textContent = 'Category required';
         categoryBadge.style.color = '';
@@ -709,11 +1095,14 @@ const allOtherDenominations = [...DENOMINATIONS]
       renderDenominations();
     }
 
-    function fillForm(data: Record<string, unknown>, id: string, name: string) {
+    function fillForm(data: Record<string, unknown>, id: string, name: string, status = '') {
       if (!form) return;
       form.dataset.listingId = id;
+      form.dataset.currentStatus = status;
+      form.dataset.currentPhotos = JSON.stringify(Array.isArray(data.photos) ? data.photos : []);
+      form.dataset.submitAction = 'save';
       for (const [k, v] of Object.entries(data)) {
-        if (k === 'denominations') continue;
+        if (['denominations', 'professions', 'customProfessions', 'services'].includes(k)) continue;
         const el = form.elements.namedItem(k) as HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement | null;
         if (!el) continue;
         if (el instanceof HTMLInputElement && el.type === 'checkbox') {
@@ -722,6 +1111,7 @@ const allOtherDenominations = [...DENOMINATIONS]
           el.value = String(v ?? '');
         }
       }
+      setHoursSchedule(form, data.hours);
 
       // Restore category
       const indSlug = String(data.industrySlug || '');
@@ -731,7 +1121,11 @@ const allOtherDenominations = [...DENOMINATIONS]
         const catBtn = document.querySelector<HTMLButtonElement>(`.dash-subcat-option-btn[data-category-slug="${catSlug}"]`);
         const indName = catBtn?.dataset.industryName || indSlug;
         const catName = catBtn?.dataset.categoryName || catSlug;
-        setCategorySelection(indSlug, indName, catSlug, catName);
+        const selectedProfessions = Array.isArray(data.professions) ? data.professions.map(String) : [];
+        const selectedServices = Array.isArray(data.services) ? data.services.map(String) : [];
+        setCategorySelection(indSlug, indName, catSlug, catName, selectedProfessions, selectedServices);
+        (document.getElementById('dash-custom-professions') as HTMLTextAreaElement | null)!.value = Array.isArray(data.customProfessions) ? data.customProfessions.join('\n') : '';
+        (document.getElementById('dash-custom-services') as HTMLTextAreaElement | null)!.value = selectedServices.filter((service) => !Array.from(document.querySelectorAll<HTMLInputElement>('#dash-service-options input')).some((input) => input.value === service)).join('\n');
         if (inputCustomCategory && customCat) {
           inputCustomCategory.value = customCat;
         }
@@ -757,6 +1151,7 @@ const allOtherDenominations = [...DENOMINATIONS]
       if (formSubmitBtn) formSubmitBtn.textContent = 'Save changes';
       formCancelBtn?.classList.remove('hidden');
       if (formCard) formCard.open = true;
+      form?.dispatchEvent(new Event('taxonomy-recommendations-refresh'));
       formCard?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
 
@@ -772,7 +1167,7 @@ const allOtherDenominations = [...DENOMINATIONS]
         body: body ? JSON.stringify(body) : undefined,
       });
       const json = await res.json().catch(() => ({ ok: false, error: 'Unexpected server response.' }));
-      return { ok: res.ok && json.ok, json } as { ok: boolean; json: { ok: boolean; error?: string } };
+      return { ok: res.ok && json.ok, json } as { ok: boolean; json: { ok: boolean; error?: string; listing?: { id?: string; slug?: string; status?: string; meaningfulUpdatePublished?: boolean } } };
     }
 
     const collect = () => {
@@ -786,31 +1181,129 @@ const allOtherDenominations = [...DENOMINATIONS]
       out.showWebsite = (form.elements.namedItem('showWebsite') as HTMLInputElement)?.checked ?? false;
       out.showAddress = (form.elements.namedItem('showAddress') as HTMLInputElement)?.checked ?? false;
       out.showDenomination = (form.elements.namedItem('showDenomination') as HTMLInputElement)?.checked ?? true;
+      out.isHiring = (form.elements.namedItem('isHiring') as HTMLInputElement)?.checked ?? false;
       out.industrySlug = inputIndustrySlug?.value || '';
       out.categorySlug = inputCategorySlug?.value || '';
       out.customCategory = inputCustomCategory?.value || '';
       out.denominations = Array.from(selectedDenoms.keys());
+      out.professions = Array.from(form.querySelectorAll<HTMLInputElement>('input[name="professions"]:checked')).map((input) => input.value);
+      out.customProfessions = String((form.elements.namedItem('customProfessions') as HTMLTextAreaElement | null)?.value || '').split(/[\n;,]+/).map((value) => value.trim()).filter(Boolean);
+      out.services = [...Array.from(form.querySelectorAll<HTMLInputElement>('input[name="services"]:checked')).map((input) => input.value), ...String((form.elements.namedItem('customServices') as HTMLTextAreaElement | null)?.value || '').split(/[\n;,]+/).map((value) => value.trim()).filter(Boolean)];
+      const textField = (name: string) => String((form.elements.namedItem(name) as HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement | null)?.value || '').trim();
+      const splitLines = (value: string) => value.split(/[\n;,]+/).map((item) => item.trim()).filter(Boolean);
+      out.socialLinks = Object.fromEntries([
+        ['facebook', textField('socialFacebook')], ['instagram', textField('socialInstagram')],
+        ['youtube', textField('socialYoutube')], ['x', textField('socialX')], ['linkedin', textField('socialLinkedin')],
+      ].filter(([, value]) => value));
+      let existingPhotos: Array<{ url: string; caption?: string; alt?: string }> = [];
+      try { existingPhotos = JSON.parse(form.dataset.currentPhotos || '[]'); } catch { existingPhotos = []; }
+      out.photos = textField('photoUrls').split(/\n+/).map((url) => url.trim()).filter(Boolean).slice(0, 12).map((url) => existingPhotos.find((photo) => photo.url === url) ?? { url });
+      out.serviceArea = textField('serviceAreaText').split(/[\n;]+/).map((area) => area.trim()).filter(Boolean);
+      out.serviceAreaRadiusMi = textField('serviceAreaRadiusMi') ? Number(textField('serviceAreaRadiusMi')) : undefined;
+      const parseHours = (text: string) => Object.fromEntries(text.split(/\n+/).flatMap((line) => {
+        const colon = line.indexOf(':');
+        return colon > 0 ? [[line.slice(0, colon).trim(), line.slice(colon + 1).trim()]] : [];
+      }));
+      out.hours = readHoursSchedule(form);
+      out.holidayHours = parseHours(textField('holidayHoursText'));
+      out.languages = splitLines(textField('languagesText'));
+      out.accessibility = splitLines(textField('accessibilityText'));
+      out.careersUrl = textField('careersUrl');
+      out.statementOfFaith = textField('statementOfFaith');
+      out.coreBeliefs = splitLines(textField('coreBeliefsText'));
+      out.ministryFocus = splitLines(textField('ministryFocusText'));
+      out.worshipStyle = textField('worshipStyle');
+      out.baptismPractice = textField('baptismPractice');
+      out.communionPractice = textField('communionPractice');
+      out.yearFounded = textField('yearFounded') ? Number(textField('yearFounded')) : undefined;
+      out.employeeCount = textField('employeeCount');
+      out.ownershipType = textField('ownershipType');
+      out.contactPreference = textField('contactPreference');
       return out;
     };
 
-    async function handleRowAction(act: string, id: string, data: Record<string, unknown>, name: string) {
+    async function handleRowAction(act: string, id: string, data: Record<string, unknown>, name: string, status = '', slug = '') {
       if (act === 'edit' || act === 'submit' || act === 'resubmit') {
-        fillForm(data, id, name);
-        if (act === 'submit' && formSubmitBtn) {
-          formSubmitBtn.textContent = 'Submit for review';
-        }
-        if (act === 'resubmit' && formSubmitBtn) {
-          formSubmitBtn.textContent = 'Resubmit for review';
+        fillForm(data, id, name, status);
+        if (form && act === 'submit') form.dataset.submitAction = 'submit';
+        if (form && act === 'resubmit') form.dataset.submitAction = 'resubmit';
+        if (act === 'submit' && formSubmitBtn) formSubmitBtn.textContent = 'Submit for review';
+        if (act === 'resubmit' && formSubmitBtn) formSubmitBtn.textContent = 'Resubmit for review';
+        return;
+      }
+      if (act === 'share') {
+        const actionStatus = document.getElementById('listing-action-status');
+        if (!id || !slug) return;
+        const url = new URL(`/directory/${encodeURIComponent(slug)}`, window.location.origin).toString();
+        try {
+          const shareNavigator = navigator as Navigator & { share?: (data: ShareData) => Promise<void>; clipboard?: Clipboard };
+          if (typeof shareNavigator.share === 'function') {
+            await shareNavigator.share({ title: name, text: `View ${name} on Cross-Linkd.`, url });
+            if (actionStatus) actionStatus.textContent = `Sharing opened for ${name}.`;
+          } else if (shareNavigator.clipboard?.writeText) {
+            await shareNavigator.clipboard.writeText(url);
+            if (actionStatus) actionStatus.textContent = `Link copied for ${name}.`;
+          } else {
+            if (actionStatus) actionStatus.textContent = `Open the View link to copy or share ${name}'s public listing.`;
+            return;
+          }
+          void fetch('/api/listing-analytics', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ event: 'owner_share', listingId: id }), keepalive: true,
+          }).catch(() => {});
+        } catch (error) {
+          if (!(error instanceof Error && error.name === 'AbortError') && actionStatus) actionStatus.textContent = `Could not share ${name}. Use its View link instead.`;
         }
         return;
       }
       if (act === 'delete') {
-        if (!confirm(`Delete “${name}”? This cannot be undone.`)) return;
-        const { ok, json } = await send(`/api/listings/${id}`, 'DELETE', null);
-        if (ok) location.reload();
-        else showBanner(false, json.error ?? 'Delete failed.');
+        const confirmed = window.confirm(`Permanently delete “${name}”? This removes the public profile and its related listing data, including reviews, saved favorites, and pending claim requests. This cannot be undone.`);
+        if (!confirmed) return;
+        try {
+          const { ok, json } = await send(`/api/listings/${id}`, 'DELETE', null);
+          if (ok) {
+            sessionStorage.setItem('cl:flash', 'listing-deleted');
+            location.reload();
+          } else showBanner(false, json.error ?? 'Delete failed.');
+        } catch {
+          showBanner(false, 'Network error — the listing was not deleted. Try again.');
+        }
       }
     }
+
+    const listingSearchInput = document.getElementById('listing-search') as HTMLInputElement | null;
+    const listingStatusFilter = document.getElementById('listing-status-filter') as HTMLSelectElement | null;
+    const listingFilterStatus = document.getElementById('listing-filter-status');
+    const listingNoResults = document.getElementById('listing-no-results');
+    const applyListingFilters = () => {
+      const query = (listingSearchInput?.value ?? '').trim().toLocaleLowerCase();
+      const status = listingStatusFilter?.value ?? '';
+      const listingNodes = Array.from(document.querySelectorAll<HTMLElement>('[data-owner-listing]'));
+      const matchingIds = new Set<string>();
+      for (const node of listingNodes) {
+        const text = `${node.dataset.name ?? ''} ${node.dataset.location ?? ''}`.toLocaleLowerCase();
+        const statusMatches = !status || (status === 'attention'
+          ? ['changes_requested', 'rejected'].includes(node.dataset.status ?? '')
+          : node.dataset.status === status);
+        const matches = (!query || text.includes(query)) && statusMatches;
+        node.classList.toggle('hidden', !matches);
+        if (matches) matchingIds.add(node.dataset.id ?? `${node.dataset.ownerView}-${matchingIds.size}`);
+      }
+      const count = matchingIds.size;
+      listingNoResults?.classList.toggle('hidden', listingNodes.length === 0 || count > 0);
+      if (listingFilterStatus) listingFilterStatus.textContent = `Showing ${count} of ${new Set(listingNodes.map((node) => node.dataset.id)).size} ${count === 1 ? 'listing' : 'listings'}.`;
+    };
+    listingSearchInput?.addEventListener('input', applyListingFilters);
+    listingStatusFilter?.addEventListener('change', applyListingFilters);
+    document.querySelectorAll<HTMLButtonElement>('[data-status-shortcut]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        if (listingStatusFilter) listingStatusFilter.value = btn.dataset.statusShortcut ?? '';
+        applyListingFilters();
+        document.getElementById('listings-view')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        listingStatusFilter?.focus({ preventScroll: true });
+      });
+    });
+    applyListingFilters();
 
     document.querySelectorAll<HTMLButtonElement>('[data-act]').forEach((btn) => {
       btn.addEventListener('click', () => {
@@ -818,7 +1311,7 @@ const allOtherDenominations = [...DENOMINATIONS]
         if (!wrap) return;
         let data: Record<string, unknown> = {};
         try { data = JSON.parse(wrap.dataset.listing ?? '{}'); } catch { /* ignore */ }
-        handleRowAction(btn.dataset.act ?? '', wrap.dataset.id ?? '', data, wrap.dataset.name ?? '');
+        handleRowAction(btn.dataset.act ?? '', wrap.dataset.id ?? '', data, wrap.dataset.name ?? '', wrap.dataset.status ?? '', wrap.dataset.slug ?? '');
       });
     });
 
@@ -827,7 +1320,8 @@ const allOtherDenominations = [...DENOMINATIONS]
         if (!form || !statusEl) return;
         const intent = btn.dataset.intent as 'draft' | 'submit' | 'publish';
         const id = form.dataset.listingId || '';
-        const body = { action: intent === 'draft' ? 'draft' : 'submit', listing: collect() };
+        const action = intent === 'draft' ? 'draft' : (form.dataset.submitAction || (id ? 'save' : 'publish'));
+        const body = { action, listing: collect() };
 
         if (intent !== 'draft') {
           const descVal = String(body.listing ? (body.listing as Record<string, unknown>).description ?? '' : '').trim();
@@ -840,64 +1334,22 @@ const allOtherDenominations = [...DENOMINATIONS]
         btn.disabled = true;
         statusEl.textContent = intent === 'draft' ? 'Saving draft…' : (id ? 'Saving changes…' : 'Publishing listing…');
 
-        const lData = (body.listing as Record<string, unknown>) || {};
-        const listingName = String(lData.name || '').trim();
-        const typeSlug = String(lData.typeSlug || 'business');
-        const city = String(lData.city || '');
-        const region = String(lData.region || '');
-        const statusLabel = intent === 'draft' ? 'Draft' : 'Pending Review';
-
-        let tempRow: HTMLTableRowElement | null = null;
-        const tbody = document.querySelector('#listings-table-card tbody');
-        const emptyRow = document.getElementById('empty-table-row');
-        if (!id && listingName && tbody) {
-          if (emptyRow) emptyRow.style.display = 'none';
-          tempRow = document.createElement('tr');
-          tempRow.className = 'border-t align-top';
-          tempRow.style.borderColor = 'var(--border)';
-          tempRow.setAttribute('data-temp-row', 'true');
-          tempRow.innerHTML = `
-            <td class="p-3">
-              <p class="font-medium">${listingName}</p>
-              <p class="text-xs" style="color:var(--text-mute)">${typeSlug}</p>
-            </td>
-            <td class="p-3">${city || '—'}${region ? ', ' + region : ''}</td>
-            <td class="p-3">
-              <span class="chip !text-[11px]">${statusLabel}</span>
-            </td>
-            <td class="p-3 text-xs" style="color:var(--text-mute)">Just now</td>
-            <td class="p-3">
-              <div class="flex flex-wrap justify-end gap-1.5" data-actions data-name="${listingName}">
-                <button type="button" class="btn btn-ghost !px-2.5 !py-1 !text-xs" data-act="edit">Edit</button>
-                <button type="button" class="btn btn-primary !px-2.5 !py-1 !text-xs" data-act="submit">Submit</button>
-              </div>
-            </td>
-          `;
-          tbody.prepend(tempRow);
-        } else if (id && tbody) {
-          const row = tbody.querySelector(`[data-row-id="${id}"]`);
-          const chip = row?.querySelector('.chip');
-          if (chip) chip.textContent = statusLabel;
-        }
-
         try {
           const { ok, json } = await send(id ? `/api/listings/${id}` : '/api/submissions', id ? 'PATCH' : 'POST', body);
           if (ok) {
-            sessionStorage.setItem('cl:flash', intent === 'draft' ? 'listing-saved' : 'listing-published');
+            const savedStatus = json.listing?.status;
+            const recentlyUpdated = json.listing?.meaningfulUpdatePublished === true;
+            const flash = recentlyUpdated ? 'listing-recently-updated' : savedStatus === 'published' ? 'listing-published' : savedStatus === 'pending_review' ? 'listing-submitted' : 'listing-saved';
+            sessionStorage.setItem('cl:flash', flash);
+            if (recentlyUpdated && json.listing?.id && json.listing?.slug) {
+              sessionStorage.setItem('cl:recent-update-share', JSON.stringify({ id: json.listing.id, slug: json.listing.slug }));
+            } else sessionStorage.removeItem('cl:recent-update-share');
             location.reload();
           } else {
-            if (tempRow) tempRow.remove();
-            if (emptyRow && tbody && tbody.querySelectorAll('tr:not(#empty-table-row)').length === 0) {
-              emptyRow.style.display = '';
-            }
             showBanner(false, json.error ?? 'Something went wrong.');
             statusEl.textContent = '';
           }
         } catch {
-          if (tempRow) tempRow.remove();
-          if (emptyRow && tbody && tbody.querySelectorAll('tr:not(#empty-table-row)').length === 0) {
-            emptyRow.style.display = '';
-          }
           showBanner(false, 'Network error — try again.');
           statusEl.textContent = '';
         } finally {
@@ -909,8 +1361,52 @@ const allOtherDenominations = [...DENOMINATIONS]
     const flash = sessionStorage.getItem('cl:flash');
     if (flash) {
       sessionStorage.removeItem('cl:flash');
-      const b = document.querySelector(`[role="status"]`);
-      if (!b) showBanner(true, flash === 'listing-saved' ? 'Draft saved.' : 'Listing published! Your business profile is live.');
+      const messages: Record<string, string> = {
+        'listing-saved': 'Changes saved.',
+        'listing-published': 'Listing published and visible in the directory.',
+        'listing-submitted': 'Listing submitted for review and is visible in your dashboard.',
+        'listing-deleted': 'The listing and related listing data were permanently deleted.',
+        'listing-recently-updated': 'Your listing is now marked Recently Updated for 3 days.',
+      };
+      showBanner(true, messages[flash] ?? 'Listing updated.');
+      if (flash === 'listing-recently-updated') {
+        try {
+          const share = JSON.parse(sessionStorage.getItem('cl:recent-update-share') || '{}') as { id?: string; slug?: string };
+          if (share.id && share.slug && recentUpdateViewLink) {
+            recentUpdateViewLink.href = `/directory/${encodeURIComponent(share.slug)}`;
+            recentUpdateSharePanel?.classList.remove('hidden');
+          }
+        } catch { /* The confirmation remains useful even if session storage is unavailable. */ }
+      }
     }
+
+    recentUpdateShareButton?.addEventListener('click', async () => {
+      const share = (() => { try { return JSON.parse(sessionStorage.getItem('cl:recent-update-share') || '{}') as { id?: string; slug?: string }; } catch { return {}; } })();
+      const url = recentUpdateViewLink?.href;
+      if (!share.id || !url) return;
+      const trackOwnerShare = () => void fetch('/api/listing-analytics', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ event: 'owner_share', listingId: share.id }), keepalive: true,
+      }).catch(() => {});
+      try {
+        const shareNavigator = navigator as Navigator & { share?: (data: ShareData) => Promise<void>; clipboard?: Clipboard };
+        if (typeof shareNavigator.share === 'function') {
+          await shareNavigator.share({ title: document.title, text: 'Here is my updated listing.', url });
+          trackOwnerShare();
+          if (recentUpdateShareStatus) recentUpdateShareStatus.textContent = 'Share sheet opened.';
+        } else if (shareNavigator.clipboard?.writeText) {
+          await shareNavigator.clipboard.writeText(url);
+          trackOwnerShare();
+          if (recentUpdateShareStatus) recentUpdateShareStatus.textContent = 'Listing link copied. You can share it with your customers.';
+        } else if (recentUpdateShareStatus) {
+          recentUpdateShareStatus.textContent = 'Use the public listing link above to share this update with your customers.';
+        }
+      } catch (error) {
+        if (error instanceof Error && error.name !== 'AbortError' && recentUpdateShareStatus) recentUpdateShareStatus.textContent = 'Could not open sharing. Use the public listing link instead.';
+      }
+    });
+  </script>
+  <script>
+    import '@/scripts/taxonomyRecommendationController';
   </script>
 </DashboardLayout>

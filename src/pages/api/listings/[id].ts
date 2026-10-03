@@ -1,9 +1,11 @@
 import type { APIRoute } from 'astro';
 import { and, eq } from 'drizzle-orm';
 import { getDb, hasDatabase } from '@/db/client';
-import { listings, listingLocations } from '@/db/schema';
+import { canonicalIndustrySlug } from '@/data/industries';
+import { listings, listingLocations, listingProfessions, professions, listingServices, listingIndustries, industries } from '@/db/schema';
 import { listingPatchSchema } from '@/lib/validation';
-import { saveListing, duplicateExists, rowToFormValues, type ListingFormValues } from '@/lib/submissions';
+import { isUuid } from '@/lib/formGuards.mjs';
+import { saveListing, duplicateExists, rowToFormValues, resolveListingStatus, TaxonomyCatalogUnavailableError, type ListingFormValues } from '@/lib/submissions';
 import { apiGuard, jsonError, jsonOk } from '@/lib/guards';
 
 /** Owners may edit anything that is not staff-locked (`suspended`) or gone (`archived`). */
@@ -44,16 +46,23 @@ export const PATCH: APIRoute = async ({ params, request, locals }) => {
     .from(listingLocations)
     .where(and(eq(listingLocations.listingId, id), eq(listingLocations.isPrimary, true)))
     .limit(1);
-  const values: ListingFormValues = { ...rowToFormValues(current, loc), ...parsed.data.listing };
+  const [professionRows, serviceRows, industryRows] = await Promise.all([
+    db.select({ slug: professions.slug }).from(listingProfessions).innerJoin(professions, eq(listingProfessions.professionId, professions.id)).where(eq(listingProfessions.listingId, id)),
+    db.select({ name: listingServices.name }).from(listingServices).where(eq(listingServices.listingId, id)),
+    db.select({ slug: industries.slug }).from(listingIndustries).innerJoin(industries, eq(listingIndustries.industryId, industries.id)).where(eq(listingIndustries.listingId, id)),
+  ]);
+  const secondaryIndustries = industryRows.map((row) => row.slug).filter((slug) => canonicalIndustrySlug(slug) !== canonicalIndustrySlug(current.industrySlug ?? ''));
+  const values: ListingFormValues = { ...rowToFormValues(current, loc, { professions: professionRows.map((row) => row.slug), services: serviceRows.map((row) => row.name), industries: secondaryIndustries }), ...parsed.data.listing };
 
   if (values.denominations && values.denominations.length > 2) {
     return jsonError(400, 'You can select up to two denominations.');
   }
 
-  if (action !== 'draft') {
-    if (values.description && values.description.trim().length < 30) {
-      return jsonError(400, 'A description of at least 30 characters is required.');
-    }
+  const resultingStatus = resolveListingStatus(action, { listingId: id, currentStatus: current.status });
+  if (resultingStatus !== 'draft') {
+    if (!values.description || values.description.trim().length < 30) return jsonError(400, 'A description of at least 30 characters is required.');
+    if (!values.isOnlineOnly && (!values.city?.trim() || !values.region?.trim())) return jsonError(400, 'City and state/region are required to publish.');
+    if (!values.email && !values.phone) return jsonError(400, 'Provide a contact email or phone number.');
     if (await duplicateExists(locals.user!.id, values.name, values.city, id)) {
       return jsonError(409, 'You already have another listing with this name in this city.');
     }
@@ -67,20 +76,26 @@ export const PATCH: APIRoute = async ({ params, request, locals }) => {
     });
     return jsonOk({ listing: saved });
   } catch (err) {
+    if (err instanceof TaxonomyCatalogUnavailableError) return jsonError(503, err.message);
+    if (err instanceof Error && /Choose a valid|does not belong|Unknown profession|Unknown industry|Choose an industry|category before/i.test(err.message)) return jsonError(400, err.message);
     console.error('[api/listings] patch failed:', err);
     return jsonError(500, 'Could not save the listing. Please try again.');
   }
 };
 
-/** DELETE /api/listings/[id] — owner removes their listing. */
+/** DELETE /api/listings/[id] — permanently delete only a listing owned by the signed-in user. */
 export const DELETE: APIRoute = async ({ params, locals }) => {
   const deny = apiGuard.user(locals);
   if (deny) return deny;
   if (!hasDatabase()) return jsonError(503, 'Submissions are unavailable in this preview.');
   const id = params.id ?? '';
+  if (!isUuid(id)) return jsonError(404, 'Listing not found.');
   const db = getDb()!;
-  const current = await loadOwned(id, locals.user!.id);
-  if (!current) return jsonError(404, 'Listing not found.');
-  await db.update(listings).set({ deletedAt: new Date(), status: 'archived' }).where(eq(listings.id, id));
-  return jsonOk();
+  // Keep the ownership predicate in the destructive statement itself. Related
+  // listing rows are removed by their declared foreign-key cascades.
+  const [deleted] = await db.delete(listings)
+    .where(and(eq(listings.id, id), eq(listings.ownerId, locals.user!.id)))
+    .returning({ id: listings.id });
+  if (!deleted) return jsonError(404, 'Listing not found.');
+  return jsonOk({ deleted: true });
 };

@@ -5,7 +5,7 @@ import { users, authTokens } from '@/db/schema';
 import { signupSchema } from '@/lib/validation';
 import { hashPassword, createSessionToken, sessionCookie, createAuthToken, authConfigured } from '@/lib/auth';
 import { sendMail, appUrl } from '@/lib/mailer';
-import { rateLimit } from '@/lib/rateLimit.mjs';
+import { sharedRateLimit } from '@/lib/sharedRateLimit';
 import { clientIp } from '@/lib/clientIp';
 
 /** POST /api/auth/signup — email + password registration with email verification. */
@@ -19,7 +19,7 @@ export const POST: APIRoute = async ({ request, redirect }) => {
   if (!parsed.success) {
     return redirect(`/auth/signup?error=${encodeURIComponent(parsed.error.errors[0]?.message ?? 'Invalid entries.')}`, 303);
   }
-  if (!rateLimit(`signup:ip:${clientIp(request)}`, 10, 60 * 60 * 1000)) {
+  if (!(await sharedRateLimit(`signup:ip:${clientIp(request)}`, 10, 60 * 60 * 1000))) {
     return redirect('/auth/signup?error=' + encodeURIComponent('Too many accounts created from this network. Wait an hour and try again.'), 303);
   }
   if (!hasDatabase()) {

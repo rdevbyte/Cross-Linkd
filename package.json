@@ -19,9 +19,16 @@
     "test:hiring": "node --test scripts/hiring-url.test.mjs",
     "test:online": "node --test scripts/online-toggle.test.mjs scripts/review-publish.test.mjs",
     "test:launch": "node --test scripts/launch-guards.test.mjs",
+    "test:home-metrics": "node --test scripts/home-metrics.test.mjs",
+    "test:search-scale": "node --test scripts/search-scale-guard.test.mjs",
+    "test:accessibility": "node --test scripts/accessibility-guard.test.mjs",
+    "e2e:accessibility": "node e2e-accessibility.mjs",
     "test:lib": "tsx --test scripts/lib.test.mjs",
     "test:logo": "node --test scripts/logo-motion.test.mjs",
-    "test": "npm run test:launch && npm run test:hiring && npm run test:online && npm run test:lib && npm run test:logo",
+    "test:recently-updated": "node --test scripts/recently-updated.test.mjs",
+    "test:hours-schedule": "node --test scripts/hours-schedule.test.mjs",
+    "test:listing-management": "node --test scripts/listing-management.test.mjs",
+    "test": "npm run test:launch && npm run test:home-metrics && npm run test:hiring && npm run test:online && npm run test:lib && npm run test:taxonomy && npm run test:logo && npm run test:recently-updated && npm run test:hours-schedule && npm run test:listing-management && npm run test:search-scale && npm run test:accessibility",
     "e2e": "node e2e-layout.mjs",
     "e2e:logo": "node e2e-logo.mjs",
     "test:creation": "node e2e-listing-creation.mjs",
@@ -30,7 +37,8 @@
     "db:seed": "tsx src/db/seed.ts",
     "sitemap": "tsx scripts/sitemap.ts",
     "admin:promote": "tsx scripts/admin-promote.ts",
-    "db:wipe-listings": "node scripts/wipe-listings.mjs"
+    "db:wipe-listings": "node scripts/wipe-listings.mjs",
+    "test:taxonomy": "tsx --test scripts/taxonomy.test.mjs"
   },
   "dependencies": {
     "@astrojs/react": "^6.0.6",
@@ -52,6 +60,7 @@
   },
   "devDependencies": {
     "@astrojs/check": "^0.9.10",
+    "@axe-core/playwright": "^4.13.0",
     "@types/bcryptjs": "^2.4.6",
     "@types/pg": "^8.10.9",
     "@types/react": "^18.3.3",

@@ -4,15 +4,15 @@ import { getDb, hasDatabase } from '@/db/client';
 import { users } from '@/db/schema';
 import { signinSchema } from '@/lib/validation';
 import { verifyPassword, createSessionToken, sessionCookie, authConfigured } from '@/lib/auth';
-import { rateLimit } from '@/lib/rateLimit.mjs';
+import { sharedRateLimit } from '@/lib/sharedRateLimit';
 import { clientIp } from '@/lib/clientIp';
+import { safeLocalPath } from '@/lib/formGuards.mjs';
 
 /** POST /api/auth/signin — email + password. Sessions carry the role at sign-in time. */
 export const POST: APIRoute = async ({ request, redirect }) => {
   try {
     const form = await request.formData();
-    const next = String(form.get('next') ?? '/dashboard');
-    const safeNext = next.startsWith('/') && !next.startsWith('//') ? next : '/dashboard';
+    const safeNext = safeLocalPath(form.get('next'), '/dashboard');
     const parsed = signinSchema.safeParse({
       email: String(form.get('email') ?? '').toLowerCase().trim(),
       password: String(form.get('password') ?? ''),
@@ -21,8 +21,8 @@ export const POST: APIRoute = async ({ request, redirect }) => {
 
     // Brute-force / credential-stuffing protection: per network and per account.
     if (
-      !rateLimit(`signin:ip:${clientIp(request)}`, 20, 15 * 60 * 1000) ||
-      !rateLimit(`signin:email:${parsed.data.email}`, 10, 15 * 60 * 1000)
+      !(await sharedRateLimit(`signin:ip:${clientIp(request)}`, 20, 15 * 60 * 1000)) ||
+      !(await sharedRateLimit(`signin:email:${parsed.data.email}`, 10, 15 * 60 * 1000))
     ) {
       return redirect('/auth/signin?error=' + encodeURIComponent('Too many sign-in attempts. Wait 15 minutes and try again.'), 303);
     }

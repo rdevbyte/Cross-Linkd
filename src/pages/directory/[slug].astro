@@ -9,8 +9,9 @@ import { type SampleListing, type SampleReview } from '@/data/listings';
 import { getPublicListings, findPublicListing } from '@/lib/publicListings';
 import { typeBySlug } from '@/data/listing-types';
 import { denominationBySlug } from '@/data/denominations';
-import { industryBySlug, categoryBySlug } from '@/data/industries';
+import { industryBySlug, categoryBySlug, professionBySlug } from '@/data/industries';
 import { compact, timeAgo, fullDate } from '@/lib/format';
+import { recentlyUpdatedState } from '@/lib/recentlyUpdated.mjs';
 import { localBusinessSchema, breadcrumbSchema } from '@/lib/seo';
 import { careersUrlError } from '@/lib/hiringUrl.mjs';
 
@@ -21,9 +22,20 @@ if (!listing) return Astro.redirect('/search', 302);
 const user = Astro.locals.user;
 const sent = Astro.url.searchParams.get('sent') === '1';
 const formError = Astro.url.searchParams.get('error') ?? '';
+const canClaimListing = listing.claimable === true;
 const type = typeBySlug(listing.typeSlug);
 const siteUrl = Astro.url.origin;
 const pageUrl = `${siteUrl}/directory/${listing.slug}`;
+const profileUpdatedAtMs = listing.updatedAt ? Date.parse(listing.updatedAt) : Number.NaN;
+const profileUpdatedAtLabel = Number.isFinite(profileUpdatedAtMs)
+  ? new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' }).format(new Date(profileUpdatedAtMs))
+  : undefined;
+const meaningfulUpdateState = recentlyUpdatedState(listing.recentlyUpdatedAt);
+const meaningfulUpdateMs = listing.recentlyUpdatedAt ? Date.parse(listing.recentlyUpdatedAt) : Number.NaN;
+const meaningfulUpdateDate = Number.isFinite(meaningfulUpdateMs)
+  ? new Intl.DateTimeFormat('en-US', { month: 'long', day: 'numeric', year: 'numeric', timeZone: 'UTC' }).format(new Date(meaningfulUpdateMs))
+  : undefined;
+const analyticsListingId = /^db-[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(listing.id) ? listing.id.slice(3) : undefined;
 
 const related = (await getPublicListings()).filter((l) =>
   l.slug !== listing?.slug && l.industries.some((i) => listing?.industries.includes(i)),
@@ -38,6 +50,11 @@ const reviews: SampleReview[] = listing.reviews ?? [];
 const socialLinks: [string, string][] = listing.social
   ? (Object.entries(listing.social).filter(([, v]) => Boolean(v)) as [string, string][])
   : [];
+const socialHref = (network: string, value: string) => {
+  if (/^https?:\/\//i.test(value)) return value;
+  const domain = network === 'x' ? 'x.com' : network === 'linkedin' ? 'linkedin.com' : `${network}.com`;
+  return `https://${domain}/${value.replace(/^@/, '')}`;
+};
 
 const socialIcons: Record<string, string> = { facebook: 'f', instagram: '◎', youtube: '▶', x: '𝕏', linkedin: 'in' };
 const careersHref = listing.careersUrl && !careersUrlError(listing.careersUrl) ? listing.careersUrl : '';
@@ -54,7 +71,7 @@ const seo = {
       phone: listing.phone, email: listing.email, city: listing.city, region: listing.region,
       rating: listing.rating, reviewCount: listing.reviewCount, priceRange: listing.priceRange || undefined,
       lat: listing.lat, lng: listing.lng,
-      sameAs: socialLinks.map(([k, v]) => (['facebook', 'instagram', 'youtube', 'x'].includes(k) ? `https://${k === 'x' ? 'twitter' : k}.com/${v}` : `https://linkedin.com/company/${v}`)),
+      sameAs: socialLinks.map(([k, v]) => socialHref(k, v)),
     }),
     breadcrumbSchema([
       { name: 'Home', url: siteUrl },
@@ -72,9 +89,10 @@ const isPro = ['professional', 'counselor', 'contractor'].includes(listing.typeS
 const categoryMatch = listing.categorySlug ? categoryBySlug(listing.categorySlug) : undefined;
 const industryMatch = listing.industrySlug ? industryBySlug(listing.industrySlug) : categoryMatch?.industry;
 const displayCategory = listing.customCategory || categoryMatch?.category?.name;
+const displayProfessions = listing.professions.map((slug) => professionBySlug(slug)?.name ?? slug.replace(/-/g, ' '));
 ---
 <BaseLayout seo={seo} user={user}>
-  <div class="mx-auto max-w-7xl px-4 py-6">
+  <div class="mx-auto max-w-7xl px-4 py-6" data-listing-detail={analyticsListingId ? 'true' : undefined} data-listing-id={analyticsListingId}>
     <nav aria-label="Breadcrumb">
       <ol class="breadcrumb">
         <li><a href="/">Home</a></li>
@@ -87,10 +105,11 @@ const displayCategory = listing.customCategory || categoryMatch?.category?.name;
     <!-- Header: a short tinted band, then the identity block on the surface -->
     <div class="card mt-4 overflow-hidden" style={`--hue:${listing.imageHue}`}>
       <div class="listing-band relative h-24 sm:h-28">
-        <span class="absolute right-4 top-4 opacity-40" style="color:var(--navy)"><TypeGlyph name={type.icon} size={28} /></span>
+        {listing.coverUrl && <img src={listing.coverUrl} alt="" aria-hidden="true" loading="lazy" decoding="async" referrerpolicy="no-referrer" class="absolute inset-0 h-full w-full object-cover" />}
+        <span class="absolute right-4 top-4 z-10 opacity-40" style="color:var(--navy)"><TypeGlyph name={type.icon} size={28} /></span>
       </div>
       <div class="flex flex-col gap-3 px-4 sm:flex-row sm:items-start sm:gap-5 sm:px-6">
-        <span class="listing-monogram -mt-8 sm:-mt-10" aria-hidden="true">{listing.name.trim().charAt(0).toUpperCase()}</span>
+        {listing.logoUrl ? <img src={listing.logoUrl} alt="" aria-hidden="true" loading="lazy" decoding="async" referrerpolicy="no-referrer" class="listing-monogram -mt-8 sm:-mt-10 object-cover" /> : <span class="listing-monogram -mt-8 sm:-mt-10" aria-hidden="true">{listing.name.trim().charAt(0).toUpperCase()}</span>}
         <div class="min-w-0 flex-1 pb-1 sm:pt-3">
           <p class="flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] font-semibold uppercase tracking-[0.12em]" style="color:var(--teal)">
             <span>{type.label}</span>
@@ -110,6 +129,7 @@ const displayCategory = listing.customCategory || categoryMatch?.category?.name;
               </span>
             </div>
           )}
+          {displayProfessions.length > 0 && <div class="flex flex-wrap gap-1.5" aria-label="Professions">{displayProfessions.map((name) => <span class="chip !text-xs">{name}</span>)}</div>}
           <p class="text-sm" style="color:var(--text-soft)">
             {listing.reviewCount > 0 ? (
               <>★ <strong>{listing.rating.toFixed(1)}</strong> ({listing.reviewCount} reviews) • </>
@@ -117,21 +137,23 @@ const displayCategory = listing.customCategory || categoryMatch?.category?.name;
               <>No reviews yet • </>
             )}
             {listing.recommendations > 0 ? `${compact(listing.recommendations)} community notes • ` : ''}
-            {listing.isOnlineOnly ? 'Online' : `${listing.city}, ${listing.region}`}
+            {listing.isOnlineOnly ? 'Online-only' : `${listing.city}, ${listing.region}`}
             {listing.priceRange ? ` • ${listing.priceRange}` : ''}
           </p>
+          {profileUpdatedAtLabel && <p class="text-xs" style="color:var(--text-mute)"><time datetime={listing.updatedAt}>Public listing record last updated {profileUpdatedAtLabel}</time>. This is not a verification.</p>}
+          {meaningfulUpdateDate && <p class="text-xs" style="color:var(--text-mute)">{meaningfulUpdateState && <span class="recent-update-badge mr-1"><strong>Recently Updated</strong><time datetime={listing.recentlyUpdatedAt}>{meaningfulUpdateState.label}</time></span>}Owner-published profile update: <time datetime={listing.recentlyUpdatedAt}>{meaningfulUpdateDate}</time>. This timestamp does not imply verification or endorsement.</p>}
           <div class="flex flex-wrap gap-1.5">
             <StatusBadge name="Owner-submitted" definition="The business provided the listing information." />
             {listing.badges.filter((b) => badgeLabels[b]).map((b) => (
               <StatusBadge name={badgeLabels[b][0]} definition={badgeLabels[b][1]} />
             ))}
-            {!listing.claimed && <a href={`/claim-listing?listing=${listing.slug}`} class="btn btn-secondary !min-h-11 !px-3 !py-1.5 !text-xs">Unclaimed — own this? Claim it</a>}
+            {canClaimListing && <a href={`/claim-listing?listing=${listing.slug}`} class="btn btn-secondary !min-h-11 !px-3 !py-1.5 !text-xs">Unclaimed — own this? Claim it</a>}
           </div>
         </div>
         <div class="flex flex-wrap gap-2">
-          {listing.phone && <a href={`tel:${listing.phone}`} class="btn btn-primary">Call now</a>}
-          {listing.email && <a href={`mailto:${listing.email}`} class="btn btn-secondary">Email</a>}
-          {listing.website && <a href={listing.website} target="_blank" rel="noopener" class="btn btn-secondary">Website</a>}
+          {listing.phone && <a href={`tel:${listing.phone}`} class="btn btn-primary" data-listing-event="phone_click">Call now</a>}
+          {listing.email && <a href={`mailto:${listing.email}`} class="btn btn-secondary" data-listing-event="email_click">Email</a>}
+          {listing.website && <a href={listing.website} target="_blank" rel="noopener" class="btn btn-secondary" data-listing-event="website_click">Website</a>}
           <FavoriteButton id={listing.id} label client:load />
           <QRShare client:load url={pageUrl} name={listing.name} />
         </div>
@@ -146,7 +168,7 @@ const displayCategory = listing.customCategory || categoryMatch?.category?.name;
             <div class="grid grid-cols-3 gap-2">
               {listing.photos.map((p) => (
                 <figure class="photo-tile relative h-28 overflow-hidden rounded-2xl sm:h-36" style={`--hue:${p.hue}`} title="No photo uploaded yet">
-                  <svg class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 opacity-40" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>
+                  {p.url ? <img src={p.url} alt={p.alt ?? p.caption} loading="lazy" decoding="async" referrerpolicy="no-referrer" class="absolute inset-0 h-full w-full object-cover" /> : <svg class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 opacity-40" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>}
                   <figcaption class="absolute bottom-2 left-2 right-2 truncate text-[11px] font-medium" style="color:var(--text-soft)">{p.caption}</figcaption>
                 </figure>
               ))}
@@ -169,7 +191,7 @@ const displayCategory = listing.customCategory || categoryMatch?.category?.name;
           </div>
         </section>
 
-        <section class="card p-6" aria-label="Services">
+        <section id="services" class="card p-6" aria-label="Services">
           <h2 class="text-lg font-semibold">{isChurch ? 'Ministries & gatherings' : isPro ? 'Services & expertise' : 'Products & services'}</h2>
           <div class="mt-3 flex flex-wrap gap-2">
             {listing.services.map((s) => <a href={`/search?q=${encodeURIComponent(s)}`} class="chip !px-3.5 !py-1.5 !text-[13px] hover:border-[var(--accent)]">{s}</a>)}
@@ -195,7 +217,7 @@ const displayCategory = listing.customCategory || categoryMatch?.category?.name;
           <h2 class="text-lg font-semibold">Contact {listing.name.split(' ')[0].length > 24 ? 'them' : listing.name.split(',')[0]}</h2>
           {sent && <p class="mt-3 rounded-xl p-3 text-sm" style="background:rgba(46,146,131,.12)" role="status">Message saved. CrossLinkd does not automatically email the listing owner, and sending a message does not verify the listing.</p>}
           {formError && <p class="mt-3 rounded-xl bg-red-500/10 p-3 text-sm font-medium text-red-700" role="alert">{formError}</p>}
-          <form method="POST" action="/api/contact" class="mt-3 space-y-3">
+          <form method="POST" action="/api/contact" class="mt-3 space-y-3" data-listing-contact-form>
             <input type="hidden" name="topic" value="Listing inquiry" />
             <input type="hidden" name="listing" value={listing.slug} />
             <input type="hidden" name="return" value={`/directory/${listing.slug}`} />
@@ -206,7 +228,7 @@ const displayCategory = listing.customCategory || categoryMatch?.category?.name;
             </div>
             <label class="block text-sm font-medium">Message<textarea name="message" rows="3" required class="input mt-1" placeholder={`Hi — I found you on CrossLinkd and have a question about ${listing.services[0]?.toLowerCase() ?? 'your services'}.`}></textarea></label>
             <button class="btn btn-primary !py-2.5" type="submit">Send message</button>
-            <p class="text-xs" style="color:var(--text-mute)">Saved for a person to read. CrossLinkd does not automatically email the listing owner. Prefer talking? {listing.phone && <a href={`tel:${listing.phone}`} class="underline">Call {listing.phone}</a>}</p>
+            <p class="text-xs" style="color:var(--text-mute)">Saved for a person to read. CrossLinkd does not automatically email the listing owner. Prefer talking? {listing.phone && <a href={`tel:${listing.phone}`} class="underline" data-listing-event="phone_click">Call {listing.phone}</a>}</p>
           </form>
         </section>
 
@@ -320,8 +342,7 @@ const displayCategory = listing.customCategory || categoryMatch?.category?.name;
             <div><dt class="font-semibold" style="color:var(--text-mute)">Languages</dt><dd>{listing.languages.join(', ')}</dd></div>
             {listing.accessibility.length > 0 && <div><dt class="font-semibold" style="color:var(--text-mute)">Accessibility</dt><dd>{listing.accessibility.join(' • ')}</dd></div>}
             {listing.email && <div><dt class="font-semibold" style="color:var(--text-mute)">Email</dt><dd><a class="underline" href={`mailto:${listing.email}`}>{listing.email}</a></dd></div>}
-            {listing.updatedDaysAgo !== undefined && <div><dt class="font-semibold" style="color:var(--text-mute)">Last updated</dt><dd>{fullDate(listing.updatedDaysAgo)}</dd></div>}
-            <div><dt class="font-semibold" style="color:var(--text-mute)">Added to directory</dt><dd>{fullDate(listing.addedDaysAgo)}</dd></div>
+            {typeof listing.addedDaysAgo === 'number' && Number.isFinite(listing.addedDaysAgo) && <div><dt class="font-semibold" style="color:var(--text-mute)">Added to directory</dt><dd>{fullDate(listing.addedDaysAgo)}</dd></div>}
           </dl>
           {socialLinks.length > 0 && (
             <>
@@ -329,11 +350,12 @@ const displayCategory = listing.customCategory || categoryMatch?.category?.name;
               <div class="mt-2 flex flex-wrap gap-2">
                 {socialLinks.map(([k, v]) => (
                   <a
-                    href={k === 'linkedin' ? `https://linkedin.com/company/${v}` : `https://${k === 'x' ? 'twitter' : k}.com/${v}`}
+                    href={socialHref(k, v)}
                     target="_blank" rel="noopener"
                     class="flex h-9 items-center gap-1.5 rounded-xl border px-3 text-xs font-bold transition-colors hover:border-[var(--accent)]"
                     style="border-color:var(--border);color:var(--text-soft)"
                     aria-label={`${listing.name} on ${k}`}
+                    data-listing-event="social_click"
                   >
                     {k === 'x' ? 'X' : k.charAt(0).toUpperCase() + k.slice(1)}
                   </a>
@@ -345,7 +367,7 @@ const displayCategory = listing.customCategory || categoryMatch?.category?.name;
         <div class="card space-y-2 p-5">
           <button onclick="alert('Thanks! Our moderation team will review this listing.')" class="btn btn-ghost w-full !justify-start !text-sm">Report this listing</button>
           <button onclick="alert('Thanks! Suggest-an-edit opens after sign-in in production.')" class="btn btn-ghost w-full !justify-start !text-sm">Suggest an edit</button>
-          <a href={`/claim-listing?listing=${listing.slug}`} class="btn btn-ghost w-full !justify-start !text-sm">Claim this listing</a>
+          {canClaimListing && <a href={`/claim-listing?listing=${listing.slug}`} class="btn btn-ghost w-full !justify-start !text-sm">Claim this listing</a>}
         </div>
       </aside>
     </div>

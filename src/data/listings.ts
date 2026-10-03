@@ -21,6 +21,8 @@ export interface SampleReview {
 export interface SamplePhoto {
   hue: number;
   caption: string;
+  url?: string;
+  alt?: string;
 }
 
 export interface SampleListing {
@@ -42,6 +44,8 @@ export interface SampleListing {
   phone?: string;
   email?: string;
   website?: string;
+  logoUrl?: string;
+  coverUrl?: string;
   showEmail?: boolean;
   showPhone?: boolean;
   showWebsite?: boolean;
@@ -66,12 +70,22 @@ export interface SampleListing {
   views: number;
   featured?: boolean;
   claimed?: boolean;
+  /** True only for live database listings that are unowned and not yet claimed. */
+  claimable?: boolean;
   verified?: boolean;
   /** How verification was performed — shown on the profile. */
   verificationMethod?: 'attestation + documents' | 'review-team check' | 'credential check with issuer' | 'church recommendation';
   /** Days since the most recent verification pass. */
   lastVerifiedDaysAgo?: number;
   updatedDaysAgo?: number;
+  /** ISO timestamp when the listing record was created. */
+  createdAt?: string;
+  /** ISO timestamp when a database listing was first published. */
+  publishedAt?: string;
+  /** ISO timestamp when the public listing record was last changed (not a verification timestamp). */
+  updatedAt?: string;
+  /** ISO timestamp of the last meaningful owner edit that was successfully published. */
+  recentlyUpdatedAt?: string;
   foundedYear?: number;
   serviceArea?: string;
   social?: { facebook?: string; instagram?: string; youtube?: string; x?: string; linkedin?: string };
@@ -79,7 +93,7 @@ export interface SampleListing {
   hours?: Record<string, string>;
   statementOfFaith?: string;
   reviews?: SampleReview[];
-  addedDaysAgo: number;
+  addedDaysAgo?: number;
   openNow?: boolean;
   imageHue: number;
 }
@@ -1218,6 +1232,6 @@ export const SAMPLE_LISTINGS: SampleListing[] = [
 export const listingBySlug = (slug: string) => SAMPLE_LISTINGS.find((l) => l.slug === slug);
 export const listingById = (id: string) => SAMPLE_LISTINGS.find((l) => l.id === id);
 
-/** Listings verified within the last N days — used for live homepage metrics. */
+/** Legacy demo-only counters; public homepage metrics must use the published listing corpus instead. */
 export const verifiedCount = () => SAMPLE_LISTINGS.filter((l) => l.verified).length;
-export const recentCount = (days = 30) => SAMPLE_LISTINGS.filter((l) => l.addedDaysAgo <= days).length;
+export const recentCount = (days = 30) => SAMPLE_LISTINGS.filter((l) => (l.addedDaysAgo ?? Number.POSITIVE_INFINITY) <= days).length;

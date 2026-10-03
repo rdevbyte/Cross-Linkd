@@ -5,8 +5,9 @@ import { users, authTokens } from '@/db/schema';
 import { magicRequestSchema } from '@/lib/validation';
 import { createAuthToken, consumeAuthToken, createSessionToken, sessionCookie, authConfigured } from '@/lib/auth';
 import { sendMail, appUrl } from '@/lib/mailer';
-import { rateLimit } from '@/lib/rateLimit.mjs';
+import { sharedRateLimit } from '@/lib/sharedRateLimit';
 import { clientIp } from '@/lib/clientIp';
+import { safeLocalPath } from '@/lib/formGuards.mjs';
 
 /**
  * POST /api/auth/magic-link — email a sign-in link (also verifies the address).
@@ -14,8 +15,7 @@ import { clientIp } from '@/lib/clientIp';
  */
 export const POST: APIRoute = async ({ request, redirect }) => {
   const form = await request.formData();
-  const nextRaw = String(form.get('next') ?? '/dashboard');
-  const next = nextRaw.startsWith('/') && !nextRaw.startsWith('//') ? nextRaw : '/dashboard';
+  const next = safeLocalPath(form.get('next'), '/dashboard');
   if (!hasDatabase()) return redirect(`/auth/signin?error=${encodeURIComponent('Magic links are unavailable in this preview.')}`, 303);
   const db = getDb()!;
   const parsed = magicRequestSchema.safeParse({
@@ -24,8 +24,8 @@ export const POST: APIRoute = async ({ request, redirect }) => {
   });
   if (!parsed.success) return redirect('/auth/signin?error=Enter+a+valid+email.', 303);
   if (
-    !rateLimit(`magic:ip:${clientIp(request)}`, 10, 15 * 60 * 1000) ||
-    !rateLimit(`magic:email:${parsed.data.email}`, 5, 15 * 60 * 1000)
+    !(await sharedRateLimit(`magic:ip:${clientIp(request)}`, 10, 15 * 60 * 1000)) ||
+    !(await sharedRateLimit(`magic:email:${parsed.data.email}`, 5, 15 * 60 * 1000))
   ) {
     return redirect('/auth/signin?error=' + encodeURIComponent('Too many sign-in links requested. Wait 15 minutes and try again.'), 303);
   }
@@ -45,8 +45,7 @@ export const POST: APIRoute = async ({ request, redirect }) => {
 
 export const GET: APIRoute = async ({ url, cookies, redirect }) => {
   const raw = url.searchParams.get('token') ?? '';
-  const nextRaw = url.searchParams.get('next') ?? '/dashboard';
-  const next = nextRaw.startsWith('/') && !nextRaw.startsWith('//') ? nextRaw : '/dashboard';
+  const next = safeLocalPath(url.searchParams.get('next'), '/dashboard');
   if (!raw || !hasDatabase()) return redirect('/auth/signin?error=' + encodeURIComponent('This sign-in link is invalid.'), 303);
   if (!authConfigured()) return redirect('/auth/signin?error=' + encodeURIComponent('Sign-in is temporarily unavailable. Please try again later.'), 303);
   const db = getDb()!;

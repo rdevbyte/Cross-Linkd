@@ -273,7 +273,8 @@ whitelisted renderer.
 ## ✅ Fix status (post-review implementation)
 
 Status legend: **FIXED** = code changed and verified by the checks listed under
-*Test evidence*; **VERIFIED** = reviewed, no change needed; **SCOPE** = deliberately
+*Test evidence*; **PARTIAL** = an application-level mitigation exists but production enforcement
+remains incomplete; **VERIFIED** = reviewed, no change needed; **SCOPE** = deliberately
 deferred (needs a product decision or infrastructure). Claims below are limited to
 what the shipped code does; nothing here depends on an unrun test.
 
@@ -290,7 +291,7 @@ what the shipped code does; nothing here depends on an unrun test.
 ### High
 | ID | Status | What was done |
 |----|--------|---------------|
-| H1 | **FIXED** | `src/lib/rateLimit.mjs` (existing sliding window) applied to sign-in (IP + email), sign-up, magic-link (IP + email), reset (IP + email) and reviews (user + IP). Limited requests redirect with an explicit error (no fake success). The unused duplicate `src/lib/ratelimit.ts` was removed. |
+| H1 | **PARTIAL** | `src/lib/rateLimit.mjs` applies in-process throttles to sign-in (IP + email), sign-up, magic-link (IP + email), reset (IP + email), reviews and other public forms. On Vercel, instances do not share the map, so this is best-effort only; global enforcement still requires configured WAF rules or shared storage. Limited requests redirect with an explicit error. |
 | H2 | **FIXED** | `users.sessions_valid_after` (migration `drizzle/0004_users_sessions_valid_after.sql`). Tokens carry `issuedAt`; middleware rejects tokens issued before the watermark and also rejects soft-deleted users. Bumped on sign-out (= sign out everywhere), password reset, role change (API and `scripts/admin-promote.ts`), and account deletion. `GET /api/auth/signout` removed (logout must be a POST). |
 | H3 | **FIXED** | Middleware origin check is an exact-host allow-list (own host, `PUBLIC_SITE_URL`, production hosts, loopback outside production). `*.vercel.app` wildcards and `startsWith('http://localhost')` prefix matches are gone. |
 | H4 | **FIXED** | Postgres search uses `websearch_to_tsquery` (user input can no longer throw and silently drop to the demo engine), validates `page`/`perPage`/`minRating` (NaN-safe, `perPage ≤ 50`) and returns a real `total`. |

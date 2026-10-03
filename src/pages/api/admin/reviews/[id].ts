@@ -24,8 +24,8 @@ export const POST: APIRoute = async ({ params, request, locals }) => {
   let body: unknown;
   try { body = await request.json(); } catch { return jsonError(400, 'Invalid JSON body.'); }
   const action = (body as { action?: string })?.action;
-  if (action !== 'publish' && action !== 'remove') {
-    return jsonError(400, 'action must be "publish" or "remove".');
+  if (!['publish', 'remove', 'publish_response', 'remove_response'].includes(action ?? '')) {
+    return jsonError(400, 'action must be publish, remove, publish_response, or remove_response.');
   }
   const note = (body as { note?: string })?.note?.trim() || undefined;
 
@@ -37,6 +37,32 @@ export const POST: APIRoute = async ({ params, request, locals }) => {
       const rows = await tx.select().from(reviews).where(eq(reviews.id, id)).limit(1);
       const review = rows[0];
       if (!review || review.deletedAt) return jsonError(404, 'Review not found.');
+
+      if (action === 'publish_response' || action === 'remove_response') {
+        if (review.status !== 'published' || !review.ownerResponse || review.ownerRespondedAt) {
+          return jsonError(409, 'This owner response is no longer awaiting moderation.');
+        }
+        const changed = await tx.update(reviews).set({
+          ownerResponse: action === 'remove_response' ? null : review.ownerResponse,
+          ownerRespondedAt: new Date(),
+          updatedAt: new Date(),
+        }).where(and(
+          eq(reviews.id, id),
+          eq(reviews.status, 'published'),
+          isNull(reviews.deletedAt),
+          isNull(reviews.ownerRespondedAt),
+        )).returning({ id: reviews.id });
+        if (!changed.length) return jsonError(409, 'This owner response is no longer awaiting moderation.');
+        await tx.insert(auditLogs).values({
+          actorId: locals.user!.id,
+          action: action === 'publish_response' ? 'review.owner_response.publish' : 'review.owner_response.remove',
+          targetType: 'review',
+          targetId: id,
+          metadata: note ? { note } : {},
+        });
+        return undefined;
+      }
+
       if (review.status !== 'pending' && review.status !== 'flagged') {
         return jsonError(409, `Review is already ${review.status}.`);
       }
@@ -84,5 +110,8 @@ export const POST: APIRoute = async ({ params, request, locals }) => {
     return jsonError(500, 'Could not moderate the review. Please try again.');
   }
 
+  if (action === 'publish_response' || action === 'remove_response') {
+    return jsonOk({ ownerResponse: { reviewId: id, status: action === 'publish_response' ? 'published' : 'removed' } });
+  }
   return jsonOk({ review: { id, status: action === 'publish' ? 'published' : 'removed' } });
 };

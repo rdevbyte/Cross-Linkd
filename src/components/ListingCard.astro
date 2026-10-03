@@ -5,6 +5,7 @@ import TypeGlyph from './TypeGlyph.astro';
 import type { SampleListing } from '@/data/listings';
 import { typeBySlug } from '@/data/listing-types';
 import { compact, timeAgo } from '@/lib/format';
+import { recentlyUpdatedState, recentCardShimmerState } from '@/lib/recentlyUpdated.mjs';
 
 interface Props { listing: SampleListing; distanceMiles?: number; sponsored?: boolean }
 const { listing: l, distanceMiles, sponsored = false } = Astro.props;
@@ -19,8 +20,36 @@ const initial = l.name.trim().charAt(0).toUpperCase();
 const typeIcon = typeBySlug(l.typeSlug)?.icon ?? 'store';
 const MAX_TAGS = 3;
 const extraTags = Math.max(0, l.hashtags.length - MAX_TAGS);
+const serviceLabels = (l.services ?? [])
+  .map((service) => String(service).trim())
+  .filter(Boolean)
+  .filter((service, index, values) => values.findIndex((other) => other.toLocaleLowerCase('en-US') === service.toLocaleLowerCase('en-US')) === index);
+const MAX_SERVICES = 3;
+const extraServices = Math.max(0, serviceLabels.length - MAX_SERVICES);
+const serviceArea = l.serviceArea?.trim();
+const updatedAtMs = l.updatedAt ? Date.parse(l.updatedAt) : Number.NaN;
+const updatedAtLabel = Number.isFinite(updatedAtMs)
+  ? new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' }).format(new Date(updatedAtMs))
+  : undefined;
+const recentUpdate = recentlyUpdatedState(l.recentlyUpdatedAt);
+const cardShimmer = recentCardShimmerState({
+  createdAt: l.createdAt,
+  publishedAt: l.publishedAt,
+  updatedAt: l.updatedAt,
+  recentlyUpdatedAt: l.recentlyUpdatedAt,
+});
+const analyticsListingId = /^db-[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(l.id) ? l.id.slice(3) : undefined;
+const shimmerDelay = (Array.from(l.id).reduce((hash, char) => (hash * 31 + char.charCodeAt(0)) >>> 0, 7) % 500) / 1000;
 ---
-<article class="card card-hover card-traced relative flex flex-col overflow-hidden" style={`--hue:${l.imageHue}`}>
+<article
+  class:list={["card card-hover card-traced relative flex flex-col overflow-hidden", recentUpdate && "recently-updated-card", cardShimmer && "recent-card-shimmer"]}
+  style={`--hue:${l.imageHue};${cardShimmer ? `--card-shimmer-delay:${shimmerDelay.toFixed(3)}s;` : ''}`}
+  data-listing-card={analyticsListingId ? 'true' : undefined}
+  data-listing-id={analyticsListingId}
+  data-recently-updated={recentUpdate ? 'true' : undefined}
+  data-recent-update-expires={recentUpdate?.expiresAt}
+  data-card-shimmer-expires={cardShimmer?.expiresAt}
+>
   <svg class="card-trace" viewBox="0 0 340 220" preserveAspectRatio="none" aria-hidden="true" focusable="false" style={`--glow-delay:${glowDelay}s`}>
     <defs>
       <radialGradient id={`traceg-${artUid}`} cx="50%" cy="50%" r="50%">
@@ -91,10 +120,11 @@ const extraTags = Math.max(0, l.hashtags.length - MAX_TAGS);
       traceRO.observe(svg);
     });
   </script>
-  <a href={`/directory/${l.slug}`} class="card-media-link block" aria-label={`View ${l.name}`} tabindex="-1">
+  <a href={`/directory/${l.slug}`} class="card-media-link block" aria-label={`View ${l.name}`} tabindex="-1" data-listing-card-link>
     <div class="card-media relative">
+      {l.coverUrl && <img src={l.coverUrl} alt="" aria-hidden="true" loading="lazy" decoding="async" referrerpolicy="no-referrer" class="absolute inset-0 h-full w-full object-cover" />}
       <div class="absolute inset-0 flex items-center justify-center">
-        <span class="card-monogram" aria-hidden="true">{initial}</span>
+        {l.logoUrl ? <img src={l.logoUrl} alt="" aria-hidden="true" loading="lazy" decoding="async" referrerpolicy="no-referrer" class="card-monogram object-cover" /> : <span class="card-monogram" aria-hidden="true">{initial}</span>}
       </div>
       <span class="card-glyph"><TypeGlyph name={typeIcon} size={22} /></span>
     </div>
@@ -102,12 +132,12 @@ const extraTags = Math.max(0, l.hashtags.length - MAX_TAGS);
   <div class="card-fav absolute right-3 top-3 z-[4]"><FavoriteButton id={l.id} client:visible /></div>
   <div class="flex flex-1 flex-col gap-2 p-4">
     <div class="card-head flex items-start gap-3">
-      <span class="card-avatar" aria-hidden="true">{initial}</span>
+      {l.logoUrl ? <img src={l.logoUrl} alt="" aria-hidden="true" loading="lazy" decoding="async" referrerpolicy="no-referrer" class="card-avatar object-cover" /> : <span class="card-avatar" aria-hidden="true">{initial}</span>}
       <div class="min-w-0 flex-1">
         {(sponsored || l.featured) && (
           <span class={`chip mb-1 !py-0 !text-[11px] ${sponsored ? '' : 'chip-featured'}`}>{sponsored ? 'Sponsored' : 'Highlighted'}</span>
         )}
-        <a href={`/directory/${l.slug}`} class="card-title block">{l.name}</a>
+        <a href={`/directory/${l.slug}`} class="card-title block" data-listing-card-link>{l.name}</a>
         <p class="line-clamp-2 mt-0.5 text-sm" style="color:var(--text-soft)">{l.tagline}</p>
       </div>
     </div>
@@ -117,12 +147,21 @@ const extraTags = Math.max(0, l.hashtags.length - MAX_TAGS);
       ) : (
         <span>No reviews yet • </span>
       )}
-      {l.isOnlineOnly ? 'Online' : `${l.city}, ${l.region}`}
+      {l.isOnlineOnly ? 'Online-only' : `${l.city}, ${l.region}`}
       {typeof distanceMiles === 'number' && distanceMiles < 9999 ? ` • ${distanceMiles.toFixed(1)} mi` : ''}
       {l.priceRange ? ` • ${l.priceRange}` : ''}
-      {` • added ${timeAgo(l.addedDaysAgo)}`}
+      {typeof l.addedDaysAgo === 'number' && Number.isFinite(l.addedDaysAgo) ? ` • added ${timeAgo(l.addedDaysAgo)}` : ''}
     </p>
-    <div class="flex flex-wrap gap-1.5">
+    {updatedAtLabel && <p class="text-xs" style="color:var(--text-mute)"><time datetime={l.updatedAt} title="Public listing record last updated">Profile record updated {updatedAtLabel}</time></p>}
+    {serviceLabels.length > 0 && (
+      <div role="group" aria-label={`Services listed by ${l.name}`} class="flex flex-wrap gap-1.5">
+        {serviceLabels.slice(0, MAX_SERVICES).map((service) => <span class="chip max-w-full truncate !text-xs" title={service}>{service}</span>)}
+        {extraServices > 0 && <a href={`/directory/${l.slug}#services`} class="chip !text-xs" aria-label={`View ${extraServices} more listed services for ${l.name}`}>+{extraServices} more</a>}
+      </div>
+    )}
+    {serviceArea && <p class="line-clamp-1 text-xs" style="color:var(--text-soft)" title={`Service area: ${serviceArea}`}><strong style="color:var(--text)">Service area:</strong> {serviceArea}</p>}
+    <div class="flex flex-wrap items-center gap-1.5">
+      {recentUpdate && <span data-recent-update-badge role="note" aria-label={`Recently Updated. This listing was recently updated by its owner. ${recentUpdate.label}.`} title="This listing was recently updated by its owner." class="recent-update-badge"><span aria-hidden="true" class="recent-update-dot"></span><strong>Recently Updated</strong><time datetime={recentUpdate.timestamp}>{recentUpdate.label}</time></span>}
       <StatusBadge name="Owner-submitted" definition="The business provided the listing information." />
       {l.badges.filter((b) => badgeLabels[b]).map((b) => (
         <StatusBadge name={badgeLabels[b]} />

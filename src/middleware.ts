@@ -58,6 +58,7 @@ export const onRequest = defineMiddleware(async ({ cookies, locals, request }, n
   const token = cookies.get(SESSION_COOKIE)?.value;
   const session = await readSessionToken(token);
   let user: App.Locals['user'] = session;
+  let sessionCheckFailed = false;
 
   if (session) {
     const db = getDb();
@@ -70,16 +71,35 @@ export const onRequest = defineMiddleware(async ({ cookies, locals, request }, n
           .limit(1);
         if (!row || row.deletedAt || isSessionRevoked(session.issuedAt, row.sessionsValidAfter)) user = null;
       } catch (err) {
-        // Availability over strictness: a transient DB error keeps stateless JWT semantics.
+        // Revocation is security-sensitive: deny this request if it cannot be checked,
+        // but retain the cookie so a transient database outage does not sign everyone out.
         console.error('[middleware] session check failed:', err instanceof Error ? err.message : err);
+        user = null;
+        sessionCheckFailed = true;
       }
+    } else if (process.env.NODE_ENV === 'production') {
+      // Production sessions rely on the database watermark for revocation.
+      // Do not trust a stateless staff JWT when the database is unavailable.
+      user = null;
+      sessionCheckFailed = true;
     }
   }
 
-  // Drop a cookie that no longer maps to a live session (revoked, deleted, or unverifiable).
-  if (token && !user) cookies.delete(SESSION_COOKIE, { path: '/' });
+  // Drop a cookie that no longer maps to a live session. Keep it only when the
+  // revocation lookup itself failed, allowing recovery once the database returns.
+  if (token && !user && !sessionCheckFailed) cookies.delete(SESSION_COOKIE, { path: '/' });
   locals.user = user;
-  return next();
+  const response = await next();
+  const pathname = new URL(request.url).pathname;
+  const directoryData = pathname.startsWith('/api/')
+    || pathname.startsWith('/dashboard')
+    || pathname === '/search'
+    || pathname.startsWith('/directory/')
+    || pathname.startsWith('/browse/')
+    || pathname.startsWith('/industries/')
+    || pathname.startsWith('/professions/');
+  if (directoryData) response.headers.set('Cache-Control', 'private, no-store, max-age=0');
+  return response;
 });
 
 declare global {

@@ -32,16 +32,16 @@ async function main() {
   // Industries → categories → professions
   for (const ind of INDUSTRIES) {
     const [row] = await db.insert(schema.industries).values({
-      slug: ind.slug, name: ind.name, description: ind.description, level: 0,
-    }).onConflictDoNothing().returning({ id: schema.industries.id });
+      slug: ind.slug, name: ind.name, description: ind.description, aliases: ind.aliases ?? [], keywords: ind.keywords ?? [], level: 0,
+    }).onConflictDoUpdate({ target: schema.industries.slug, set: { name: ind.name, description: ind.description, aliases: ind.aliases ?? [], keywords: ind.keywords ?? [], level: 0, isActive: true, updatedAt: new Date() } }).returning({ id: schema.industries.id });
     const industryId = row?.id ?? (await db.query.industries.findFirst({
       where: (t, { eq }) => eq(t.slug, ind.slug),
     }))?.id;
     if (!industryId) continue;
     for (const cat of ind.categories) {
       const [crow] = await db.insert(schema.industryCategories).values({
-        industryId, slug: cat.slug, name: cat.name,
-      }).onConflictDoNothing().returning({ id: schema.industryCategories.id });
+        industryId, slug: cat.slug, name: cat.name, aliases: cat.aliases ?? [], keywords: cat.keywords ?? [],
+      }).onConflictDoUpdate({ target: schema.industryCategories.slug, set: { industryId, name: cat.name, aliases: cat.aliases ?? [], keywords: cat.keywords ?? [], isActive: true, updatedAt: new Date() } }).returning({ id: schema.industryCategories.id });
       const categoryId = crow?.id ?? (await db.query.industryCategories.findFirst({
         where: (t, { eq }) => eq(t.slug, cat.slug),
       }))?.id;
@@ -49,8 +49,8 @@ async function main() {
         await db.insert(schema.professions).values({
           categoryId: categoryId ?? null, industryId,
           slug: p.slug, name: p.name,
-          aliases: p.aliases ?? [], requiresLicense: p.requiresLicense ?? false,
-        }).onConflictDoNothing();
+          aliases: p.aliases ?? [], keywords: p.keywords ?? [], serviceExamples: p.services ?? [], requiresLicense: p.requiresLicense ?? false, isActive: true,
+        }).onConflictDoUpdate({ target: schema.professions.slug, set: { categoryId: categoryId ?? null, industryId, name: p.name, aliases: p.aliases ?? [], keywords: p.keywords ?? [], serviceExamples: p.services ?? [], requiresLicense: p.requiresLicense ?? false, isActive: true, updatedAt: new Date() } });
       }
     }
   }

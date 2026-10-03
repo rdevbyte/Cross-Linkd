@@ -1,12 +1,12 @@
 ---
 import BaseLayout from '@/layouts/BaseLayout.astro';
-import { allProfessions, industryBySlug } from '@/data/industries';
+import { allProfessions, industryBySlug, canonicalProfessionSlug } from '@/data/industries';
 import { getPublicListings } from '@/lib/publicListings';
 
 const corpus = await getPublicListings();
 const user = Astro.locals.user;
 const profs = allProfessions();
-const countFor = (slug: string) => corpus.filter((l) => l.professions.includes(slug)).length;
+const countFor = (slug: string) => corpus.filter((l) => l.professions.some((value) => canonicalProfessionSlug(value) === slug)).length;
 const publishedCount = profs.reduce((sum, profession) => sum + countFor(profession.slug), 0);
 ---
 <BaseLayout user={user} seo={{ title: 'Browse Professions — CrossLinkd', description: 'Find Christian professionals: counselors, attorneys, realtors, photographers, contractors, and more.', path: '/browse/professions' }}>

@@ -5,7 +5,7 @@ import { users, authTokens } from '@/db/schema';
 import { resetRequestSchema, resetConfirmSchema } from '@/lib/validation';
 import { createAuthToken, consumeAuthToken, hashPassword } from '@/lib/auth';
 import { sendMail, appUrl } from '@/lib/mailer';
-import { rateLimit } from '@/lib/rateLimit.mjs';
+import { sharedRateLimit } from '@/lib/sharedRateLimit';
 import { clientIp } from '@/lib/clientIp';
 
 /**
@@ -20,7 +20,7 @@ export const POST: APIRoute = async ({ request, redirect }) => {
   const form = await request.formData();
   const isConfirm = form.get('intent') === 'confirm';
 
-  if (!rateLimit(`reset:ip:${clientIp(request)}`, 10, 15 * 60 * 1000)) {
+  if (!(await sharedRateLimit(`reset:ip:${clientIp(request)}`, 10, 15 * 60 * 1000))) {
     return redirect('/auth/reset?error=' + encodeURIComponent('Too many attempts. Wait 15 minutes and try again.'), 303);
   }
 
@@ -45,7 +45,7 @@ export const POST: APIRoute = async ({ request, redirect }) => {
   }
 
   const parsed = resetRequestSchema.safeParse({ email: String(form.get('email') ?? '').toLowerCase().trim() });
-  if (parsed.success && !rateLimit(`reset:email:${parsed.data.email}`, 3, 15 * 60 * 1000)) {
+  if (parsed.success && !(await sharedRateLimit(`reset:email:${parsed.data.email}`, 3, 15 * 60 * 1000))) {
     // Same response as success — throttled silently, no enumeration.
     return redirect('/auth/reset?sent=1', 303);
   }

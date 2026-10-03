@@ -3,10 +3,9 @@ import BaseLayout from '@/layouts/BaseLayout.astro';
 import ListingCard from '@/components/ListingCard.astro';
 import SearchBar from '@/components/SearchBar';
 import EmptyState from '@/components/EmptyState.astro';
-import { searchListings } from '@/lib/search';
 import { withoutParams } from '@/lib/searchParams';
-import { getDbListings } from '@/lib/publicListings';
-import { isUsRegion } from '@/lib/trustCopy';
+import { getPublicSearchLocations, searchPublishedListings } from '@/lib/dbSearch';
+import type { SearchResult } from '@/lib/search';
 import { LISTING_TYPES } from '@/data/listing-types';
 import { DENOMINATIONS, TRADITIONS } from '@/data/denominations';
 import { INDUSTRIES } from '@/data/industries';
@@ -62,6 +61,7 @@ const filters = {
   industry: ltypeKind === 'industry' ? [...getAll('industry'), ltypeVal] : getAll('industry'),
   category: ltypeKind === 'cat' ? [ltypeVal] : [],
   profession: getAll('profession'),
+  service: getAll('service').flatMap((value) => value.split(',').map((item) => item.trim()).filter(Boolean)).slice(0, 12),
   city: params.get('city') ?? undefined,
   near: params.get('near') ?? undefined,
   region: params.get('region') ?? undefined,
@@ -74,32 +74,27 @@ const filters = {
   minRating: params.get('minRating') ? Number(params.get('minRating')) : 0,
   price: getAll('price'),
   languages: getAll('languages'),
-  sort: (params.get('sort') as 'relevance' | 'distance' | 'rating' | 'newest' | 'recommended' | 'popular') || 'relevance',
+  sort: (params.get('sort') as 'relevance' | 'distance' | 'rating' | 'newest' | 'recently-updated' | 'recommended' | 'popular') || 'relevance',
   page: params.get('page') ? Number(params.get('page')) : 1,
   perPage: 12,
 };
 const selectedDenom = filters.denomination[0] ?? '';
 const selectedDenomLabel = denomData.flatMap((g) => g.items).find((d) => d.value === selectedDenom)?.label ?? '';
-const dbListings = await getDbListings();
-const locationSeen = new Map<string, { label: string; value: string; kind: string }>();
-for (const listing of dbListings) {
-  if (listing.isOnlineOnly || !listing.city || !listing.region) continue;
-  const label = `${listing.city.trim()}, ${listing.region.trim().toUpperCase()}`;
-  const key = label.toLowerCase();
-  if (!locationSeen.has(key)) {
-    locationSeen.set(key, {
-      label,
-      value: label,
-      kind: isUsRegion(listing.region) ? 'city' : 'outside the U.S.',
-    });
-  }
+const clearSearchUrl = filters.q ? `/search?q=${encodeURIComponent(filters.q)}` : '/search';
+const locationChoices = await getPublicSearchLocations();
+let searchError = false;
+let result: SearchResult;
+try {
+  result = await searchPublishedListings(filters, crypto.randomUUID());
+} catch {
+  // The search module logs a request-safe diagnostic. Do not fall back to
+  // hydrating the full listing corpus if the indexed query is unavailable.
+  searchError = true;
+  result = {
+    hits: [], total: 0, page: filters.page, perPage: filters.perPage, totalPages: 1,
+    suggestions: [], appliedTags: [], altLinks: [],
+  };
 }
-const onlineCount = dbListings.filter((listing) => listing.isOnlineOnly).length;
-const locationChoices = [
-  ...(onlineCount > 0 ? [{ label: 'Online', value: 'Online', kind: 'online' }] : []),
-  ...locationSeen.values(),
-];
-const result = searchListings(filters, dbListings);
 const pageUrl = (p: number) => {
   const sp = new URLSearchParams(params);
   sp.set('page', String(p));
@@ -113,16 +108,17 @@ const urlWithout = (...drop: Array<[key: string, value?: string]>) => {
 const activeFilters: { label: string; href: string }[] = [
   ...(ltypeLabel ? [{ label: ltypeLabel, href: urlWithout(['ltype']) }] : []),
   ...(selectedDenomLabel ? [{ label: selectedDenomLabel, href: urlWithout(['denomination']) }] : []),
+  ...(filters.service.length ? [{ label: `Service: ${filters.service.join(', ')}`, href: urlWithout(['service']) }] : []),
   ...(filters.city ? [{ label: `City: ${filters.city}`, href: urlWithout(['city']) }] : []),
   ...(filters.near && !filters.onlineOnly ? [{ label: `Near ${filters.near}`, href: urlWithout(['near']) }] : []),
   ...(filters.lat !== undefined && filters.lng !== undefined ? [{ label: `Within ${filters.radiusMi} mi of me`, href: urlWithout(['lat'], ['lng'], ['radiusMi']) }] : []),
-  ...(filters.openNow ? [{ label: 'Open now', href: urlWithout(['openNow']) }] : []),
+  ...(filters.openNow ? [{ label: 'Open 24 hours', href: urlWithout(['openNow']) }] : []),
   ...(filters.onlineOnly ? [{ label: 'Online services', href: urlWithout(['onlineOnly'], ['near']) }] : []),
   ...(filters.minRating > 0 ? [{ label: `${filters.minRating}+ stars`, href: urlWithout(['minRating']) }] : []),
 ];
 const sortOptions: [string, string][] = [
   ['relevance', 'Relevance'], ['distance', 'Distance'], ['rating', 'Rating'],
-  ['newest', 'Newest'], ['recommended', 'Recommendation count'], ['popular', 'Most viewed'],
+  ['newest', 'Newest'], ['recently-updated', 'Recently Updated'], ['recommended', 'Recommendation count'], ['popular', 'Most viewed'],
 ];
 
 const seo = {
@@ -172,6 +168,10 @@ const seo = {
             selected={selectedDenom}
             selectedLabel={selectedDenomLabel}
           />
+          <div class="space-y-1">
+            <label class="field-label" for="filter-service">Service</label>
+            <input id="filter-service" name="service" value={filters.service.join(', ')} maxlength="200" placeholder="e.g. Termite treatment" class="input mt-1" />
+          </div>
           <div class="grid grid-cols-2 gap-2">
             <div class="space-y-1">
               <label class="field-label" for="filter-city">City</label>
@@ -191,7 +191,8 @@ const seo = {
             </select>
           </div>
           <div class="space-y-2 border-t pt-3" style="border-color:var(--border)">
-            <label class="flex items-center gap-2.5 text-sm font-medium"><input type="checkbox" name="openNow" value="1" checked={filters.openNow} class="h-4 w-4 rounded accent-[var(--accent)]" /> Open now</label>
+            <p class="text-xs" style="color:var(--text-mute)">Hours are owner-entered; this only matches listings that explicitly say they are open 24 hours.</p>
+            <label class="flex items-center gap-2.5 text-sm font-medium"><input type="checkbox" name="openNow" value="1" checked={filters.openNow} class="h-4 w-4 rounded accent-[var(--accent)]" /> Hours say “open 24 hours”</label>
             <label class="flex items-center gap-2.5 text-sm font-medium"><input type="checkbox" name="onlineOnly" value="1" checked={filters.onlineOnly} class="h-4 w-4 rounded accent-[var(--accent)]" /> Online services</label>
           </div>
           <div class="flex gap-2">
@@ -203,9 +204,9 @@ const seo = {
       </aside>
 
       <!-- Results -->
-      <div>
+      <div data-recent-filter-active={filters.sort === 'recently-updated' ? 'true' : undefined}>
         <div class="flex flex-wrap items-center justify-between gap-3">
-          <p class="text-sm" style="color:var(--text-soft)" role="status">
+          <p class="text-sm" style="color:var(--text-soft)" role="status" aria-live="polite" aria-atomic="true">
             <strong style="color:var(--text)">{result.total}</strong> result{result.total === 1 ? '' : 's'}
             {filters.q && <> for <strong style="color:var(--text)">“{filters.q}”</strong></>}
             {ltypeLabel && <> in <strong style="color:var(--text)">{ltypeLabel}</strong></>}
@@ -239,12 +240,21 @@ const seo = {
           </div>
         )}
 
-        {result.hits.length === 0 ? (
+        {searchError ? (
+          <div class="card mt-6 p-6 text-center" role="alert">
+            <h2 class="text-lg font-semibold">Search results couldn’t load</h2>
+            <p class="mx-auto mt-2 max-w-lg text-sm leading-relaxed" style="color:var(--text-soft)">The search service is temporarily unavailable. Please retry; the issue has been recorded for the site operator.</p>
+            <a href={`${Astro.url.pathname}${Astro.url.search}`} class="btn btn-primary mt-4">Retry search</a>
+          </div>
+        ) : result.hits.length === 0 ? (
           <div class="mt-6">
-            <EmptyState title="No published listings match" body="Nothing published matches this search. CrossLinkd does not add sample businesses to fill an empty page. Try fewer filters, a different spelling, or a nearby city.">
+            <EmptyState title="No published listings match" body="Nothing published matches these terms and filters. Try removing a filter, broadening your search, or browsing categories and places that have published listings. We don’t invent entries to fill empty results.">
               <div class="mt-4 flex flex-wrap justify-center gap-2">
-                {result.suggestions.map((s) => (
-                  <a href={`/search?q=${encodeURIComponent(s)}`} class="chip hover:border-[var(--accent)]">{s}</a>
+                <a href={clearSearchUrl} class="chip hover:border-[var(--accent)]">Clear filters</a>
+                <a href="/#browse-published" class="chip hover:border-[var(--accent)]">Browse published categories and places</a>
+                <a href="/add-listing" class="chip hover:border-[var(--accent)]">Submit a real listing</a>
+                {filters.q && result.suggestions.map((suggestion) => (
+                  <a href={`/search?q=${encodeURIComponent(suggestion)}`} class="chip hover:border-[var(--accent)]">Try: {suggestion}</a>
                 ))}
               </div>
             </EmptyState>
@@ -260,9 +270,9 @@ const seo = {
 
         {result.totalPages > 1 && (
           <nav class="mt-8 flex items-center justify-center gap-2" aria-label="Pagination">
-            {result.page > 1 && <a href={pageUrl(result.page - 1)} class="btn btn-secondary !px-4">← Prev</a>}
+            {result.page > 1 && <a href={pageUrl(result.page - 1)} aria-label={`Previous page, page ${result.page - 1}`} class="btn btn-secondary !px-4">← Prev</a>}
             <span class="text-sm" style="color:var(--text-soft)">Page {result.page} of {result.totalPages}</span>
-            {result.page < result.totalPages && <a href={pageUrl(result.page + 1)} class="btn btn-secondary !px-4">Next →</a>}
+            {result.page < result.totalPages && <a href={pageUrl(result.page + 1)} aria-label={`Next page, page ${result.page + 1}`} class="btn btn-secondary !px-4">Next →</a>}
           </nav>
         )}
       </div>

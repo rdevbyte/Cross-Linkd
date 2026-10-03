@@ -1,5 +1,5 @@
 import type { APIRoute } from 'astro';
-import { isAdmin } from '@/lib/auth';
+import { apiGuard } from '@/lib/guards';
 import { SAMPLE_LISTINGS } from '@/data/listings';
 import { includeSamples } from '@/lib/sampleGate';
 import { INDUSTRIES } from '@/data/industries';
@@ -10,9 +10,8 @@ import { isNull, desc, and, eq } from 'drizzle-orm';
 
 /** GET /api/admin/export?table=listings|taxonomy — admin CSV/JSON export. */
 export const GET: APIRoute = async ({ url, locals }) => {
-  if (!isAdmin(locals.user) && process.env.NODE_ENV === 'production' && process.env.DATABASE_URL) {
-    return new Response('Forbidden', { status: 403 });
-  }
+  const deny = apiGuard.admin(locals);
+  if (deny) return deny;
   const table = url.searchParams.get('table') ?? 'listings';
   if (table === 'taxonomy') {
     return new Response(JSON.stringify({ industries: INDUSTRIES, denominations: DENOMINATIONS }, null, 2), {
@@ -70,11 +69,15 @@ export const GET: APIRoute = async ({ url, locals }) => {
   }
 
   const header = 'id,slug,name,type,industry,category,custom_category,denominations,city,region,rating,reviews';
+  const csvCell = (value: string | number) => {
+    const text = String(value);
+    // Quoting is not sufficient: spreadsheet programs may evaluate formulas in quoted cells.
+    const safe = /^[\t\r\n \u0000\uFEFF]*[=+\-@]/.test(text) ? `'${text}` : text;
+    return `"${safe.replace(/"/g, '""')}"`;
+  };
   const csvLines = [
     header,
-    ...exportRows.map((row) =>
-      row.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(',')
-    ),
+    ...exportRows.map((row) => row.map(csvCell).join(',')),
   ];
 
   return new Response(csvLines.join('\n'), {

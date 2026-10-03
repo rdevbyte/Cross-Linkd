@@ -1,0 +1,50 @@
+---
+import { HOURS_PRESETS } from '@/lib/hoursSchedule.mjs';
+
+interface Props {
+  hours?: Record<string, string> | null;
+  id?: string;
+}
+const { hours = {}, id = 'listing-hours' } = Astro.props;
+const presets = [
+  { value: 'standard', label: 'Weekdays, 9 AM–5 PM' },
+  { value: 'extended', label: 'Extended weekday & Saturday hours' },
+  { value: 'weekends', label: 'Weekends only' },
+  { value: 'appointment', label: 'By appointment' },
+  { value: 'always', label: 'Open 24 hours, every day' },
+  { value: 'vary', label: 'Hours vary — contact us' },
+].filter((preset) => preset.value in HOURS_PRESETS);
+---
+<section id={id} class="sm:col-span-2" data-hours-editor data-initial-hours={JSON.stringify(hours ?? {})}>
+  <div class="rounded-2xl border p-4 sm:p-5" style="border-color:var(--border);background:var(--surface-2)">
+    <div class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+      <div>
+        <h3 class="text-sm font-semibold">Hours of operation <span class="font-normal" style="color:var(--text-mute)">(optional)</span></h3>
+        <p class="mt-1 max-w-2xl text-xs leading-relaxed" style="color:var(--text-mute)">Set different hours for each day, add split shifts, or copy a time frame to selected days. Leave days unspecified if you don’t want to list their hours.</p>
+      </div>
+      <div class="flex flex-wrap items-end gap-2">
+        <label class="min-w-0 flex-1 text-xs font-medium sm:min-w-56">Start with a preset
+          <select data-hours-preset class="input mt-1 w-full !py-2 !text-xs">
+            <option value="">Choose a quick fill…</option>
+            {presets.map((preset) => <option value={preset.value}>{preset.label}</option>)}
+          </select>
+        </label>
+        <button type="button" data-hours-action="apply-preset" class="btn btn-secondary !min-h-10 !px-3 !py-2 !text-xs">Apply</button>
+      </div>
+    </div>
+
+    <div data-hours-days class="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-3"></div>
+
+    <label class="mt-4 block text-xs font-medium">Additional schedule notes (optional)
+      <textarea data-hours-notes rows="2" maxlength="1200" class="input mt-1 w-full" placeholder="By appointment: Call or email to schedule"></textarea>
+      <span class="mt-1 block font-normal" style="color:var(--text-mute)">Use “Label: details” for holiday, appointment, or other special hours. Existing notes are kept here.</span>
+    </label>
+
+    <input type="hidden" name="hoursJson" data-hours-json value={JSON.stringify(hours ?? {})} />
+    <p data-hours-status class="mt-2 min-h-5 text-xs" role="status" aria-live="polite" style="color:var(--text-mute)"></p>
+  </div>
+</section>
+<script>
+  import { initHoursEditors } from '@/scripts/hoursEditor';
+  initHoursEditors();
+</script>

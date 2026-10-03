@@ -1,6 +1,8 @@
 import type { APIRoute } from 'astro';
 import { z } from 'zod';
 import { sendMail } from '@/lib/mailer';
+import { sharedRateLimit } from '@/lib/sharedRateLimit';
+import { clientIp } from '@/lib/clientIp';
 
 const schema = z.object({
   category: z.string().max(80).default('General suggestion'),
@@ -17,6 +19,9 @@ export const POST: APIRoute = async ({ request, redirect }) => {
   if (hp) {
     // Silent drop for automated bots filling hidden field
     return redirect('/feedback?sent=1', 303);
+  }
+  if (!(await sharedRateLimit(`feedback:ip:${clientIp(request)}`, 8, 60 * 60 * 1000))) {
+    return redirect('/feedback?error=' + encodeURIComponent('Too many suggestions from this network. Wait an hour and try again.'), 303);
   }
 
   const parsed = schema.safeParse({

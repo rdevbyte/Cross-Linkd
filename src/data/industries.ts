@@ -1,271 +1,369 @@
-/**
- * Industry → Category → Subcategory → Profession taxonomy.
- * Normalized: unique slugs, industries separated from professions,
- * multi-level relationships, expandable accordion hierarchy.
- */
-export interface Profession {
-  slug: string;
-  name: string;
-  aliases?: string[];
-  requiresLicense?: boolean;
-  services?: string[];
+import { BASE_INDUSTRIES, type Category, type Industry, type Profession } from './industries.base';
+import {
+  LEGACY_CATEGORY_PARENTS,
+  LEGACY_INDUSTRY_SLUG_ALIASES,
+  LEGACY_PROFESSION_SLUG_ALIASES,
+  TAXONOMY_INDUSTRY_ADDITIONS,
+  TAXONOMY_TERM_OVERRIDES,
+} from './taxonomy-extension';
+
+export type { Category, Industry, Profession } from './industries.base';
+
+/** Required broad-sector coverage. The legal root uses a distinct slug because `legal-services` is a longstanding category slug. */
+export const REQUIRED_INDUSTRY_SLUGS = [
+  'information-technology', 'professional-business-services', 'marketing-advertising-pr',
+  'arts-media-entertainment', 'construction-skilled-trades', 'home-property-services',
+  'healthcare-wellness', 'education', 'food-beverage', 'retail-consumer',
+  'financial-services', 'legal-service-industry', 'real-estate-property',
+  'transportation-logistics', 'automotive', 'agriculture-farming', 'manufacturing',
+  'beauty-personal-care', 'sports-recreation', 'events-entertainment',
+  'religious-organizations', 'nonprofit-civic', 'government-civic-services',
+  'cleaning-maintenance', 'security-services', 'pet-animal-services',
+  'travel-hospitality', 'environmental-sustainability', 'other-industries',
+] as const;
+
+const MOVED_CATEGORIES: Record<string, string> = {
+  marketing: 'marketing-advertising-pr',
+  'legal-services': 'legal-service-industry',
+  landscaping: 'home-property-services',
+  'other-home-services': 'home-property-services',
+  'cleaning-services': 'cleaning-maintenance',
+  fitness: 'sports-recreation',
+  venues: 'events-entertainment',
+  'event-services': 'events-entertainment',
+};
+
+const BASE_DISPLAY: Record<string, Partial<Industry>> = {
+  'food-beverage': { name: 'Food, Beverage & Hospitality' },
+  'professional-business-services': { name: 'Professional & Business Services' },
+  'construction-skilled-trades': { name: 'Construction & Skilled Trades', description: 'General contractors, remodelers, electricians, plumbers, and specialty trades.' },
+  'healthcare-wellness': { name: 'Health, Medical & Wellness' },
+  'arts-media-entertainment': { name: 'Creative, Design & Media' },
+  'information-technology': { name: 'Technology & Software' },
+  'sports-recreation': { name: 'Fitness & Recreation' },
+  'other-industries': { name: 'Other Industry', description: 'A universal fallback for an industry not listed elsewhere.' },
+};
+
+const normalizeText = (value: string) => value.trim().toLocaleLowerCase('en-US').replace(/\s+/g, ' ');
+const normalizeAliasSlug = (value: string) => value.trim().toLocaleLowerCase('en-US').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+const uniqueTerms = (values: Array<string | undefined>) => {
+  const seen = new Set<string>();
+  return values.flatMap((raw) => {
+    const value = raw?.trim().replace(/\s+/g, ' ');
+    if (!value) return [];
+    const key = normalizeText(value);
+    if (seen.has(key)) return [];
+    seen.add(key);
+    return [value];
+  });
+};
+
+function addTerms<T extends { slug: string; name: string; aliases?: string[]; keywords?: string[] }>(node: T): T & { aliases: string[]; keywords: string[] } {
+  const override = TAXONOMY_TERM_OVERRIDES[node.slug];
+  const aliases = uniqueTerms([...(node.aliases ?? []), ...(override?.aliases ?? []), node.name, node.slug.replace(/-/g, ' ')]);
+  const keywords = uniqueTerms([
+    ...(node.keywords ?? []),
+    ...(override?.keywords ?? []),
+    node.name,
+    node.slug.replace(/-/g, ' '),
+    ...aliases,
+  ]);
+  return { ...node, aliases, keywords };
 }
 
-export interface Category {
-  slug: string;
-  name: string;
-  professions: Profession[];
+const moved = new Map<string, Category>();
+const legacyRoots = BASE_INDUSTRIES.map((industry) => {
+  const categories = industry.categories.filter((category) => {
+    if (!MOVED_CATEGORIES[category.slug]) return true;
+    moved.set(category.slug, category);
+    return false;
+  });
+  return { ...industry, ...BASE_DISPLAY[industry.slug], categories };
+});
+
+const allRoots = [...legacyRoots, ...TAXONOMY_INDUSTRY_ADDITIONS];
+for (const [categorySlug, industrySlug] of Object.entries(MOVED_CATEGORIES)) {
+  const target = allRoots.find((industry) => industry.slug === industrySlug);
+  const category = moved.get(categorySlug);
+  if (target && category && !target.categories.some((item) => item.slug === categorySlug)) target.categories.unshift(category);
 }
 
-export interface Industry {
-  slug: string;
-  name: string;
-  description: string;
-  categories: Category[];
+// Resolve legacy profession identifiers and the source catalog's duplicate profession name/slug.
+for (const industry of allRoots) {
+  for (const category of industry.categories) {
+    if (industry.slug === 'other-industries' && category.slug === 'other-business') category.name = 'Other Category';
+    if (category.slug === 'bakeries') category.professions = category.professions.filter((profession) => profession.slug !== 'caterer');
+    category.professions = category.professions.map((profession) => {
+      if (profession.slug === 'it-support') return { ...profession, slug: 'managed-it-provider', aliases: [...(profession.aliases ?? []), 'IT support'] };
+      if (profession.slug === 'florist') return { ...profession, slug: 'floral-designer', aliases: [...(profession.aliases ?? []), 'Florist', 'Flower Shop'] };
+      if (profession.slug === 'general-specialist') return { ...profession, slug: 'other-professional-service-provider', name: 'Other Professional or Service Provider', aliases: [...(profession.aliases ?? []), 'Specialist', 'General service provider'] };
+      return profession;
+    });
+  }
 }
 
-export const INDUSTRIES: Industry[] = [
-  {
-    slug: 'food-beverage',
-    name: 'Food & Beverage',
-    description: 'Bakeries, restaurants, cafés, food trucks, and culinary providers.',
-    categories: [
-      {
-        slug: 'bakeries',
-        name: 'Bakeries',
-        professions: [
-          { slug: 'baker', name: 'Baker', services: ['Custom cakes', 'Bread', 'Pastries'] },
-          { slug: 'caterer', name: 'Caterer', services: ['Events', 'Weddings', 'Church events'] },
-        ],
-      },
-      { slug: 'restaurants', name: 'Restaurant', professions: [{ slug: 'restaurant-owner', name: 'Restaurant Owner', services: ['Dine-in', 'Takeout', 'Private events'] }] },
-      { slug: 'coffee-shops', name: 'Café or Coffee Shop', professions: [{ slug: 'coffee-shop', name: 'Coffee Shop', services: ['Espresso bar', 'Study space', 'Ministry meetups'] }] },
-      { slug: 'food-trucks', name: 'Food Truck', professions: [{ slug: 'food-truck-operator', name: 'Food Truck Operator', services: ['Mobile catering', 'Festivals'] }] },
-      { slug: 'catering', name: 'Catering', professions: [{ slug: 'caterer', name: 'Caterer', services: ['Weddings', 'Church events', 'Corporate catering'] }] },
-      { slug: 'specialty-grocery', name: 'Grocery or Specialty Food Store', professions: [{ slug: 'grocer', name: 'Specialty Grocer', services: ['Local produce', 'Specialty foods'] }] },
-      { slug: 'food-manufacturing', name: 'Food Manufacturer', professions: [{ slug: 'food-producer', name: 'Food Producer', services: ['Packaged foods', 'Wholesale supply'] }] },
-      { slug: 'other-food-beverage', name: 'Other Food & Beverage', professions: [{ slug: 'food-specialist', name: 'Food & Beverage Specialist', services: ['Specialty culinary services'] }] },
-    ],
-  },
-  {
-    slug: 'professional-business-services',
-    name: 'Professional Services',
-    description: 'Consulting, legal support, marketing, HR, and business advisory services.',
-    categories: [
-      { slug: 'consulting', name: 'Consulting & Business Advisory', professions: [{ slug: 'business-consultant', name: 'Business Consultant', services: ['Strategy', 'Operations'] }] },
-      { slug: 'marketing', name: 'Marketing, Creative & Branding', professions: [{ slug: 'marketing-agency', name: 'Marketing Agency', services: ['Branding', 'Communications'] }] },
-      { slug: 'legal-services', name: 'Legal Services & Law Practice', professions: [{ slug: 'attorney', name: 'Attorney', aliases: ['Lawyer'], requiresLicense: true, services: ['Estate planning', 'Business law'] }] },
-      { slug: 'staffing-recruiting', name: 'Human Resources & Staffing', professions: [{ slug: 'hr-consultant', name: 'HR Consultant', services: ['Staffing', 'Talent acquisition'] }] },
-      { slug: 'management-strategy', name: 'Management & Executive Coaching', professions: [{ slug: 'business-coach', name: 'Executive Coach', services: ['Leadership development'] }] },
-      { slug: 'other-professional-services', name: 'Other Professional Services', professions: [{ slug: 'professional-consultant', name: 'Professional Consultant', services: ['Advisory services'] }] },
-    ],
-  },
-  {
-    slug: 'construction-skilled-trades',
-    name: 'Home Services & Trades',
-    description: 'General contractors, remodelers, electricians, plumbers, and home specialists.',
-    categories: [
-      { slug: 'general-contracting', name: 'General Contracting & Remodeling', professions: [{ slug: 'general-contractor', name: 'General Contractor', requiresLicense: true, services: ['Renovations', 'Home building'] }] },
-      { slug: 'plumbing', name: 'Plumbing', professions: [{ slug: 'plumber', name: 'Plumber', requiresLicense: true, services: ['Repairs', 'Water heaters', 'Piping'] }] },
-      { slug: 'electrical', name: 'Electrical Services', professions: [{ slug: 'residential-electrician', name: 'Residential Electrician', requiresLicense: true, services: ['Wiring', 'Lighting', 'Generators'] }] },
-      { slug: 'hvac', name: 'HVAC & Heating/Cooling', professions: [{ slug: 'hvac-technician', name: 'HVAC Specialist', requiresLicense: true, services: ['AC repair', 'Heating', 'Air quality'] }] },
-      { slug: 'roofing', name: 'Roofing & Siding', professions: [{ slug: 'roofer', name: 'Roofer', services: ['Roof replacement', 'Storm damage repair'] }] },
-      { slug: 'landscaping', name: 'Landscaping & Lawn Care', professions: [{ slug: 'landscaper', name: 'Landscaper', services: ['Lawn maintenance', 'Design', 'Hardscaping'] }] },
-      { slug: 'painting', name: 'Painting & Drywall', professions: [{ slug: 'painter', name: 'Professional Painter', services: ['Interior painting', 'Exterior painting'] }] },
-      { slug: 'cleaning-services', name: 'Cleaning & Janitorial', professions: [{ slug: 'house-cleaner', name: 'Cleaning Specialist', services: ['Deep cleaning', 'Commercial janitorial'] }] },
-      { slug: 'other-home-services', name: 'Other Home Services & Trades', professions: [{ slug: 'handyman', name: 'Handyman Specialist', services: ['Home maintenance', 'General repairs'] }] },
-    ],
-  },
-  {
-    slug: 'healthcare-wellness',
-    name: 'Health & Wellness',
-    description: 'Counseling, medical practices, chiropractic care, and wellness services.',
-    categories: [
-      { slug: 'mental-health', name: 'Christian Counseling & Mental Health', professions: [{ slug: 'christian-counselor', name: 'Christian Counselor', requiresLicense: true, services: ['Individual counseling', 'Marriage therapy', 'Family counseling'] }] },
-      { slug: 'medical', name: 'Medical & Dental Practice', professions: [{ slug: 'physician', name: 'Physician', requiresLicense: true, services: ['Primary care', 'Pediatrics'] }, { slug: 'dentist', name: 'Dentist', requiresLicense: true, services: ['Family dentistry'] }] },
-      { slug: 'chiropractic', name: 'Chiropractic & Physical Therapy', professions: [{ slug: 'chiropractor', name: 'Chiropractor', requiresLicense: true, services: ['Adjustments', 'Rehabilitation'] }] },
-      { slug: 'fitness', name: 'Fitness, Gyms & Personal Training', professions: [{ slug: 'personal-trainer', name: 'Personal Trainer', services: ['Coaching', 'Strength training'] }] },
-      { slug: 'nutrition', name: 'Nutrition & Holistic Wellness', professions: [{ slug: 'nutritionist', name: 'Nutritionist', services: ['Meal planning', 'Wellness coaching'] }] },
-      { slug: 'other-health-wellness', name: 'Other Health & Wellness', professions: [{ slug: 'wellness-specialist', name: 'Wellness Practitioner', services: ['Holistic care'] }] },
-    ],
-  },
-  {
-    slug: 'retail-consumer',
-    name: 'Retail & Consumer Goods',
-    description: 'Christian bookstores, boutiques, home furnishings, and specialty retail.',
-    categories: [
-      { slug: 'christian-books', name: 'Christian Bookstore & Bibles', professions: [{ slug: 'bookseller', name: 'Christian Bookseller', services: ['Bibles', 'Curriculum', 'Gifts'] }] },
-      { slug: 'boutique-apparel', name: 'Clothing & Apparel', professions: [{ slug: 'boutique-owner', name: 'Boutique Owner', services: ['Modest apparel', 'Apparel'] }] },
-      { slug: 'home-goods', name: 'Home Goods & Furniture', professions: [{ slug: 'home-merchant', name: 'Furnishings Retailer', services: ['Decor', 'Handcrafted goods'] }] },
-      { slug: 'florist', name: 'Florist & Gift Shop', professions: [{ slug: 'florist', name: 'Florist', services: ['Floral arrangements', 'Gift baskets'] }] },
-      { slug: 'specialty-retail', name: 'Specialty Retail & Crafts', professions: [{ slug: 'artisan', name: 'Artisan Merchant', services: ['Handmade goods', 'Jewelry'] }] },
-      { slug: 'other-retail', name: 'Other Retail Store', professions: [{ slug: 'retail-merchant', name: 'Retailer', services: ['Consumer products'] }] },
-    ],
-  },
-  {
-    slug: 'financial-services',
-    name: 'Finance & Insurance',
-    description: 'Financial advisory, CPA tax services, insurance, and lending.',
-    categories: [
-      { slug: 'accounting-tax', name: 'Accounting, Bookkeeping & Tax', professions: [{ slug: 'cpa', name: 'Certified Public Accountant', requiresLicense: true, services: ['Tax returns', 'Bookkeeping', 'Audits'] }] },
-      { slug: 'financial-planning', name: 'Financial Planning & Wealth Management', professions: [{ slug: 'financial-advisor', name: 'Financial Advisor', requiresLicense: true, services: ['Biblical stewardship', 'Retirement', 'Investments'] }] },
-      { slug: 'insurance', name: 'Insurance & Health Sharing', professions: [{ slug: 'insurance-agent', name: 'Insurance Agent', requiresLicense: true, services: ['Life insurance', 'Health plans', 'Property insurance'] }] },
-      { slug: 'mortgage-lending', name: 'Mortgage & Commercial Lending', professions: [{ slug: 'mortgage-broker', name: 'Mortgage Broker', requiresLicense: true, services: ['Home loans', 'Refinancing', 'Church financing'] }] },
-      { slug: 'other-finance', name: 'Other Finance & Insurance', professions: [{ slug: 'finance-specialist', name: 'Financial Specialist', services: ['Financial advisory'] }] },
-    ],
-  },
-  {
-    slug: 'real-estate-property',
-    name: 'Real Estate & Property',
-    description: 'Residential and commercial real estate agents, property managers, and inspectors.',
-    categories: [
-      { slug: 'brokerage', name: 'Residential Real Estate Brokerage', professions: [{ slug: 'realtor', name: 'Realtor', requiresLicense: true, services: ['Home buying', 'Home selling', 'Relocation'] }] },
-      { slug: 'commercial-real-estate', name: 'Commercial Real Estate', professions: [{ slug: 'commercial-broker', name: 'Commercial Broker', requiresLicense: true, services: ['Leasing', 'Church properties', 'Land sales'] }] },
-      { slug: 'property-management', name: 'Property Management', professions: [{ slug: 'property-manager', name: 'Property Manager', services: ['Rental management', 'Tenant placement'] }] },
-      { slug: 'inspection-appraisal', name: 'Home Inspection & Appraisal', professions: [{ slug: 'home-inspector', name: 'Home Inspector', requiresLicense: true, services: ['Pre-purchase inspection', 'Appraisals'] }] },
-      { slug: 'other-real-estate', name: 'Other Real Estate Services', professions: [{ slug: 'real-estate-specialist', name: 'Real Estate Specialist', services: ['Property services'] }] },
-    ],
-  },
-  {
-    slug: 'education',
-    name: 'Education & Childcare',
-    description: 'Christian private schools, tutoring, homeschool academies, and music lessons.',
-    categories: [
-      { slug: 'schools', name: 'Christian Schools & Academies', professions: [{ slug: 'private-school', name: 'Christian School Educator', services: ['K-12 education', 'Biblical curriculum'] }] },
-      { slug: 'music-education', name: 'Music & Arts Instruction', professions: [{ slug: 'music-teacher', name: 'Music Teacher', services: ['Piano', 'Voice', 'Guitar', 'Worship training'] }] },
-      { slug: 'tutoring', name: 'Tutoring & Academic Coaching', professions: [{ slug: 'tutor', name: 'Academic Tutor', services: ['Math', 'Science', 'College prep'] }] },
-      { slug: 'childcare', name: 'Childcare & Preschool', professions: [{ slug: 'childcare-provider', name: 'Childcare Director', services: ['Early childhood', 'Preschool'] }] },
-      { slug: 'homeschool', name: 'Homeschool Programs & Co-ops', professions: [{ slug: 'homeschool-director', name: 'Co-op Leader', services: ['Homeschool enrichment', 'Classes'] }] },
-      { slug: 'seminaries', name: 'Higher Education & Seminaries', professions: [{ slug: 'theological-educator', name: 'Theological Educator', services: ['Bible college', 'Seminary degrees'] }] },
-      { slug: 'other-education', name: 'Other Education Service', professions: [{ slug: 'educator', name: 'Educator', services: ['Instructional services'] }] },
-    ],
-  },
-  {
-    slug: 'arts-media-entertainment',
-    name: 'Media & Creative Services',
-    description: 'Photography, videography, Christian music production, graphic design, and publishing.',
-    categories: [
-      { slug: 'photography', name: 'Photography', professions: [{ slug: 'photographer', name: 'Photographer', services: ['Weddings', 'Portraits', 'Events'] }] },
-      { slug: 'videography', name: 'Videography & Film Production', professions: [{ slug: 'videographer', name: 'Videographer', services: ['Event video', 'Ministry documentaries'] }] },
-      { slug: 'music', name: 'Worship Arts & Music Production', professions: [{ slug: 'music-producer', name: 'Music Producer', services: ['Recording', 'Mixing', 'Songwriting'] }] },
-      { slug: 'publishing', name: 'Publishing, Writing & Editing', professions: [{ slug: 'publisher', name: 'Publisher', services: ['Book publishing', 'Editing', 'Distribution'] }] },
-      { slug: 'graphic-design', name: 'Graphic Design & Illustration', professions: [{ slug: 'graphic-designer', name: 'Graphic Designer', services: ['Logo design', 'Print design', 'Branding'] }] },
-      { slug: 'other-media-creative', name: 'Other Media & Creative Services', professions: [{ slug: 'creative-specialist', name: 'Creative Artist', services: ['Creative media'] }] },
-    ],
-  },
-  {
-    slug: 'information-technology',
-    name: 'Technology',
-    description: 'Web development, managed IT support, cybersecurity, and church media tech.',
-    categories: [
-      { slug: 'software', name: 'Custom Software & Web Development', professions: [{ slug: 'web-developer', name: 'Web Developer', services: ['Websites', 'Web applications', 'E-commerce'] }] },
-      { slug: 'it-support', name: 'IT Support & Managed Services', professions: [{ slug: 'it-support', name: 'IT Support Specialist', services: ['Managed IT', 'Network setup', 'Data backup'] }] },
-      { slug: 'church-media', name: 'Church AV & Media Production', professions: [{ slug: 'media-producer', name: 'AV Engineer', services: ['Sound engineering', 'Livestream setup'] }] },
-      { slug: 'cybersecurity', name: 'Cybersecurity & Cloud Solutions', professions: [{ slug: 'security-specialist', name: 'Cybersecurity Analyst', services: ['Network protection', 'Cloud migration'] }] },
-      { slug: 'other-technology', name: 'Other Technology Services', professions: [{ slug: 'tech-consultant', name: 'Technology Consultant', services: ['Tech consulting'] }] },
-    ],
-  },
-  {
-    slug: 'nonprofit-civic',
-    name: 'Nonprofit & Community Organizations',
-    description: 'Charities, human services, family ministries, and community outreaches.',
-    categories: [
-      { slug: 'charity', name: 'Charity & Relief Services', professions: [{ slug: 'nonprofit-director', name: 'Charity Director', services: ['Food pantry', 'Disaster relief', 'Shelter'] }] },
-      { slug: 'youth-family', name: 'Youth & Family Programs', professions: [{ slug: 'family-director', name: 'Family Minister', services: ['Mentorship', 'Parenting support'] }] },
-      { slug: 'community-outreach', name: 'Community Outreach & Advocacy', professions: [{ slug: 'outreach-coordinator', name: 'Outreach Leader', services: ['Neighborhood outreach', 'Community development'] }] },
-      { slug: 'missions', name: 'Mission Agencies & Global Relief', professions: [{ slug: 'mission-director', name: 'Mission Director', services: ['International missions', 'Relief work'] }] },
-      { slug: 'other-nonprofit', name: 'Other Community Organization', professions: [{ slug: 'community-leader', name: 'Community Leader', services: ['Nonprofit services'] }] },
-    ],
-  },
-  {
-    slug: 'religious-organizations',
-    name: 'Religious Organizations',
-    description: 'Churches, ministries, retreat centers, and Christian broadcasting.',
-    categories: [
-      { slug: 'churches', name: 'Churches & Congregations', professions: [{ slug: 'pastor', name: 'Senior Pastor', services: ['Worship services', 'Discipleship', 'Community care'] }] },
-      { slug: 'ministry', name: 'Para-Church & Campus Ministries', professions: [{ slug: 'ministry-leader', name: 'Ministry Director', services: ['Campus ministry', 'Evangelism'] }] },
-      { slug: 'retreat-centers', name: 'Retreat Centers & Camps', professions: [{ slug: 'camp-director', name: 'Camp Director', services: ['Youth camps', 'Conferences', 'Retreats'] }] },
-      { slug: 'broadcasting', name: 'Christian Media & Broadcasting', professions: [{ slug: 'broadcaster', name: 'Christian Broadcaster', services: ['Radio programming', 'Podcasting'] }] },
-      { slug: 'other-religious', name: 'Other Religious Organization', professions: [{ slug: 'religious-leader', name: 'Faith Leader', services: ['Spiritual leadership'] }] },
-    ],
-  },
-  {
-    slug: 'travel-hospitality',
-    name: 'Hospitality & Travel',
-    description: 'Faith-based tour planners, event venues, retreat facilities, and lodging.',
-    categories: [
-      { slug: 'travel', name: 'Faith-Based Travel & Pilgrimages', professions: [{ slug: 'travel-agent', name: 'Travel Planner', services: ['Holy Land tours', 'Mission travel', 'Group trips'] }] },
-      { slug: 'venues', name: 'Event Venues & Banquet Halls', professions: [{ slug: 'venue-coordinator', name: 'Venue Manager', services: ['Wedding receptions', 'Conferences', 'Banquets'] }] },
-      { slug: 'lodging', name: 'Lodging & Bed & Breakfasts', professions: [{ slug: 'innkeeper', name: 'Innkeeper', services: ['Hospitality', 'Guest accommodations'] }] },
-      { slug: 'event-services', name: 'Event Planning & Coordination', professions: [{ slug: 'event-planner', name: 'Event Planner', services: ['Event coordination', 'Decor'] }] },
-      { slug: 'other-hospitality', name: 'Other Hospitality & Travel', professions: [{ slug: 'hospitality-host', name: 'Hospitality Host', services: ['Guest services'] }] },
-    ],
-  },
-  {
-    slug: 'automotive',
-    name: 'Automotive',
-    description: 'Auto repair, collision repair, maintenance, and vehicle services.',
-    categories: [
-      { slug: 'auto-repair', name: 'Auto Repair & Mechanic', professions: [{ slug: 'auto-mechanic', name: 'Master Mechanic', services: ['Engine repair', 'Brakes', 'Diagnostics'] }] },
-      { slug: 'auto-body', name: 'Auto Body & Collision', professions: [{ slug: 'collision-tech', name: 'Collision Specialist', services: ['Dent repair', 'Paint restoration'] }] },
-      { slug: 'auto-detailing', name: 'Auto Detailing & Care', professions: [{ slug: 'auto-detailer', name: 'Auto Detailer', services: ['Interior detail', 'Ceramic coating'] }] },
-      { slug: 'vehicle-sales', name: 'Vehicle Sales & Dealerships', professions: [{ slug: 'dealer', name: 'Auto Dealer', services: ['Pre-owned vehicles', 'Financing'] }] },
-      { slug: 'other-automotive', name: 'Other Automotive Service', professions: [{ slug: 'automotive-tech', name: 'Automotive Specialist', services: ['Specialty vehicle care'] }] },
-    ],
-  },
-  {
-    slug: 'beauty-personal-care',
-    name: 'Beauty & Personal Care',
-    description: 'Hair salons, barbershops, esthetics, and spa therapy.',
-    categories: [
-      { slug: 'salon', name: 'Hair Salon & Barbershop', professions: [{ slug: 'hairstylist', name: 'Hairstylist', requiresLicense: true, services: ['Hair styling', 'Color', 'Barbering'] }] },
-      { slug: 'skincare', name: 'Skincare & Esthetics', professions: [{ slug: 'esthetician', name: 'Licensed Esthetician', requiresLicense: true, services: ['Facials', 'Skin treatments'] }] },
-      { slug: 'spa-massage', name: 'Spa & Massage Therapy', professions: [{ slug: 'massage-therapist', name: 'Massage Therapist', requiresLicense: true, services: ['Therapeutic massage'] }] },
-      { slug: 'other-beauty', name: 'Other Beauty & Personal Care', professions: [{ slug: 'beauty-specialist', name: 'Beauty Specialist', services: ['Personal care'] }] },
-    ],
-  },
-  {
-    slug: 'sports-recreation',
-    name: 'Sports & Recreation',
-    description: 'Youth sports leagues, personal fitness, and outdoor adventure ministries.',
-    categories: [
-      { slug: 'coaching', name: 'Youth Sports & Athletic Coaching', professions: [{ slug: 'sports-coach', name: 'Athletic Coach', services: ['Youth leagues', 'Training'] }] },
-      { slug: 'outdoor-recreation', name: 'Outdoor & Adventure Ministries', professions: [{ slug: 'outdoor-guide', name: 'Recreation Guide', services: ['Wilderness trips', 'Camp activities'] }] },
-      { slug: 'other-sports', name: 'Other Sports & Recreation', professions: [{ slug: 'recreation-leader', name: 'Recreation Leader', services: ['Sports services'] }] },
-    ],
-  },
-  {
-    slug: 'security-services',
-    name: 'Security Services',
-    description: 'Church safety team training, surveillance systems, and security consulting.',
-    categories: [
-      { slug: 'safety', name: 'Church Safety & Security Teams', professions: [{ slug: 'security-consultant', name: 'Security Consultant', services: ['Emergency plans', 'Safety training'] }] },
-      { slug: 'security-systems', name: 'Security & Surveillance Systems', professions: [{ slug: 'systems-installer', name: 'Security Tech', services: ['Camera installation', 'Access control'] }] },
-      { slug: 'other-security', name: 'Other Security Services', professions: [{ slug: 'safety-specialist', name: 'Safety Specialist', services: ['Protective services'] }] },
-    ],
-  },
-  {
-    slug: 'other-industries',
-    name: 'Other',
-    description: 'Specialized industries and unique commercial services.',
-    categories: [
-      { slug: 'other-business', name: 'Other Business or Service', professions: [{ slug: 'general-specialist', name: 'Specialist', services: ['General services'] }] },
-    ],
-  },
-];
+const categoryByMutableSlug = (slug: string) => allRoots.flatMap((industry) => industry.categories).find((category) => category.slug === slug);
+const addProfession = (categorySlug: string, profession: Profession) => {
+  const category = categoryByMutableSlug(categorySlug);
+  if (category && !category.professions.some((item) => item.slug === profession.slug)) category.professions.push(profession);
+};
+// Keep profession identifiers used by existing bundled listings available in the canonical tree.
+addProfession('salon', { slug: 'barber', name: 'Barber', aliases: ['Barber Shop', 'Barbershop'], keywords: ['men’s cuts', 'shaves'], services: ['Haircuts', 'Straight-razor shaves', 'Beard grooming'] });
+addProfession('music', { slug: 'worship-artist', name: 'Worship Artist', aliases: ['Worship musician', 'Christian musician'], keywords: ['worship band', 'church music'], services: ['Worship leading', 'Live music', 'Songwriting'] });
+addProfession('publishing', { slug: 'author', name: 'Author', aliases: ['Writer', 'Christian author'], keywords: ['books', 'writing'], services: ['Book writing', 'Speaking', 'Publishing consultation'] });
+addProfession('community-outreach', { slug: 'volunteer-coordinator', name: 'Volunteer Coordinator', aliases: ['Volunteer manager'], keywords: ['volunteer recruitment', 'volunteer management'], services: ['Volunteer recruitment', 'Volunteer scheduling', 'Training'] });
+addProfession('mental-health', { slug: 'psychologist', name: 'Psychologist', aliases: ['Clinical psychologist', 'Psychotherapist'], keywords: ['psychology', 'mental health'], services: ['Psychological assessment', 'Individual therapy', 'Consultation'], requiresLicense: true });
 
-export const industryBySlug = (slug: string) => INDUSTRIES.find((i) => i.slug === slug);
-export const categoryBySlug = (catSlug: string) => {
-  for (const ind of INDUSTRIES) {
-    const found = ind.categories.find((c) => c.slug === catSlug);
-    if (found) return { category: found, industry: ind };
+// Every root has an "Other …" option; keep legacy category identifiers intact.
+const construction = allRoots.find((industry) => industry.slug === 'construction-skilled-trades')!;
+construction.categories.push({
+  slug: 'other-construction-trades', name: 'Other Construction & Skilled Trades', aliases: ['Other trades', 'Specialty contractor'], keywords: ['construction', 'trade services'],
+  professions: [{ slug: 'construction-trades-specialist', name: 'Construction & Skilled Trades Specialist', aliases: ['Trade professional'], keywords: ['specialty trade'], services: ['Specialty trade work', 'Construction consultation'] }],
+});
+const food = allRoots.find((industry) => industry.slug === 'food-beverage')!;
+food.categories.push(
+  { slug: 'bars-breweries-wineries', name: 'Bars, Breweries & Wineries', aliases: ['Bar', 'Craft brewery', 'Winery'], keywords: ['taproom', 'tasting room', 'craft beer'], professions: [{ slug: 'beverage-hospitality-provider', name: 'Beverage Hospitality Provider', aliases: ['Brewery owner', 'Winemaker', 'Bar operator'], keywords: ['brewery', 'winery', 'bar'], services: ['Beverage service', 'Tastings', 'Private events'] }] },
+  { slug: 'food-service', name: 'Food Service & Prepared Meals', aliases: ['Meal prep', 'Quick service restaurant'], keywords: ['takeout', 'meal delivery', 'prepared food'], professions: [{ slug: 'food-service-provider', name: 'Food Service Provider', aliases: ['Meal prep company', 'Restaurant operator'], keywords: ['prepared meals', 'food delivery'], services: ['Meal preparation', 'Takeout', 'Food delivery'] }] },
+);
+const arts = allRoots.find((industry) => industry.slug === 'arts-media-entertainment')!;
+arts.categories.push(
+  { slug: 'design-services', name: 'Design & Creative Services', aliases: ['Creative studio', 'Visual design'], keywords: ['UX', 'UI', 'brand design'], professions: [{ slug: 'creative-designer', name: 'Creative Designer', aliases: ['Visual designer', 'UX designer', 'UI designer'], keywords: ['user experience', 'user interface'], services: ['Brand design', 'UX and UI design', 'Creative direction'] }] },
+  { slug: 'content-media', name: 'Content, Audio & Media Production', aliases: ['Podcast production', 'Audio production'], keywords: ['content creator', 'podcast', 'editing'], professions: [{ slug: 'media-content-producer', name: 'Media & Content Producer', aliases: ['Content creator', 'Podcast producer'], keywords: ['audio', 'video', 'content'], services: ['Podcast production', 'Audio editing', 'Content production'] }] },
+);
+const security = allRoots.find((industry) => industry.slug === 'security-services')!;
+security.categories.push(
+  { slug: 'private-investigation', name: 'Private Investigation & Investigative Services', aliases: ['Private investigator', 'PI'], keywords: ['background checks', 'surveillance', 'investigator'], professions: [{ slug: 'private-investigator', name: 'Private Investigator', aliases: ['Investigator', 'Detective'], keywords: ['investigative services', 'background investigation'], services: ['Background investigations', 'Locate services', 'Surveillance'] }] },
+  { slug: 'other-security-services', name: 'Other Security & Investigative Services', aliases: ['Other security'], keywords: ['security provider'], professions: [{ slug: 'security-services-provider', name: 'Security Services Provider', aliases: ['Protective services provider'], keywords: ['security', 'safety'], services: ['Security consultation', 'Protective services'] }] },
+);
+
+/** Runtime tree: additions plus rehomed categories with their original slugs. */
+export const INDUSTRIES: Industry[] = allRoots.map((industry) => ({
+  ...addTerms(industry),
+  categories: industry.categories.map((category) => ({
+    ...addTerms(category),
+    professions: category.professions.map((profession) => ({
+      ...addTerms(profession),
+      services: uniqueTerms(profession.services ?? []),
+    })),
+  })),
+}));
+
+export interface TaxonomyProfession extends Profession { industrySlug: string; categorySlug: string }
+export interface TaxonomyIssue { path: string; message: string }
+
+const slugPattern = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+
+export function canonicalIndustrySlug(slug: string | undefined | null): string | undefined {
+  if (!slug) return undefined;
+  const raw = slug.trim().toLowerCase();
+  const canonical = LEGACY_INDUSTRY_SLUG_ALIASES[raw] ?? raw;
+  return INDUSTRIES.find((industry) => industry.slug === canonical || industry.aliases?.some((alias) => normalizeText(alias) === normalizeText(raw)))?.slug;
+}
+
+export function canonicalProfessionSlug(slug: string | undefined | null): string | undefined {
+  if (!slug) return undefined;
+  const raw = slug.trim().toLowerCase();
+  const canonical = LEGACY_PROFESSION_SLUG_ALIASES[raw] ?? raw;
+  return allProfessions().find((profession) => profession.slug === canonical || profession.aliases?.some((alias) => normalizeAliasSlug(alias) === raw))?.slug;
+}
+
+export function industryBySlug(slug: string) {
+  const canonical = canonicalIndustrySlug(slug);
+  return INDUSTRIES.find((industry) => industry.slug === canonical);
+}
+
+export function categoryBySlug(categorySlug: string) {
+  const raw = categorySlug.trim().toLowerCase();
+  for (const industry of INDUSTRIES) {
+    const found = industry.categories.find((category) => category.slug === raw || category.aliases?.some((alias) => normalizeAliasSlug(alias) === raw));
+    if (found) return { category: found, industry };
   }
   return undefined;
+}
+
+export const allProfessions = (): TaxonomyProfession[] => INDUSTRIES.flatMap((industry) =>
+  industry.categories.flatMap((category) => category.professions.map((profession) => ({
+    ...profession, industrySlug: industry.slug, categorySlug: category.slug,
+  }))),
+);
+
+export function professionBySlug(slug: string) {
+  const canonical = canonicalProfessionSlug(slug);
+  return allProfessions().find((profession) => profession.slug === canonical);
+}
+
+export function categoryBelongsToIndustry(industrySlug: string, categorySlug: string): boolean {
+  const category = categoryBySlug(categorySlug);
+  const industry = canonicalIndustrySlug(industrySlug);
+  if (!category || !industry) return false;
+  if (category.industry.slug === industry) return true;
+  return (LEGACY_CATEGORY_PARENTS[category.category.slug] ?? []).some((legacy) => canonicalIndustrySlug(legacy) === industry);
+}
+
+export function validateTaxonomySelection(selection: {
+  industrySlug?: string | null;
+  categorySlug?: string | null;
+  industries?: string[];
+  professions?: string[];
+  customProfession?: string | null;
+  customProfessions?: string[];
+  customCategory?: string | null;
+  services?: string[];
+}): TaxonomyIssue[] {
+  const issues: TaxonomyIssue[] = [];
+  const industrySlug = selection.industrySlug?.trim();
+  const categorySlug = selection.categorySlug?.trim();
+  const category = categorySlug ? categoryBySlug(categorySlug) : undefined;
+  if (industrySlug && !canonicalIndustrySlug(industrySlug)) issues.push({ path: 'industrySlug', message: 'Choose a valid industry.' });
+  for (const rawIndustry of selection.industries ?? []) {
+    if (!canonicalIndustrySlug(rawIndustry)) issues.push({ path: 'industries', message: `Unknown industry: ${rawIndustry}.` });
+  }
+  const selectedIndustries = new Set([industrySlug, ...(selection.industries ?? [])].map((slug) => canonicalIndustrySlug(slug ?? '')).filter((slug): slug is string => Boolean(slug)));
+  if (selectedIndustries.size > 12) issues.push({ path: 'industries', message: 'Choose no more than 12 industries.' });
+  if (categorySlug && !category) issues.push({ path: 'categorySlug', message: 'Choose a valid category.' });
+  if (category && industrySlug && !categoryBelongsToIndustry(industrySlug, categorySlug!)) {
+    issues.push({ path: 'categorySlug', message: 'That category does not belong to the selected industry.' });
+  }
+  if ((selection.professions?.length ?? 0) && !category) issues.push({ path: 'professions', message: 'Choose an industry and category before selecting professions.' });
+  for (const rawSlug of selection.professions ?? []) {
+    const slug = canonicalProfessionSlug(rawSlug);
+    const profession = slug ? allProfessions().find((item) => item.slug === slug) : undefined;
+    if (!profession) issues.push({ path: 'professions', message: `Unknown profession: ${rawSlug}.` });
+    else if (category && profession.categorySlug !== category.category.slug) issues.push({ path: 'professions', message: `${profession.name} does not belong to the selected category.` });
+  }
+  const customProfessions = [...(selection.customProfessions ?? []), ...(selection.customProfession ? [selection.customProfession] : [])].map((value) => value.trim()).filter(Boolean);
+  if (customProfessions.length && !category) issues.push({ path: 'customProfessions', message: 'Choose a category before adding a custom profession.' });
+  const customSeen = new Set<string>();
+  for (const value of customProfessions) {
+    const key = normalizeText(value);
+    if (customSeen.has(key)) issues.push({ path: 'customProfessions', message: `Duplicate custom profession: ${value}.` });
+    customSeen.add(key);
+    const canonicalName = category?.category.professions.find((profession) => normalizeText(profession.name) === key);
+    if (canonicalName) issues.push({ path: 'customProfessions', message: `${value} is already available as a profession in this category.` });
+  }
+  if ((selection.services?.length ?? 0) && !category) issues.push({ path: 'services', message: 'Choose a category before adding services.' });
+  const serviceSeen = new Set<string>();
+  for (const service of selection.services ?? []) {
+    const key = normalizeText(service);
+    if (serviceSeen.has(key)) issues.push({ path: 'services', message: `Duplicate service: ${service}.` });
+    serviceSeen.add(key);
+  }
+  return issues;
+}
+
+export function validateTaxonomy(taxonomy: Industry[] = INDUSTRIES): TaxonomyIssue[] {
+  const issues: TaxonomyIssue[] = [];
+  const slugOwners = new Map<string, string>();
+  const professionNames = new Map<string, string>();
+  const categoryParents = new Map<string, string>();
+  const registerSlug = (slug: string, path: string) => {
+    if (!slugPattern.test(slug)) issues.push({ path, message: `Invalid taxonomy slug: ${slug}` });
+    const previous = slugOwners.get(slug);
+    if (previous) issues.push({ path, message: `Duplicate slug "${slug}" (also used at ${previous}).` });
+    else slugOwners.set(slug, path);
+  };
+  const checkTerms = (node: { aliases?: string[]; keywords?: string[] }, path: string) => {
+    for (const key of ['aliases', 'keywords'] as const) {
+      const seen = new Set<string>();
+      (node[key] ?? []).forEach((value, index) => {
+        if (!value.trim()) issues.push({ path: `${path}.${key}[${index}]`, message: 'Alias/keyword cannot be blank.' });
+        const norm = normalizeText(value);
+        if (seen.has(norm)) issues.push({ path, message: `Duplicate ${key} entry: ${value}.` });
+        seen.add(norm);
+      });
+    }
+  };
+  taxonomy.forEach((industry, iIndex) => {
+    const industryPath = `industries[${iIndex}](${industry.slug})`;
+    registerSlug(industry.slug, industryPath);
+    checkTerms(industry, industryPath);
+    industry.categories.forEach((category, cIndex) => {
+      const categoryPath = `${industryPath}.categories[${cIndex}](${category.slug})`;
+      registerSlug(category.slug, categoryPath);
+      checkTerms(category, categoryPath);
+      categoryParents.set(category.slug, industry.slug);
+      category.professions.forEach((profession, pIndex) => {
+        const professionPath = `${categoryPath}.professions[${pIndex}](${profession.slug})`;
+        registerSlug(profession.slug, professionPath);
+        checkTerms(profession, professionPath);
+        const nameKey = normalizeText(profession.name);
+        const previous = professionNames.get(nameKey);
+        if (previous) issues.push({ path: professionPath, message: `Duplicate profession name "${profession.name}" (also at ${previous}).` });
+        else professionNames.set(nameKey, professionPath);
+        if (!profession.services?.length) issues.push({ path: professionPath, message: 'Every profession needs at least one service example.' });
+        const serviceNames = new Set<string>();
+        (profession.services ?? []).forEach((service, index) => {
+          if (!service.trim()) issues.push({ path: `${professionPath}.services[${index}]`, message: 'Service example cannot be blank.' });
+          const key = normalizeText(service);
+          if (serviceNames.has(key)) issues.push({ path: professionPath, message: `Duplicate service example: ${service}.` });
+          serviceNames.add(key);
+        });
+      });
+    });
+  });
+  const available = new Set(taxonomy.map((industry) => industry.slug));
+  for (const [categorySlug, targetIndustry] of Object.entries(MOVED_CATEGORIES)) {
+    const actualParent = categoryParents.get(categorySlug);
+    if (actualParent && actualParent !== targetIndustry) issues.push({ path: `categories.${categorySlug}`, message: `Category should be rehomed under ${targetIndustry}, not ${actualParent}.` });
+  }
+  for (const required of REQUIRED_INDUSTRY_SLUGS) if (!available.has(required)) issues.push({ path: 'industries', message: `Required industry is missing: ${required}.` });
+  const otherIndustry = taxonomy.find((industry) => industry.slug === 'other-industries');
+  if (!otherIndustry || otherIndustry.name !== 'Other Industry') issues.push({ path: 'industries.other-industries', message: 'Universal Other Industry fallback is required.' });
+  const otherCategory = otherIndustry?.categories.find((category) => category.name === 'Other Category');
+  if (!otherCategory) issues.push({ path: 'industries.other-industries.categories', message: 'Universal Other Category fallback is required.' });
+  if (!otherCategory?.professions.some((profession) => profession.name === 'Other Professional or Service Provider')) issues.push({ path: 'industries.other-industries.categories', message: 'Universal Other Professional or Service Provider fallback is required.' });
+  for (const [alias, target] of Object.entries(LEGACY_INDUSTRY_SLUG_ALIASES)) {
+    if (!slugPattern.test(alias)) issues.push({ path: `industryAliases.${alias}`, message: `Invalid legacy industry slug: ${alias}.` });
+    if (!available.has(target)) issues.push({ path: `industryAliases.${alias}`, message: `Legacy industry alias points to missing target: ${target}.` });
+  }
+  const categorySlugs = new Set(taxonomy.flatMap((industry) => industry.categories.map((category) => category.slug)));
+  for (const [categorySlug, parents] of Object.entries(LEGACY_CATEGORY_PARENTS)) {
+    if (!categorySlugs.has(categorySlug)) issues.push({ path: `legacyCategoryParents.${categorySlug}`, message: 'Legacy category-parent mapping points to a missing category.' });
+    for (const parent of parents) if (!available.has(canonicalIndustrySlug(parent) ?? parent)) issues.push({ path: `legacyCategoryParents.${categorySlug}`, message: `Legacy parent industry is missing: ${parent}.` });
+  }
+  const professionSlugs = new Set(allProfessions().map((profession) => profession.slug));
+  for (const [alias, target] of Object.entries(LEGACY_PROFESSION_SLUG_ALIASES)) {
+    if (!slugPattern.test(alias)) issues.push({ path: `professionAliases.${alias}`, message: `Invalid legacy profession slug: ${alias}.` });
+    if (!professionSlugs.has(target)) issues.push({ path: `professionAliases.${alias}`, message: `Legacy profession alias points to missing target: ${target}.` });
+  }
+  return issues;
+}
+
+export function taxonomyTermsForSlug(rawSlug: string): string[] {
+  const industry = industryBySlug(rawSlug);
+  if (industry) return [industry.name, ...(industry.aliases ?? []), ...(industry.keywords ?? [])];
+  const profession = professionBySlug(rawSlug);
+  if (!profession) {
+    const category = categoryBySlug(rawSlug);
+    if (category) return [category.industry.name, category.category.name, ...(category.category.aliases ?? []), ...(category.category.keywords ?? [])];
+  }
+  if (profession) {
+    const categoryMatch = categoryBySlug(profession.categorySlug);
+    const industryMatch = industryBySlug(profession.industrySlug);
+    return [profession.slug, industryMatch?.name ?? profession.industrySlug, categoryMatch?.category.name ?? profession.categorySlug, profession.name, ...(profession.aliases ?? []), ...(profession.keywords ?? []), ...(profession.services ?? [])];
+  }
+  return [];
+}
+
+export function normalizeListingProfessions(values: string[] = []): string[] {
+  return [...new Set(values.map(canonicalProfessionSlug).filter((value): value is string => Boolean(value)))];
+}
+
+export function listingMatchesIndustry(listing: { industrySlug?: string; categorySlug?: string; industries?: string[]; professions?: string[] }, targetSlug: string): boolean {
+  const target = canonicalIndustrySlug(targetSlug);
+  if (!target) return false;
+  const direct = [listing.industrySlug, ...(listing.industries ?? [])].filter(Boolean).some((value) => canonicalIndustrySlug(value) === target);
+  if (direct) return true;
+  if (listing.categorySlug && categoryBySlug(listing.categorySlug)?.industry.slug === target) return true;
+  if ((listing.industries ?? []).some((slug) => categoryBySlug(slug)?.industry.slug === target)) return true;
+  return (listing.professions ?? []).some((slug) => {
+    const profession = professionBySlug(slug);
+    return profession?.industrySlug === target;
+  });
+}
+
+export const taxonomySlugAliases = {
+  industries: LEGACY_INDUSTRY_SLUG_ALIASES,
+  professions: LEGACY_PROFESSION_SLUG_ALIASES,
+  categoryParents: LEGACY_CATEGORY_PARENTS,
 };
-export const allProfessions = (): (Profession & { industrySlug: string; categorySlug: string })[] =>
-  INDUSTRIES.flatMap((i) =>
-    i.categories.flatMap((c) =>
-      c.professions.map((p) => ({ ...p, industrySlug: i.slug, categorySlug: c.slug })),
-    ),
-  );
-export const professionBySlug = (slug: string) => allProfessions().find((p) => p.slug === slug);

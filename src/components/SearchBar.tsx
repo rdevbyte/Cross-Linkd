@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { popoverMotion } from '@/lib/motion';
 import { parseQuery, suggestHashtags, applyTagSuggestion } from '@/lib/hashtags';
@@ -49,6 +49,11 @@ export default function SearchBar({
   labeled = false,
   locationChoices,
 }: Props) {
+  const idBase = useId().replace(/:/g, '-');
+  const queryId = `${idBase}-query`;
+  const locationId = `${idBase}-location`;
+  const queryListboxId = `${idBase}-query-listbox`;
+  const locationListboxId = `${idBase}-location-listbox`;
   const [value, setValue] = useState(initialQuery);
   const [locValue, setLocValue] = useState(initialLocation);
   const [open, setOpen] = useState(false);
@@ -188,7 +193,7 @@ export default function SearchBar({
         {/* WHAT field */}
         <div ref={boxRef} className="relative flex-1">
           {labeled && (
-            <label htmlFor="cl-q" className="mb-1.5 block text-sm font-medium">What are you looking for?</label>
+            <label htmlFor={queryId} className="mb-1.5 block text-sm font-medium">What are you looking for?</label>
           )}
           <div
             className={`flex items-center gap-2 rounded-2xl border bg-[var(--surface)] transition-shadow focus-within:shadow-lg ${hero ? 'p-2 pl-4 shadow-card' : 'px-3 py-1.5 shadow-sm'}`}
@@ -209,10 +214,12 @@ export default function SearchBar({
                   else submit();
                 } else if (e.key === 'Escape') setOpen(false);
               }}
-              id="cl-q"
+              id={queryId}
               role="combobox"
+              aria-haspopup="listbox"
               aria-expanded={open && items.length > 0}
-              aria-controls="cl-search-listbox"
+              aria-controls={open && items.length > 0 ? queryListboxId : undefined}
+              aria-activedescendant={open && items[highlight] ? `${queryListboxId}-option-${highlight}` : undefined}
               aria-label={labeled ? undefined : 'Service, category, or business name'}
               aria-autocomplete="list"
               placeholder={labeled ? 'Plumber, church, bakery, or a name' : 'Service, category, or business name'}
@@ -223,7 +230,7 @@ export default function SearchBar({
             )}
             {!labeled && (
               <button type="submit" className={`btn btn-primary shrink-0 ${hero ? '' : '!px-4 !py-1.5 !text-[13px]'}`}>
-                Search Businesses
+                Search
               </button>
             )}
           </div>
@@ -231,25 +238,28 @@ export default function SearchBar({
           <AnimatePresence>
             {open && items.length > 0 && (
               <motion.ul
-                id="cl-search-listbox"
+                id={queryListboxId}
                 role="listbox"
+                aria-label="Search suggestions"
                 {...popoverMotion}
                 className="card absolute z-50 mt-2 max-h-80 w-full overflow-auto p-1.5"
               >
                 {items.map((item, i) => (
-                  <li key={`${item.kind}:${item.label}:${i}`} role="option" aria-selected={i === highlight}>
-                    <button
-                      type="button"
-                      onMouseEnter={() => setHighlight(i)}
-                      onClick={() => pick(item)}
-                      className={`flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left text-sm transition-colors ${i === highlight ? 'bg-[var(--surface-2)]' : ''}`}
-                    >
-                      <span aria-hidden="true" className="w-5 text-center font-bold" style={{ color: 'var(--logo-gold)' }}>
-                        {item.isTag ? '#' : ''}
-                      </span>
-                      <span className="flex-1 truncate font-medium">{item.label}</span>
-                      <span className="text-[11px] capitalize" style={{ color: 'var(--text-mute)' }}>{item.kind}</span>
-                    </button>
+                  <li
+                    key={`${item.kind}:${item.label}:${i}`}
+                    id={`${queryListboxId}-option-${i}`}
+                    role="option"
+                    aria-selected={i === highlight}
+                    onMouseMove={() => setHighlight(i)}
+                    onMouseDown={(event) => event.preventDefault()}
+                    onClick={() => pick(item)}
+                    className={`flex cursor-pointer items-center gap-2.5 rounded-xl px-3 py-2 text-left text-sm transition-colors ${i === highlight ? 'bg-[var(--surface-2)]' : ''}`}
+                  >
+                    <span aria-hidden="true" className="w-5 text-center font-bold" style={{ color: 'var(--logo-gold)' }}>
+                      {item.isTag ? '#' : ''}
+                    </span>
+                    <span className="flex-1 truncate font-medium">{item.label}</span>
+                    <span className="text-[11px] capitalize" style={{ color: 'var(--text-mute)' }}>{item.kind}</span>
                   </li>
                 ))}
               </motion.ul>
@@ -260,7 +270,7 @@ export default function SearchBar({
         {/* WHERE field */}
         <div ref={locBoxRef} className={labeled ? 'relative' : 'relative sm:w-64'}>
           {labeled && (
-            <label htmlFor="cl-near" className="mb-1.5 block text-sm font-medium">City, state, ZIP code, or online</label>
+            <label htmlFor={locationId} className="mb-1.5 block text-sm font-medium">City, state, ZIP code, or online</label>
           )}
           <div
             className={`flex items-center gap-2 rounded-2xl border bg-[var(--surface)] transition-shadow focus-within:shadow-lg ${hero ? 'p-2 pl-4 shadow-card' : 'px-3 py-1.5 shadow-sm'}`}
@@ -280,10 +290,12 @@ export default function SearchBar({
                   else submit();
                 } else if (e.key === 'Escape') setLocOpen(false);
               }}
-              id="cl-near"
+              id={locationId}
               role="combobox"
+              aria-haspopup="listbox"
               aria-expanded={locOpen && locItems.length > 0}
-              aria-controls="cl-location-listbox"
+              aria-controls={locOpen && locItems.length > 0 ? locationListboxId : undefined}
+              aria-activedescendant={locOpen && locItems[locHighlight] ? `${locationListboxId}-option-${locHighlight}` : undefined}
               aria-label={labeled ? undefined : 'City, state, or ZIP code'}
               aria-autocomplete="list"
               placeholder={labeled ? 'City, state, ZIP code, or online' : 'City, state, ZIP, or country'}
@@ -297,22 +309,25 @@ export default function SearchBar({
           <AnimatePresence>
             {locOpen && locItems.length > 0 && (
               <motion.ul
-                id="cl-location-listbox"
+                id={locationListboxId}
                 role="listbox"
+                aria-label="Location suggestions"
                 {...popoverMotion}
                 className="card absolute z-50 mt-2 max-h-72 w-full overflow-auto p-1.5"
               >
                 {locItems.map((item, i) => (
-                  <li key={item.value} role="option" aria-selected={i === locHighlight}>
-                    <button
-                      type="button"
-                      onMouseEnter={() => setLocHighlight(i)}
-                      onClick={() => pickLocation(item)}
-                      className={`flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left text-sm transition-colors ${i === locHighlight ? 'bg-[var(--surface-2)]' : ''}`}
-                    >
-                      <span className="flex-1 truncate font-medium">{item.label}</span>
-                      <span className="text-[11px]" style={{ color: 'var(--text-mute)' }}>{item.kind}</span>
-                    </button>
+                  <li
+                    key={item.value}
+                    id={`${locationListboxId}-option-${i}`}
+                    role="option"
+                    aria-selected={i === locHighlight}
+                    onMouseMove={() => setLocHighlight(i)}
+                    onMouseDown={(event) => event.preventDefault()}
+                    onClick={() => pickLocation(item)}
+                    className={`flex cursor-pointer items-center gap-2.5 rounded-xl px-3 py-2 text-left text-sm transition-colors ${i === locHighlight ? 'bg-[var(--surface-2)]' : ''}`}
+                  >
+                    <span className="flex-1 truncate font-medium">{item.label}</span>
+                    <span className="text-[11px]" style={{ color: 'var(--text-mute)' }}>{item.kind}</span>
                   </li>
                 ))}
               </motion.ul>

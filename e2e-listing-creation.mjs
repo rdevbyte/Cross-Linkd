@@ -32,6 +32,16 @@ async function signup(page, u) {
   await Promise.all([page.waitForURL('**/dashboard**'), page.click('button[type="submit"]')]);
 }
 
+async function openManualCategory(page) {
+  const suggestions = page.locator('[data-taxonomy-recommendation-panel]');
+  if (!(await suggestions.evaluate((el) => el.open))) await suggestions.locator(':scope > summary').click();
+  const manualPicker = page.locator('[data-manual-category-picker]');
+  if (await manualPicker.isHidden()) {
+    await suggestions.locator('[data-taxonomy-none]').click();
+    check('None of these fit collapses the suggestion accordion', !(await suggestions.evaluate((el) => el.open)));
+  }
+}
+
 try {
   const context = await browser.newContext({ viewport: { width: 1280, height: 900 } });
   const page = await context.newPage();
@@ -76,7 +86,8 @@ try {
   check('preview placeholder is "Your listing name"', (await page.locator('#preview-name').textContent())?.trim() === 'Your listing name');
 
   // Field clarity: listing type vs. industry & business category
-  check('section heading is "Industry & business category"', (await page.locator('h2:has-text("Industry & business category")').count()) > 0);
+  check('manual category picker is part of the Basics step', (await page.locator('#manual-category-picker').count()) === 1 && (await page.locator('#section-basics').locator('#manual-category-picker').count()) === 1);
+  check('professions and services remain available as an optional follow-up', (await page.locator('#section-services h2:has-text("Professions & services")').count()) === 1);
   check('section 1 explains the listing type dimension', (await page.locator('text=Listing type — what you\'re offering or listing.').count()) > 0);
   check('type context chip hidden before a type is selected', await page.locator('#category-type-context').isHidden());
   check('price range select leaves room for its chevron', (await page.locator('select[name="priceRange"]').evaluate((el) => parseFloat(getComputedStyle(el).paddingRight))) >= 32);
@@ -88,8 +99,9 @@ try {
   check('organization size select exists', (await page.locator('select[name="employeeCount"]').count()) === 1);
   check('organization size offers six buckets plus placeholder', (await page.locator('select[name="employeeCount"] option').count()) === 7, `got=${await page.locator('select[name="employeeCount"] option').count()}`);
   check('ownership type select exists', (await page.locator('select[name="ownershipType"]').count()) === 1);
-  check('operating hours select exists', (await page.locator('select[name="hours"]').count()) === 1);
-  check('operating hours offers six presets plus placeholder', (await page.locator('select[name="hours"] option').count()) === 7, `got=${await page.locator('select[name="hours"] option').count()}`);
+  check('flexible hours editor exists', (await page.locator('#add-listing-hours-editor[data-hours-editor]').count()) === 1);
+  check('hours editor keeps the compatible hours JSON payload', (await page.locator('#add-listing-hours-editor input[name="hoursJson"]').count()) === 1);
+  check('hours editor offers the legacy quick presets', (await page.locator('#add-listing-hours-editor [data-hours-preset] option').count()) === 7, `got=${await page.locator('#add-listing-hours-editor [data-hours-preset] option').count()}`);
   check('service area input exists', (await page.locator('input[name="serviceArea"]').count()) === 1);
   check('contact preference select exists', (await page.locator('select[name="contactPreference"]').count()) === 1);
   check('contact preference offers four methods plus placeholder', (await page.locator('select[name="contactPreference"] option').count()) === 5, `got=${await page.locator('select[name="contactPreference"] option').count()}`);
@@ -113,10 +125,11 @@ try {
   check('visibility controls are toggle sliders', (await page.locator('input[name="showEmail"].peer.sr-only').count()) === 1 && (await page.locator('input[name="showPhone"].peer.sr-only').count()) === 1);
   check('toggle state pills render', (await page.locator('label:has(input[name="showEmail"])').textContent())?.includes('Off') === true);
 
-  // Sticky bar / progress / online toggle structure
-  check('sticky bar exists', (await page.locator('#sticky-bar').count()) === 1);
-  check('progress bar exists', (await page.locator('#progress-bar').count()) === 1);
-  check('completion starts at 0 of 4 sections complete', (await page.locator('#progress-text').textContent())?.trim() === '0 of 4 sections complete');
+  // Review actions stay with the review section; the fixed sticky action row is gone.
+  check('sticky action row is removed', (await page.locator('#sticky-bar, #progress-bar, #progress-text').count()) === 0);
+  check('publish and draft actions remain in the review section', (await page.locator('#section-review #review-publish-btn').count()) === 1 && (await page.locator('#section-review #review-draft-btn').count()) === 1);
+  check('sitewide button reset removes native button appearance', await page.locator('#review-publish-btn').evaluate((el) => getComputedStyle(el).appearance === 'none'));
+  check('faith identity is explicitly required', (await page.locator('#section-faith-heading .field-marker-required').textContent())?.trim() === 'Required');
   check('hiring status defaults to No', await page.locator('#input-hiring-no').isChecked());
   check('careers URL field is hidden until hiring is Yes', await page.locator('#careers-url-field').isHidden());
   await page.locator('#input-hiring-yes').check();
@@ -155,7 +168,7 @@ try {
   const guestEmailVal = await page.inputValue('input[name="email"]');
   check('guest: email field empty', guestEmailVal === '');
   check('guest: notice to sign up is visible', (await page.locator('text=listing as a guest').count()) > 0);
-  check('guest: button says Publish business listing', (await page.locator('#sticky-bar button[type="submit"]:has-text("Publish")').count()) > 0);
+  check('guest: button says Publish business listing', (await page.locator('#review-publish-btn:has-text("Publish")').count()) > 0);
   check('secondary category search input exists', (await page.locator('#category-search-input').count()) === 1);
 
   // Multi-denomination UI basics preserved (searchable typeahead)
@@ -178,6 +191,12 @@ try {
   // ----------------------------------------------------
   await page.click('.type-card[data-type="business"]');
   check('type card marks itself selected via aria-pressed', (await page.locator('.type-card[data-type="business"][aria-pressed="true"]').count()) === 1);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await openManualCategory(page);
+  const mobileCategoryBox = await page.locator('#category-search-input').boundingBox();
+  check('mobile manual category search fits the viewport', Boolean(mobileCategoryBox && mobileCategoryBox.x >= 0 && mobileCategoryBox.x + mobileCategoryBox.width <= 390));
+  check('mobile layout has no horizontal page overflow', await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth));
+  await page.setViewportSize({ width: 1280, height: 900 });
   check('business helper text updated', (await page.locator('#category-filter-help').textContent())?.trim() === 'Showing business categories');
   check('type context chip shows the selected type', ((await page.locator('#category-type-context').textContent()) ?? '').includes('Business'), `got="${await page.locator('#category-type-context').textContent()}"`);
   const businessStatus = (await page.locator('#category-filter-status').textContent())?.trim() ?? '';
@@ -192,7 +211,17 @@ try {
   check('preview falls back to "Your listing name"', (await page.locator('#preview-name').textContent())?.trim() === 'Your listing name');
   await page.fill('#input-name', 'Grace Community Church');
 
+  // Description length is enforced at input time and shown by a live counter.
+  const descriptionField = page.locator('#input-description');
+  check('business description has a 500-character maximum', (await descriptionField.getAttribute('maxlength')) === '500');
+  await descriptionField.pressSequentially('x'.repeat(520));
+  check('description cannot exceed 500 entered characters', (await descriptionField.evaluate((el) => el.value.length)) === 500);
+  check('description counter reports the current count and limit', (await page.locator('#description-counter').textContent())?.trim() === '500 / 500 characters');
+  await descriptionField.fill('');
+  check('description counter resets after clearing', (await page.locator('#description-counter').textContent())?.trim() === '0 / 500 characters');
+
   // Primary category selection via the single typeahead picker
+  await openManualCategory(page);
   await page.fill('#category-search-input', 'bakeries');
   await page.waitForTimeout(200);
   const bakeryResult = page.locator('#category-search-results button[data-slug="bakeries"]');
@@ -203,6 +232,24 @@ try {
   check('category chip visible after selection', await page.locator('#category-chips-primary').isVisible());
   check('category chip text shows industry › category', ((await page.locator('#category-chip-text').textContent()) ?? '').includes('Bakeries'));
   check('category search field clears after selection', (await page.inputValue('#category-search-input')) === '');
+
+  // Manual categories use a catalog-backed Other path, and typing does not
+  // trigger unrelated suggestion updates that move the focused field.
+  await page.click('#category-chip-clear');
+  await page.fill('#category-search-input', 'qzxvplm-custom-category');
+  await page.waitForTimeout(100);
+  check('unmatched search offers a custom category path', (await page.locator('#category-search-results [data-custom-category-shortcut]').count()) === 1);
+  await page.click('#category-search-results [data-custom-category-shortcut]');
+  check('custom category field appears after choosing the fallback', await page.locator('#custom-category-wrap').isVisible());
+  const customInput = page.locator('#input-custom-category');
+  await customInput.scrollIntoViewIfNeeded();
+  const customTopBefore = await customInput.evaluate((el) => el.getBoundingClientRect().top);
+  const scrollBeforeTyping = await page.evaluate(() => window.scrollY);
+  await customInput.fill('Specialty Gluten-Free Bakery');
+  await page.waitForTimeout(350);
+  const customTopAfter = await customInput.evaluate((el) => el.getBoundingClientRect().top);
+  const scrollAfterTyping = await page.evaluate(() => window.scrollY);
+  check('custom category input stays fixed while typing', Math.abs(customTopAfter - customTopBefore) <= 1 && scrollAfterTyping === scrollBeforeTyping, `top=${customTopBefore}->${customTopAfter}; scroll=${scrollBeforeTyping}->${scrollAfterTyping}`);
 
   // ----------------------------------------------------
   // 3. Switching to church narrows categories + clears invalid selection
@@ -216,7 +263,8 @@ try {
   // Type filtering proven on the search pool itself
   await page.fill('#category-search-input', 'bakeries');
   await page.waitForTimeout(200);
-  check('business-only categories hidden under church type', (await page.locator('#category-search-results button').count()) === 0, `got=${await page.locator('#category-search-results button').count()}`);
+  check('business-only catalog categories hidden under church type', (await page.locator('#category-search-results button[data-slug]').count()) === 0, `got=${await page.locator('#category-search-results button[data-slug]').count()}`);
+  check('custom-category shortcut remains available when there is no match', (await page.locator('#category-search-results [data-custom-category-shortcut]').count()) === 1);
   await page.fill('#category-search-input', 'other-religious');
   await page.waitForTimeout(200);
   const religiousResult = page.locator('#category-search-results button[data-slug="other-religious"]');
@@ -237,19 +285,19 @@ try {
   await page.reload({ waitUntil: 'networkidle' });
   await page.click('.type-card[data-type="business"]');
   await page.fill('#input-name', 'Nationwide Ministry');
-  check('completion reaches 1 of 4 with type + name', (await page.locator('#progress-text').textContent())?.trim() === '1 of 4 sections complete');
+  check('basics step is marked complete after type and name', (await page.locator('.form-jump a[data-step="basics"]').getAttribute('data-complete')) === 'true');
+  await openManualCategory(page);
   await page.fill('#category-search-input', 'bakeries');
   await page.waitForTimeout(200);
   await page.click('#category-search-results button[data-slug="bakeries"]');
-  check('completion reaches 2 of 4 with category', (await page.locator('#progress-text').textContent())?.trim() === '2 of 4 sections complete');
+  check('category picker retains one primary industry/category selection', (await page.locator('input[name="industrySlug"]').count()) === 1 && (await page.locator('input[name="categorySlug"]').count()) === 1);
+  await page.locator('#section-faith > summary').click();
   await page.fill('#denom-search-input', 'Baptist');
   await page.waitForTimeout(150);
   await page.click('#denom-search-results button[data-slug="baptist"]');
-  check('completion reaches 3 of 4 with denomination', (await page.locator('#progress-text').textContent())?.trim() === '3 of 4 sections complete');
+  check('a denomination satisfies the required faith identity item', (await page.locator('#review-checklist [data-check="faith"]').getAttribute('data-state')) === 'ready');
   await page.fill('#input-city', 'Austin');
-  check('completion reaches 4 of 4 with location', (await page.locator('#progress-text').textContent())?.trim() === '4 of 4 sections complete');
-  const progressWidth = await page.locator('#progress-bar').evaluate((el) => el.style.width);
-  check('progress bar reaches 100%', progressWidth === '100%', `got=${progressWidth}`);
+  check('in-person location requirement marks Contact complete', (await page.locator('.form-jump a[data-step="contact"]').getAttribute('data-complete')) === 'true');
 
   // Online-only marks Contact complete even with no city/region/postal code
   await page.reload({ waitUntil: 'networkidle' });
@@ -269,7 +317,7 @@ try {
   check('online-only hides location fields', await page.locator('#location-fields').isHidden());
   check('online-only shows location disabled note', await page.locator('#location-disabled-note').isVisible());
   check('preview shows Online-only • Serves nationwide', (await page.locator('#preview-location').textContent())?.trim() === 'Online-only • Serves nationwide');
-  check('online-only marks Contact section complete without location', (await page.locator('#progress-text').textContent())?.trim() === '1 of 4 sections complete');
+  check('online-only satisfies the in-person location requirement', (await page.locator('.form-jump a[data-step="contact"]').getAttribute('data-complete')) === 'true');
 
   // ----------------------------------------------------
   // 5. Authenticated user view of /add-listing (pre-fill email)
@@ -302,16 +350,19 @@ try {
   await page.selectOption('select[name="employeeCount"]', '11–50');
   await page.selectOption('select[name="ownershipType"]', 'Family-owned');
   await page.fill('input[name="serviceArea"]', 'Austin metro; delivery within 25 miles');
-  await page.selectOption('select[name="hours"]', 'standard');
+  await page.selectOption('#add-listing-hours-editor [data-hours-preset]', 'standard');
+  await page.click('#add-listing-hours-editor [data-hours-action="apply-preset"]');
   await page.selectOption('select[name="contactPreference"]', 'Email');
 
-  // Category via the type-filtered typeahead search
+  // Category search now lives in Step 1 behind the manual-entry choice.
+  await openManualCategory(page);
   await page.fill('#category-search-input', 'bakeries');
   await page.waitForTimeout(200);
   await page.click('#category-search-results button[data-slug="bakeries"]');
   check('custom category hidden for non-other category', await page.locator('#custom-category-wrap').isHidden());
 
-  // Multi-denomination: search for "other" denomination and fill custom
+  // Faith identity is required: search for "other" and enter the custom denomination.
+  await page.locator('#section-faith > summary').click();
   await page.fill('#denom-search-input', 'specify');
   await page.waitForTimeout(150);
   await page.click('#denom-search-results button[data-slug="other"]');
@@ -326,10 +377,11 @@ try {
     });
   });
   check('agreement toggle engaged before submit', await page.locator('#input-attestation').isChecked() && await page.locator('#input-terms').isChecked());
+  check('all required review checklist items are ready', (await page.locator('#review-checklist li[data-state="needed"]').count()) === 0);
 
   await Promise.all([
     page.waitForURL('**/add-listing?success=1**'),
-    page.click('#sticky-bar button[type="submit"]'),
+    page.click('#review-publish-btn'),
   ]);
 
   check('redirects to success page immediately', page.url().includes('success=1'));
@@ -391,6 +443,69 @@ try {
   check('dashboard: listing table shows status', (await page.locator(`tr:has-text("${biz1Name}") .chip`).first().innerText()).match(/Published|Approved/) !== null);
   check('dashboard: View live link present', (await page.locator(`tr:has-text("${biz1Name}") a:has-text("View live")`).count()) > 0);
 
+  const publishedAtBeforeEdit = row.published_at?.toISOString?.() ?? String(row.published_at);
+  // Model a pre-migration row with a legacy industry alias and moved category;
+  // the normal read/edit path must keep it visible and canonicalize on save.
+  await q("update listings set industry_slug = 'home-services', category_slug = 'landscaping' where id = $1", [row.id]);
+  await q('delete from listing_industries where listing_id = $1', [row.id]);
+  await q("insert into listing_industries (listing_id, industry_id) select $1, id from industries where slug = 'home-property-services' on conflict do nothing", [row.id]);
+  await q("insert into listing_industries (listing_id, industry_id) select $1, id from industries where slug = 'retail-consumer' on conflict do nothing", [row.id]);
+  await page.goto(`${BASE}${publicHref}`, { waitUntil: 'networkidle' });
+  check('legacy industry/category row remains publicly reachable', (await page.locator(`h1:has-text("${biz1Name}")`).count()) === 1);
+  check('legacy taxonomy aliases hydrate to the canonical public badge', (await page.locator('text=Home & Property Services › Landscaping').count()) === 1);
+  await page.goto(`${BASE}/search?industry=home-services`, { waitUntil: 'networkidle' });
+  check('legacy industry alias still matches public search', (await page.locator(`article:has-text("${biz1Name}")`).count()) === 1);
+  await page.goto(`${BASE}/dashboard/listings`, { waitUntil: 'networkidle' });
+  const ownerRow = page.locator(`tr[data-row-id="${row.id}"]`);
+  await ownerRow.locator('[data-act="edit"]').click();
+  await page.fill('input[name="tagline"]', 'Fresh sourdough and artisanal provisions — owner updated');
+  const editResponsePromise = page.waitForResponse((res) => res.url().endsWith(`/api/listings/${row.id}`) && res.request().method() === 'PATCH');
+  await page.click('#form-submit-btn');
+  const editResponse = await editResponsePromise;
+  check('dashboard edit of a published listing succeeds', editResponse.status() === 200, `status=${editResponse.status()}`);
+  await page.waitForLoadState('networkidle');
+  const editedRow = (await q('select * from listings where id = $1', [row.id])).rows[0];
+  check('ordinary edit preserves published status', editedRow.status === 'published', `status=${editedRow.status}`);
+  check('saving a legacy alias upgrades stored primary slugs canonically', editedRow.industry_slug === 'home-property-services' && editedRow.category_slug === 'landscaping', `industry=${editedRow.industry_slug} category=${editedRow.category_slug}`);
+  const persistedIndustries = (await q('select i.slug from listing_industries li join industries i on i.id = li.industry_id where li.listing_id = $1 order by i.slug', [row.id])).rows.map((item) => item.slug);
+  check('dashboard edit preserves additional industry relations', persistedIndustries.includes('home-property-services') && persistedIndustries.includes('retail-consumer'), `industries=${persistedIndustries.join(',')}`);
+  check('ordinary edit preserves original publication date', String(editedRow.published_at) === String(row.published_at), `before=${publishedAtBeforeEdit} after=${editedRow.published_at}`);
+  check('dashboard refetch shows the edited listing as live', (await page.locator(`tr[data-row-id="${row.id}"] a:has-text("View live")`).count()) === 1);
+  const searchApiResponse = await page.request.get(`${BASE}/api/search?q=${encodeURIComponent('owner updated')}`);
+  const searchApiBody = await searchApiResponse.json();
+  check('search API reflects edits immediately without stale cache', searchApiResponse.headers()['cache-control']?.includes('no-store') && JSON.stringify(searchApiBody).includes(biz1Name));
+  await page.goto(`${BASE}/search?industry=retail`, { waitUntil: 'networkidle' });
+  check('secondary industry relation remains searchable after an owner edit', (await page.locator(`article:has-text("${biz1Name}")`).count()) === 1);
+
+  const invalidPatch = await page.request.patch(`${BASE}/api/listings/${row.id}`, {
+    data: { action: 'save', listing: { name: biz1Name, typeSlug: 'business', industrySlug: 'food-beverage', categorySlug: 'pest-control' } },
+  });
+  check('invalid taxonomy hierarchy is rejected with 400', invalidPatch.status() === 400, `status=${invalidPatch.status()}`);
+  check('invalid taxonomy update leaves the valid listing published', (await q('select status, industry_slug, category_slug from listings where id = $1', [row.id])).rows[0].status === 'published');
+
+  // Explicit draft saves are private; submitting that draft moves it to the review queue.
+  await page.locator(`tr[data-row-id="${row.id}"] [data-act="edit"]`).click();
+  const draftResponsePromise = page.waitForResponse((res) => res.url().endsWith(`/api/listings/${row.id}`) && res.request().method() === 'PATCH');
+  await page.click('button[data-intent="draft"]');
+  const draftResponse = await draftResponsePromise;
+  check('published listing can be explicitly saved as a draft', draftResponse.status() === 200 && (await draftResponse.json()).listing.status === 'draft');
+  await page.waitForLoadState('networkidle');
+  check('draft remains visible in the owner dashboard', (await page.locator(`tr[data-row-id="${row.id}"]`).count()) === 1 && (await page.locator(`tr[data-row-id="${row.id}"] .chip`).innerText()).includes('Draft'));
+  check('draft has no public link', (await page.locator(`tr[data-row-id="${row.id}"] a:has-text("View live")`).count()) === 0);
+  await page.goto(`${BASE}/search?q=${encodeURIComponent(biz1Name)}`, { waitUntil: 'networkidle' });
+  check('draft is not visible in public search', (await page.locator(`article:has-text("${biz1Name}")`).count()) === 0);
+
+  await page.goto(`${BASE}/dashboard/listings`, { waitUntil: 'networkidle' });
+  await page.locator(`tr[data-row-id="${row.id}"] [data-act="submit"]`).click();
+  const submitResponsePromise = page.waitForResponse((res) => res.url().endsWith(`/api/listings/${row.id}`) && res.request().method() === 'PATCH');
+  await page.click('#form-submit-btn');
+  const submitResponse = await submitResponsePromise;
+  check('draft submit enters pending review', submitResponse.status() === 200 && (await submitResponse.json()).listing.status === 'pending_review');
+  await page.waitForLoadState('networkidle');
+  check('pending listing remains visible in dashboard without a live link', (await page.locator(`tr[data-row-id="${row.id}"] .chip`).innerText()).includes('Pending Review') && (await page.locator(`tr[data-row-id="${row.id}"] a:has-text("View live")`).count()) === 0);
+  await page.goto(`${BASE}/search?q=${encodeURIComponent(biz1Name)}`, { waitUntil: 'networkidle' });
+  check('pending listing is excluded from public search', (await page.locator(`article:has-text("${biz1Name}")`).count()) === 0);
+
   // ----------------------------------------------------
   // 9. Rejected submissions keep the entries on the page (no empty-form redirect)
   // ----------------------------------------------------
@@ -403,30 +518,37 @@ try {
     });
   });
   // Missing location is caught before the request is sent.
-  await page.click('#sticky-bar button[type="submit"]');
+  await page.click('#review-publish-btn');
   check('missing location: inline error names the rule', ((await page.locator('#form-status').textContent()) ?? '').includes('Add a city or state, or mark the listing as online-only.'));
   check('missing location: nothing was submitted', page.url().endsWith('/add-listing'));
   check('missing location: focus moves to the city field', await page.evaluate(() => document.activeElement?.id === 'input-city'));
 
-  // Same owner, same name, same city → the server refuses the duplicate and the
-  // form stays populated so the owner can adjust and retry.
   await page.fill('#input-city', 'Austin');
   await page.fill('#input-region', 'TX');
+  await page.click('#review-publish-btn');
+  check('missing faith identity blocks publish with a clear message', await page.locator('#faith-identity-error').isVisible() && (await page.locator('#form-status').textContent())?.includes('denomination or add a statement of faith'));
+  check('faith section opens and receives focus on validation failure', await page.locator('#section-faith').evaluate((el) => el.open) && await page.evaluate(() => document.activeElement?.id === 'denom-search-input'));
+  await page.locator('#section-faith details > summary').click();
+  await page.fill('#input-statement', 'We follow the teachings of Jesus and serve our neighbors.');
+  check('statement of faith clears the required-field error', await page.locator('#faith-identity-error').isHidden());
+
+  // Same owner, same name, same city → the server refuses the duplicate and the
+  // form stays populated so the owner can adjust and retry.
   const duplicateResponse = page.waitForResponse((res) => res.url().endsWith('/api/listings') && res.request().method() === 'POST');
-  await page.click('#sticky-bar button[type="submit"]');
+  await page.click('#review-publish-btn');
   const dupRes = await duplicateResponse;
   check('duplicate: server answers 409', dupRes.status() === 409, `got=${dupRes.status()}`);
   await page.waitForFunction(() => document.getElementById('form-status')?.classList.contains('is-error'));
   check('duplicate: inline error explains the conflict', ((await page.locator('#form-status').textContent()) ?? '').includes('already have a listing with this name in this city'));
   check('duplicate: still on the form with entries intact', page.url().endsWith('/add-listing') && (await page.inputValue('#input-name')) === biz1Name && (await page.inputValue('#input-city')) === 'Austin');
-  check('duplicate: publish button is re-enabled for retry', await page.locator('#publish-btn').isEnabled() && (await page.locator('#publish-btn').textContent())?.trim() === 'Publish');
+  check('duplicate: review publish button is re-enabled for retry', await page.locator('#review-publish-btn').isEnabled() && (await page.locator('#review-publish-btn').textContent())?.trim() === 'Publish');
   check('duplicate: no second row was created', (await q('select count(*)::int as n from listings where name = $1', [biz1Name])).rows[0].n === 1);
 
   // Changing the city clears the conflict and the retry publishes.
   await page.fill('#input-city', 'Round Rock');
   await Promise.all([
     page.waitForURL('**/add-listing?success=1**'),
-    page.click('#sticky-bar button[type="submit"]'),
+    page.click('#review-publish-btn'),
   ]);
   check('retry after fixing the conflict succeeds', page.url().includes('success=1'));
   check('DB: retry created the second listing', (await q('select count(*)::int as n from listings where name = $1', [biz1Name])).rows[0].n === 2);

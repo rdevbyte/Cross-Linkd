@@ -1,5 +1,6 @@
 ---
 import BaseLayout from '@/layouts/BaseLayout.astro';
+import HoursEditor from '@/components/HoursEditor.astro';
 import { INDUSTRIES } from '@/data/industries';
 import { DENOMINATIONS } from '@/data/denominations';
 import { ATTESTATION } from '@/lib/trustCopy';
@@ -54,21 +55,12 @@ const PRIMARY_TYPES = [
 
 // Type → allowed industries. The `other` type exposes every industry.
 const TYPE_CATEGORY_MAP = {
-  business: [
-    'food-beverage',
-    'healthcare-wellness',
-    'construction-skilled-trades',
-    'professional-business-services',
-    'retail-consumer',
-    'arts-media-entertainment',
-    'travel-hospitality',
-    'other-industries',
-  ],
+  business: INDUSTRIES.map((industry) => industry.slug),
   church: ['religious-organizations'],
   ministry: ['religious-organizations'],
   nonprofit: ['nonprofit-civic', 'other-industries'],
   school: ['education'],
-  event: ['arts-media-entertainment', 'travel-hospitality', 'sports-recreation', 'other-industries'],
+  event: ['arts-media-entertainment', 'travel-hospitality', 'sports-recreation', 'events-entertainment', 'other-industries'],
   other: INDUSTRIES.map((industry) => industry.slug),
 };
 
@@ -87,15 +79,16 @@ const TYPE_CATEGORY_FILTER = {
     'arts-media-entertainment': ['music', 'photography', 'videography'],
     'travel-hospitality': ['venues', 'event-services'],
     'sports-recreation': ['outdoor-recreation', 'coaching'],
+    'events-entertainment': ['venues', 'event-services', 'event-production', 'live-entertainment', 'party-rentals', 'other-events-entertainment'],
     'other-industries': ['other-business'],
   },
 };
 
-// Slim industry payload for the client (professions are not needed on this page).
+// Compact taxonomy payload for category search and the profession/service selector.
 const industries = INDUSTRIES.map((ind) => ({
   slug: ind.slug,
   name: ind.name,
-  categories: ind.categories.map((c) => ({ slug: c.slug, name: c.name })),
+  categories: ind.categories.map((c) => ({ slug: c.slug, name: c.name, aliases: c.aliases ?? [], keywords: c.keywords ?? [], professions: c.professions.map((p) => ({ slug: p.slug, name: p.name, aliases: p.aliases ?? [], services: p.services ?? [] })) })),
 }));
 
 // Organization-basics selects (labels match the server-side validation enums).
@@ -109,21 +102,13 @@ const OWNERSHIP_OPTIONS = [
   'Nonprofit / ministry-run',
   'Government / public',
 ];
-const HOURS_OPTIONS = [
-  { value: 'standard', label: 'Standard — Mon–Fri, 9a–5p' },
-  { value: 'extended', label: 'Extended — evenings & Saturdays' },
-  { value: 'weekends', label: 'Weekends only' },
-  { value: 'appointment', label: 'By appointment only' },
-  { value: 'always', label: 'Open 24 hours, every day' },
-  { value: 'vary', label: 'Hours vary — contact us' },
-];
 const CONTACT_PREF_OPTIONS = ['Email', 'Phone call', 'Text message', 'Any is fine'];
 ---
 <BaseLayout user={user} seo={{ title: 'List Your Business — Free Directory Listing | CrossLinkd', description: 'Submit an owner-submitted listing for your business, church, ministry, or practice. CrossLinkd does not independently verify faith, ownership, licenses, or service quality.', path: '/add-listing' }}>
-  <div class="listing-page mx-auto max-w-6xl px-4 py-8 pb-36" data-motion="static">
+  <div class="listing-page mx-auto max-w-6xl px-4 py-8 pb-12" data-motion="static">
     <header class="listing-head">
       <h1 class="text-3xl font-bold tracking-tight">List your business</h1>
-      <p class="section-sub">Free to list. Your profile is owner-submitted. Publishing it does not verify faith, ownership, licenses, or service quality. Fields marked * are required. Everything else can wait.</p>
+      <p class="section-sub">Free to list. Your profile is owner-submitted. Publishing it does not verify faith, ownership, licenses, or service quality. Fields marked <strong>Required</strong> must be completed to publish; fields marked <strong>Optional</strong> can be skipped. Some requirements depend on your listing type.</p>
       <details class="disclose info-strip mt-4">
         <summary>
           <span class="info-strip-title">
@@ -133,8 +118,8 @@ const CONTACT_PREF_OPTIONS = ['Email', 'Phone call', 'Text message', 'Any is fin
         </summary>
         <p class="mt-2 text-sm leading-relaxed" style="color:var(--text-soft)">CrossLinkd is a community directory. Business owners submit information about their business and may identify it as Christian-owned. CrossLinkd reviews submissions for completeness and obvious inconsistencies but does not independently verify faith, ownership, licenses, certifications, credentials, or service quality. Please perform your own due diligence before hiring or supporting a listed organization.</p>
         <dl class="mt-3 grid gap-x-6 gap-y-2 text-sm leading-relaxed sm:grid-cols-2" style="color:var(--text-soft)">
-          <div><dt class="inline font-semibold" style="color:var(--text)">Required.</dt> <dd class="inline">Organization type, listing name, and the accuracy attestation. No identity documents, licenses, or private religious records.</dd></div>
-          <div><dt class="inline font-semibold" style="color:var(--text)">Public.</dt> <dd class="inline">Only the contact fields you turn on appear on the profile. A faith statement is optional and self-reported.</dd></div>
+          <div><dt class="inline font-semibold" style="color:var(--text)">Required.</dt> <dd class="inline">Organization type, listing name, faith identity (a denomination or statement), location for in-person listings, a guest contact email, and the accuracy and terms confirmations. No identity documents, licenses, or private religious records.</dd></div>
+          <div><dt class="inline font-semibold" style="color:var(--text)">Public.</dt> <dd class="inline">Only the contact fields you turn on appear on the profile. Faith identity is self-reported and is not verified.</dd></div>
           <div><dt class="inline font-semibold" style="color:var(--text)">Review.</dt> <dd class="inline">A complete form may publish as owner-submitted. Missing required fields are not published. A completeness check is not a license or faith check.</dd></div>
           <div><dt class="inline font-semibold" style="color:var(--text)">Afterward.</dt> <dd class="inline">Claim the listing to edit it. <a href="/contact?topic=correction" class="underline">Request a correction</a> or <a href="/contact?topic=removal" class="underline">removal</a>. A listing is not an endorsement.</dd></div>
         </dl>
@@ -158,13 +143,13 @@ const CONTACT_PREF_OPTIONS = ['Email', 'Phone call', 'Text message', 'Any is fin
       <div class="builder mt-6">
         <!-- Rail: step navigation + live preview. Stacks above the form on small
              screens; sticks beside it from 1024px up. -->
-        <aside class="builder-rail" aria-label="Progress and preview">
+        <aside class="builder-rail" aria-label="Form navigation and preview">
           <nav class="form-jump" aria-label="Form sections">
-            <a href="#section-basics" data-step="basics">Basics</a>
-            <a href="#section-category" data-step="category">Category</a>
-            <a href="#section-faith" data-step="faith">Faith</a>
+            <a href="#section-basics" data-step="basics">Basics &amp; category</a>
+            <a href="#section-services" data-step="services">Services</a>
+            <a href="#section-faith" data-step="faith">Faith identity</a>
             <a href="#section-contact" data-step="contact">Contact</a>
-            <a href="#section-review" data-step="review">Review</a>
+            <a href="#section-review" data-step="review">Publish</a>
           </nav>
           <details class="disclose rail-preview" id="preview-panel" open>
             <summary>
@@ -187,7 +172,7 @@ const CONTACT_PREF_OPTIONS = ['Email', 'Phone call', 'Text message', 'Any is fin
           <p class="rail-help rail-note">Free forever for the basic listing. No credit card required.</p>
         </aside>
 
-        <form method="POST" action="/api/listings" class="builder-form" id="add-listing-form" data-motion="static">
+        <form method="POST" action="/api/listings" class="builder-form" id="add-listing-form" data-motion="static" data-taxonomy-recommendation-form>
           <p class="hp-field" aria-hidden="true"><label>Leave this blank<input type="text" name="hp_company" tabindex="-1" autocomplete="off" /></label></p>
           {error && <p class="form-status is-error" role="alert">{error}</p>}
           <p id="form-status" class="form-status hidden" role="status" aria-live="polite"></p>
@@ -203,7 +188,7 @@ const CONTACT_PREF_OPTIONS = ['Email', 'Phone call', 'Text message', 'Any is fin
             </div>
 
             <fieldset class="mt-5 min-w-0 border-0 p-0">
-              <legend class="field-label">What best describes you? <span class="req" aria-hidden="true">*</span><span class="sr-only"> required</span></legend>
+              <legend class="field-label">What best describes you? <span class="req" aria-hidden="true">*</span><span class="sr-only"> required</span> <span class="field-marker field-marker-required">Required</span></legend>
               <p class="field-help">Select the type that best fits — this filters categories to only relevant options.</p>
               <div class="type-grid mt-3">
                 {PRIMARY_TYPES.map((t) => (
@@ -229,18 +214,74 @@ const CONTACT_PREF_OPTIONS = ['Email', 'Phone call', 'Text message', 'Any is fin
             </fieldset>
 
             <div class="mt-5 grid gap-4 sm:grid-cols-2">
-              <label class="field-label" for="input-name">Listing name <span class="req" aria-hidden="true">*</span><span class="sr-only"> required</span>
+              <label class="field-label" for="input-name">Listing name <span class="req" aria-hidden="true">*</span><span class="sr-only"> required</span> <span class="field-marker field-marker-required">Required</span>
                 <input name="name" id="input-name" required minlength="2" maxlength="240" class="input mt-1.5" placeholder="Grace Community Church" aria-required="true" />
               </label>
-              <label class="field-label">Tagline
+              <label class="field-label">Tagline <span class="field-marker field-marker-optional">Optional</span>
                 <input name="tagline" maxlength="280" class="input mt-1.5" placeholder="Brief summary of what your business does" />
               </label>
             </div>
 
-            <label class="field-label mt-4 block">Description
-              <textarea name="description" rows="4" maxlength="8000" class="input mt-1.5" placeholder="Describe what your business offers, who you serve, and what makes your business distinct..."></textarea>
-              <span class="field-help">Shown on your public profile — a sentence or two about what you do and who you serve.</span>
+            <label class="field-label mt-4 block" for="input-description">Business description <span class="field-marker field-marker-optional">Optional</span>
+              <textarea name="description" id="input-description" rows="4" maxlength="500" class="input mt-1.5" placeholder="Describe what your business offers, who you serve, and what makes it distinct..." aria-describedby="description-help description-counter"></textarea>
             </label>
+            <div class="mt-1 flex items-start justify-between gap-3">
+              <span id="description-help" class="field-help">Shown on your public profile. Keep it concise.</span>
+              <span id="description-counter" class="min-w-[8rem] shrink-0 whitespace-nowrap text-right text-xs font-medium" aria-live="polite" aria-atomic="true">0 / 500 characters</span>
+            </div>
+
+
+      <details class="disclose mt-5" data-taxonomy-recommendation-panel aria-labelledby="taxonomy-recommendation-heading">
+        <summary>
+          <span id="taxonomy-recommendation-heading" class="text-sm font-bold">Optional category suggestions</span>
+          <span class="disclose-hint">Suggestions only</span>
+        </summary>
+        <p class="mt-2 text-xs" style="color:var(--text-mute)">Local suggestions use listing details only; website contents are not fetched. Nothing changes unless you choose a suggestion.</p>
+        <div class="mt-3 min-h-12" data-taxonomy-recommendation-results aria-live="polite"><p class="text-xs" style="color:var(--text-mute)">Start typing listing details to see relevant taxonomy paths.</p></div>
+        <div class="mt-3 flex flex-wrap items-center gap-2">
+          <button type="button" class="btn btn-secondary !min-h-9 !px-3 !py-1.5 !text-xs" data-taxonomy-none aria-describedby="category-manual-status">None of these fit</button>
+        </div>
+        <p class="mt-2 text-xs" style="color:var(--text-mute)" data-taxonomy-recommendation-status role="status" aria-live="polite"></p>
+      </details>
+
+            <input type="hidden" name="industrySlug" id="input-industry-slug" value="" data-selection-source="manual" />
+            <input type="hidden" name="categorySlug" id="input-category-slug" value="" data-selection-source="manual" />
+
+            <div id="manual-category-picker" data-manual-category-picker role="group" aria-labelledby="category-search-label" class="hidden mt-4 rounded-xl border p-4" style="border-color:var(--border);background:var(--surface-2)">
+              <label id="category-search-label" for="category-search-input" class="field-label">Search industries and categories <span class="field-marker field-marker-optional">Optional</span></label>
+              <p id="category-filter-help" class="field-help">Please select an organization type first.</p>
+              <span id="category-type-context" class="chip hidden mt-2 !text-[11px]"></span>
+              <p id="category-manual-help" class="field-help">Search by category, industry, profession, or service. If nothing fits, choose an “Other” result to enter your exact name.</p>
+              <div class="relative mt-2 category-picker">
+                <input
+                  type="search"
+                  id="category-search-input"
+                  class="input w-full !pl-9"
+                  placeholder="e.g. Bakery, Plumbing, Counseling"
+                  autocomplete="off"
+                  aria-describedby="category-filter-help category-manual-help"
+                />
+                <svg class="absolute left-3 top-3 h-4 w-4 text-[var(--text-mute)]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+                <div id="category-search-results" class="hidden absolute left-0 right-0 top-full z-20 mt-1.5 max-h-[260px] overflow-y-auto rounded-xl border bg-[var(--surface)] shadow-lg" style="border-color:var(--border)"></div>
+              </div>
+              <div id="category-filter-status" class="mt-1.5 hidden text-xs font-semibold" style="color:var(--teal)" aria-live="polite"></div>
+            </div>
+
+            <div id="category-chips-primary" class="hidden mt-3 flex flex-wrap items-center gap-2">
+              <span class="chip !text-[11px] font-bold" style="border-color:var(--teal); color:var(--teal)">
+                <span id="category-chip-text"></span>
+                <span id="category-selection-source" class="hidden ml-1 rounded-full border px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide">Suggested</span>
+                <button type="button" id="category-chip-clear" class="ml-1.5 hover:opacity-75 focus:outline-none" aria-label="Clear selected category">✕</button>
+              </span>
+            </div>
+            <div id="custom-category-wrap" class="hidden mt-3 rounded-xl p-3.5 border border-[var(--border)] bg-[var(--surface-2)]">
+              <label class="block text-xs font-medium">Your category name <span class="field-marker field-marker-required">Required for Other</span>
+                <input name="customCategory" id="input-custom-category" class="input mt-1.5 w-full" placeholder="e.g. Specialty bakery or stained-glass restoration" maxlength="180" />
+              </label>
+              <p class="text-[11px] mt-1" style="color:var(--text-mute)">Enter the specific category people would search for.</p>
+            </div>
+            <p id="category-type-warning" class="mt-3 hidden rounded-xl border border-amber-300 bg-amber-50 p-3 text-xs font-semibold text-amber-800" role="status">Category cleared — it doesn't match the new organization type. Please select a new category.</p>
+            <p id="category-manual-status" class="sr-only" aria-live="polite"></p>
 
             <details class="disclose org-card mt-5" data-open-if>
               <summary>
@@ -250,32 +291,27 @@ const CONTACT_PREF_OPTIONS = ['Email', 'Phone call', 'Text message', 'Any is fin
                 </span>
               </summary>
               <div class="mt-4 grid gap-4 sm:grid-cols-2">
-                <label class="field-label">Year founded
+                <label class="field-label">Year founded <span class="field-marker field-marker-optional">Optional</span>
                   <input name="yearFounded" type="number" inputmode="numeric" min="1800" max={thisYear} class="input mt-1.5" placeholder="e.g. 1998" />
                 </label>
-                <label class="field-label">Organization size
+                <label class="field-label">Organization size <span class="field-marker field-marker-optional">Optional</span>
                   <select name="employeeCount" class="input mt-1.5">
                     <option value="">Select size (optional)</option>
                     {SIZE_OPTIONS.map((s) => <option value={s}>{s}</option>)}
                   </select>
                 </label>
-                <label class="field-label">Ownership type
+                <label class="field-label">Ownership type <span class="field-marker field-marker-optional">Optional</span>
                   <select name="ownershipType" class="input mt-1.5">
                     <option value="">Select ownership (optional)</option>
                     {OWNERSHIP_OPTIONS.map((o) => <option value={o}>{o}</option>)}
                   </select>
                 </label>
-                <label class="field-label">Operating hours
-                  <select name="hours" class="input mt-1.5">
-                    <option value="">Select typical hours (optional)</option>
-                    {HOURS_OPTIONS.map((h) => <option value={h.value}>{h.label}</option>)}
-                  </select>
-                </label>
-                <label class="field-label">Service area
+                <HoursEditor id="add-listing-hours-editor" />
+                <label class="field-label">Service area <span class="field-marker field-marker-optional">Optional</span>
                   <input name="serviceArea" maxlength="300" class="input mt-1.5" placeholder="e.g. Austin metro; delivery within 25 miles" />
                   <span class="field-help">Cities, counties, or regions you serve.</span>
                 </label>
-                <label class="field-label">Price range
+                <label class="field-label">Price range <span class="field-marker field-marker-optional">Optional</span>
                   <select name="priceRange" class="input mt-1.5 block w-full">
                     <option value="">Select price range</option>
                     <option value="$">$ (Inexpensive / Budget-friendly)</option>
@@ -289,69 +325,47 @@ const CONTACT_PREF_OPTIONS = ['Email', 'Phone call', 'Text message', 'Any is fin
             </details>
           </section>
 
-          <!-- Section 2: Category (type-filtered, single searchable picker) -->
-          <section id="section-category" aria-labelledby="section-category-heading" class="form-section card">
+          <!-- Section 2: Optional services; category selection is completed in Step 1. -->
+          <section id="section-services" aria-labelledby="section-services-heading" class="form-section card">
             <div class="section-head">
               <span class="section-num" aria-hidden="true">02</span>
               <div class="section-head-copy">
-                <h2 id="section-category-heading" class="section-title">Industry &amp; business category</h2>
-                <p class="section-lede">Where your listing belongs in the directory taxonomy — pick the most specific industry and category that describe it. Options are filtered to match the type selected above.</p>
+                <h2 id="section-services-heading" class="section-title">Professions &amp; services <span class="field-marker field-marker-optional">Optional</span></h2>
+                <p class="section-lede">Optional. Choose roles and services after selecting a category in Basics &amp; category.</p>
               </div>
-              <span id="category-type-context" class="chip hidden !text-[11px]"></span>
             </div>
-
-            <!-- Hidden inputs for submission -->
-            <input type="hidden" name="industrySlug" id="input-industry-slug" value="" />
-            <input type="hidden" name="categorySlug" id="input-category-slug" value="" />
-
-            <!-- Single searchable category picker (filtered by selected type) -->
-            <div class="mt-5">
-              <label for="category-search-input" class="field-label">Search &amp; pick a category</label>
-              <p id="category-filter-help" class="field-help">Please select an organization type first.</p>
-              <div class="relative mt-2">
-                <input
-                  type="search"
-                  id="category-search-input"
-                  class="input w-full !pl-9"
-                  placeholder="Search categories (e.g. Bakery, Plumbing, Roofing, Dental, Counseling)..."
-                  autocomplete="off"
-                  aria-describedby="category-filter-help"
-                />
-                <svg class="absolute left-3 top-3 h-4 w-4 text-[var(--text-mute)]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
-                <div id="category-search-results" class="hidden absolute left-0 right-0 top-full z-20 mt-1.5 max-h-[260px] overflow-y-auto rounded-xl border bg-[var(--surface)] shadow-lg" style="border-color:var(--border)"></div>
+            <div id="profession-options" class="mt-4 grid gap-2 sm:grid-cols-2" aria-live="polite">
+              <p class="field-help">Select a category in Step 1 to see matching professions.</p>
+            </div>
+            <label class="field-label mt-4 block">Custom profession(s) <span class="field-marker field-marker-optional">Optional</span>
+              <textarea name="customProfessions" id="input-custom-professions" rows="2" maxlength="600" class="input mt-1.5 w-full" placeholder="Add a profession not listed (one per line)"></textarea>
+              <span class="field-help">Separate multiple entries with a new line, comma, or semicolon.</span>
+            </label>
+            <div class="mt-4">
+              <p class="field-label">Services you provide <span class="field-marker field-marker-optional">Optional</span></p>
+              <div id="service-options" class="mt-2 grid gap-2 sm:grid-cols-2" aria-live="polite">
+                <p class="field-help">Choose a profession above to see its service examples.</p>
               </div>
-              <div id="category-filter-status" class="mt-1.5 hidden text-xs font-semibold" style="color:var(--teal)" aria-live="polite"></div>
             </div>
-
-            <!-- Selected category chip -->
-            <div id="category-chips-primary" class="hidden mt-3 flex flex-wrap items-center gap-2">
-              <span class="chip !text-[11px] font-bold" style="border-color:var(--teal); color:var(--teal)">
-                <span id="category-chip-text"></span>
-                <button type="button" id="category-chip-clear" class="ml-1.5 hover:opacity-75 focus:outline-none" aria-label="Clear selected category">✕</button>
-              </span>
-            </div>
-
-            <!-- Custom Category Input when 'Other' category is chosen -->
-            <div id="custom-category-wrap" class="hidden mt-3 rounded-xl p-3.5 border border-[var(--border)] bg-[var(--surface-2)]">
-              <label class="block text-xs font-medium">Custom category name *
-                <input name="customCategory" id="input-custom-category" class="input mt-1.5 w-full" placeholder="e.g. Specialty Gluten-Free Bakery, Stained Glass Restoration, etc." maxlength="180" />
-              </label>
-              <p class="text-[11px] mt-1" style="color:var(--text-mute)">Please specify your business's exact trade or service.</p>
-            </div>
-
-            <p id="category-type-warning" class="mt-3 hidden rounded-xl border border-amber-300 bg-amber-50 p-3 text-xs font-semibold text-amber-800" role="status">Category cleared — it doesn't match the new organization type. Please select a new category.</p>
+            <label class="field-label mt-4 block">Custom service(s) <span class="field-marker field-marker-optional">Optional</span>
+              <textarea name="customServices" id="input-custom-services" rows="2" maxlength="1000" class="input mt-1.5 w-full" placeholder="Add other services (one per line)"></textarea>
+              <span class="field-help">Select taxonomy examples above or add your own services.</span>
+            </label>
           </section>
 
-          <!-- Section 3: Faith Identity -->
-          <section id="section-faith" aria-labelledby="section-faith-heading" class="form-section card">
-            <div class="section-head">
-              <span class="section-num" aria-hidden="true">03</span>
+          <!-- Faith identity is required; disclosure stays compact until the user opens it. -->
+          <details id="section-faith" aria-labelledby="section-faith-heading" class="form-section card disclose faith-disclosure">
+            <summary class="section-head">
               <div class="section-head-copy">
-                <h2 id="section-faith-heading" class="section-title">Faith identity &amp; denomination</h2>
-                <p class="section-lede">Select up to two denominations that best represent this organization.</p>
+                <h2 id="section-faith-heading" class="section-title">Faith identity &amp; denomination <span class="field-marker field-marker-required">Required</span></h2>
+                <p class="section-lede">Choose at least one denomination or add a statement of faith. Either meets this requirement; up to two denominations may be selected.</p>
               </div>
               <span id="denom-counter" class="chip !text-[11px]">0 of 2 selected</span>
-            </div>
+            </summary>
+
+            <div id="faith-identity-group" role="group" aria-labelledby="section-faith-heading" aria-describedby="faith-requirement-help faith-identity-error" aria-required="true">
+            <p id="faith-requirement-help" class="field-help mt-4">Required: add a denomination or a statement of faith. “Other” requires a custom denomination name.</p>
+            <p id="faith-identity-error" class="field-validation-error" role="alert" hidden>Choose at least one denomination or add a statement of faith before publishing.</p>
 
             <!-- Active Selection Chips Display -->
             <div id="denom-chips-container" class="mt-5 flex flex-wrap items-center gap-2 min-h-[38px] p-2.5 rounded-xl border border-dashed border-[var(--border)] bg-[var(--surface-2)]">
@@ -363,7 +377,7 @@ const CONTACT_PREF_OPTIONS = ['Email', 'Phone call', 'Text message', 'Any is fin
 
             <!-- Selection Controls: searchable denomination typeahead (same interaction as the category search) -->
             <div class="mt-4">
-              <label for="denom-search-input" class="field-label">Search denominations</label>
+              <label for="denom-search-input" class="field-label">Denominations <span class="field-marker field-marker-required">One way to meet the requirement</span></label>
               <div class="relative mt-2">
                 <input
                   type="search"
@@ -371,7 +385,7 @@ const CONTACT_PREF_OPTIONS = ['Email', 'Phone call', 'Text message', 'Any is fin
                   class="input w-full !pl-9"
                   placeholder="Search denominations (e.g. Baptist, Methodist, Non-Denominational)..."
                   autocomplete="off"
-                  aria-describedby="denom-search-help"
+                  aria-describedby="denom-search-help faith-requirement-help faith-identity-error"
                 />
                 <svg class="absolute left-3 top-3 h-4 w-4 text-[var(--text-mute)]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
                 <div id="denom-search-results" class="hidden absolute left-0 right-0 top-full z-20 mt-1.5 max-h-[260px] overflow-y-auto rounded-xl border bg-[var(--surface)] shadow-lg" style="border-color:var(--border)"></div>
@@ -381,13 +395,14 @@ const CONTACT_PREF_OPTIONS = ['Email', 'Phone call', 'Text message', 'Any is fin
 
             <!-- Custom Denomination Input when 'Other' is chosen -->
             <div id="custom-denom-wrap" class="hidden mt-3 rounded-xl p-3 border border-[var(--border)] bg-[var(--surface-2)]">
-              <label class="block text-xs font-medium">Custom denomination or movement name *
+              <label class="block text-xs font-medium">Custom denomination or movement name <span class="field-marker field-marker-required">Required for Other</span>
                 <input
                   name="customDenomination"
                   id="custom-denom-input"
                   class="input mt-1.5 w-full"
                   placeholder="e.g. Calvary Chapel, Vineyard Movement, Independent Baptist..."
                   maxlength="180"
+                  aria-describedby="faith-requirement-help faith-identity-error"
                 />
               </label>
             </div>
@@ -396,7 +411,7 @@ const CONTACT_PREF_OPTIONS = ['Email', 'Phone call', 'Text message', 'Any is fin
               <label class="setting-row">
                 <input type="checkbox" name="showDenomination" value="1" checked class="peer sr-only" />
                 <span class="setting-copy">
-                  <span class="setting-title">Display faith affiliation publicly on listing</span>
+                  <span class="setting-title">Display faith affiliation publicly on listing <span class="field-marker field-marker-optional">Optional</span></span>
                   <span class="setting-help">When off, your denomination is stored privately and will not appear on your public listing.</span>
                 </span>
                 <span class="setting-badge setting-badge-off">Off</span>
@@ -407,26 +422,26 @@ const CONTACT_PREF_OPTIONS = ['Email', 'Phone call', 'Text message', 'Any is fin
 
             <details class="disclose mt-5" data-open-if>
               <summary>
-                <span class="text-sm font-bold">Statement of faith</span>
-                <span class="disclose-hint">Optional</span>
+                <span class="text-sm font-bold">Statement of faith <span class="field-marker field-marker-required">Alternative way to meet requirement</span></span>
               </summary>
-              <label class="field-label mt-3 block" for="input-statement">Shown on your profile if you add one
+              <label class="field-label mt-3 block" for="input-statement">Statement of faith <span class="field-marker field-marker-required">One way to meet the requirement</span>
                 <textarea name="statementOfFaith" id="input-statement" rows="3" maxlength="8000" class="input mt-1.5" placeholder="Brief statement of faith, mission, or Christian core values..."></textarea>
               </label>
             </details>
-          </section>
+            </div>
+          </details>
 
-          <!-- Section 4: Contact and Visibility -->
+          <!-- Section 3: Contact and Visibility -->
           <section id="section-contact" aria-labelledby="section-contact-heading" class="form-section card">
             <div class="section-head">
-              <span class="section-num" aria-hidden="true">04</span>
+              <span class="section-num" aria-hidden="true">03</span>
               <div class="section-head-copy">
                 <h2 id="section-contact-heading" class="section-title">Contact and visibility</h2>
-                <p class="section-lede">Choose exactly which contact details appear publicly on your listing profile. Private fields are used for account administration and review only; keeping a field private is not a verification of that field.</p>
+                <p class="section-lede">For in-person listings, provide a city or state/region; choose Online-only to skip the location requirement. Other contact and visibility details are optional unless marked Required.</p>
               </div>
             </div>
 
-            <label class="field-label mt-5 block">Preferred contact method
+            <label class="field-label mt-5 block">Preferred contact method <span class="field-marker field-marker-optional">Optional</span>
               <select name="contactPreference" class="input mt-1.5 block w-full">
                 <option value="">Select preference</option>
                 {CONTACT_PREF_OPTIONS.map((c) => <option value={c}>{c}</option>)}
@@ -437,7 +452,7 @@ const CONTACT_PREF_OPTIONS = ['Email', 'Phone call', 'Text message', 'Any is fin
             <div class="control-grid mt-4">
               <article class="control-card">
                 <fieldset class="control-fieldset">
-                  <legend class="control-title">Is this company hiring?</legend>
+                  <legend class="control-title">Is this company hiring? <span class="field-marker field-marker-optional">Optional</span></legend>
                   <div class="control-row">
                     <div class="choice-group">
                       <label class="choice-pill" for="input-hiring-no">
@@ -458,7 +473,7 @@ const CONTACT_PREF_OPTIONS = ['Email', 'Phone call', 'Text message', 'Any is fin
 
               <article id="online-toggle-wrap" class="control-card" data-online="off">
                 <fieldset class="control-fieldset">
-                  <legend class="control-title">Is this an online-only listing?</legend>
+                  <legend class="control-title">Is this an online-only listing? <span class="field-marker field-marker-optional">Optional · defaults to in-person</span></legend>
                   <div class="control-row">
                     <div class="choice-group">
                       <label class="choice-pill" id="online-off-label" for="input-online-off" data-active="true">
@@ -479,7 +494,7 @@ const CONTACT_PREF_OPTIONS = ['Email', 'Phone call', 'Text message', 'Any is fin
             </div>
 
             <div id="careers-url-field" class="control-card careers-card mt-4" hidden>
-              <label for="input-careers-url" class="control-label">Where can people view open positions?
+              <label for="input-careers-url" class="control-label">Where can people view open positions? <span class="field-marker field-marker-optional">Optional</span>
                 <input id="input-careers-url" name="careersUrl" type="text" inputmode="url" autocomplete="url" maxlength="2000" class="input mt-1.5" placeholder="https://example.com/careers" aria-describedby="careers-url-help careers-url-error" />
               </label>
               <p id="careers-url-help" class="control-help">Add a careers page or job-listing link. This is optional, even if hiring is set to Yes.</p>
@@ -488,14 +503,15 @@ const CONTACT_PREF_OPTIONS = ['Email', 'Phone call', 'Text message', 'Any is fin
 
             <!-- Physical Location -->
             <div id="location-fields" class="mt-4 space-y-3">
+              <p id="location-requirement-help" class="field-help"><span class="field-marker field-marker-required">Required for in-person listings</span> Enter a city or state/region; either one is enough. ZIP/postal code is optional.</p>
               <div class="grid gap-4 sm:grid-cols-3">
-                <label class="field-label">City
+                <label class="field-label">City <span class="field-marker field-marker-optional">Optional if region entered</span>
                   <input name="city" id="input-city" maxlength="120" class="input mt-1.5" placeholder="Enter city" />
                 </label>
-                <label class="field-label">State / region
+                <label class="field-label">State / region <span class="field-marker field-marker-optional">Optional if city entered</span>
                   <input name="region" id="input-region" maxlength="120" class="input mt-1.5" placeholder="Enter state or region" />
                 </label>
-                <label class="field-label">ZIP / Postal code
+                <label class="field-label">ZIP / Postal code <span class="field-marker field-marker-optional">Optional</span>
                   <input name="postalCode" maxlength="24" class="input mt-1.5" placeholder="Enter postal code" />
                 </label>
               </div>
@@ -504,7 +520,7 @@ const CONTACT_PREF_OPTIONS = ['Email', 'Phone call', 'Text message', 'Any is fin
                 <label class="setting-row">
                   <input type="checkbox" name="showAddress" value="1" class="peer sr-only" />
                   <span class="setting-copy">
-                    <span class="setting-title">Display postal code / full address publicly on listing</span>
+                    <span class="setting-title">Display postal code / full address publicly on listing <span class="field-marker field-marker-optional">Optional</span></span>
                     <span class="setting-help">When off, only your general city and state are displayed; specific postal codes remain private.</span>
                   </span>
                   <span class="setting-badge setting-badge-off">Off</span>
@@ -516,17 +532,17 @@ const CONTACT_PREF_OPTIONS = ['Email', 'Phone call', 'Text message', 'Any is fin
             <p id="location-disabled-note" class="hidden mt-3 rounded-xl border p-3 text-xs font-semibold" style="border-color:var(--border); background:var(--surface-2); color:var(--text-soft)">Location fields are hidden for online-only listings — you serve customers nationwide.</p>
 
             <div class="public-panel mt-5">
-              <h3 class="text-sm font-semibold">What the public sees</h3>
+              <h3 class="text-sm font-semibold">What the public sees <span class="field-marker field-marker-optional">Sharing choices are optional</span></h3>
               <p class="field-help">Each detail stays private until you switch its toggle on.</p>
               <div class="public-list mt-3">
                 <article class="public-card">
-                  <label class="public-label">Website URL
+                  <label class="public-label">Website URL <span class="field-marker field-marker-optional">Optional</span>
                     <input name="website" type="url" class="input mt-1.5" placeholder="https://yourbusiness.com" />
                   </label>
                   <label class="public-toggle setting-row">
                     <input type="checkbox" name="showWebsite" value="1" class="peer sr-only" />
                     <span class="setting-copy">
-                      <span class="setting-title public-toggle-copy">Display website publicly on listing</span>
+                      <span class="setting-title public-toggle-copy">Display website publicly on listing <span class="field-marker field-marker-optional">Optional</span></span>
                       <span class="setting-help public-help">When on, a direct "Website" link appears on your public profile.</span>
                     </span>
                     <span class="setting-badge setting-badge-off">Off</span>
@@ -535,13 +551,13 @@ const CONTACT_PREF_OPTIONS = ['Email', 'Phone call', 'Text message', 'Any is fin
                   </label>
                 </article>
                 <article class="public-card">
-                  <label class="public-label">Phone number
+                  <label class="public-label">Phone number <span class="field-marker field-marker-optional">Optional</span>
                     <input name="phone" maxlength="60" class="input mt-1.5" placeholder="Enter phone number" />
                   </label>
                   <label class="public-toggle setting-row">
                     <input type="checkbox" name="showPhone" value="1" class="peer sr-only" />
                     <span class="setting-copy">
-                      <span class="setting-title public-toggle-copy">Display phone number publicly on listing</span>
+                      <span class="setting-title public-toggle-copy">Display phone number publicly on listing <span class="field-marker field-marker-optional">Optional</span></span>
                       <span class="setting-help public-help">When off, the number is kept for listing administration only. Storing it does not confirm the number.</span>
                     </span>
                     <span class="setting-badge setting-badge-off">Off</span>
@@ -550,7 +566,7 @@ const CONTACT_PREF_OPTIONS = ['Email', 'Phone call', 'Text message', 'Any is fin
                   </label>
                 </article>
                 <article class="public-card">
-                  <label class="public-label">Contact email{!user && <> <span class="req" aria-hidden="true">*</span><span class="sr-only"> required for guest listings</span></>}
+                  <label class="public-label">Contact email{!user && <> <span class="req" aria-hidden="true">*</span><span class="sr-only"> required for guest listings</span> <span class="field-marker field-marker-required">Required for guest listings</span></>}{user && <> <span class="field-marker field-marker-optional">Optional</span></>}
                     <input
                       name="email"
                       type="email"
@@ -570,7 +586,7 @@ const CONTACT_PREF_OPTIONS = ['Email', 'Phone call', 'Text message', 'Any is fin
                   <label class="public-toggle setting-row">
                     <input type="checkbox" name="showEmail" value="1" class="peer sr-only" />
                     <span class="setting-copy">
-                      <span class="setting-title public-toggle-copy">Display email address publicly on listing</span>
+                      <span class="setting-title public-toggle-copy">Display email address publicly on listing <span class="field-marker field-marker-optional">Optional</span></span>
                       <span class="setting-help public-help">When off, your email stays private; people can still reach you through the on-site inquiry form.</span>
                     </span>
                     <span class="setting-badge setting-badge-off">Off</span>
@@ -582,10 +598,10 @@ const CONTACT_PREF_OPTIONS = ['Email', 'Phone call', 'Text message', 'Any is fin
             </div>
           </section>
 
-          <!-- Section 5: Review and publish -->
+          <!-- Section 4: Review and publish -->
           <section id="section-review" aria-labelledby="section-review-heading" class="form-section card">
             <div class="section-head">
-              <span class="section-num" aria-hidden="true">05</span>
+              <span class="section-num" aria-hidden="true">04</span>
               <div class="section-head-copy">
                 <h2 id="section-review-heading" class="section-title">Review and publish</h2>
                 <p class="section-lede">Confirm the required statements, then publish. Publishing creates an owner-submitted listing. It does not verify faith, ownership, licenses, credentials, or service quality.</p>
@@ -600,16 +616,17 @@ const CONTACT_PREF_OPTIONS = ['Email', 'Phone call', 'Text message', 'Any is fin
               <ul id="review-checklist" class="review-checklist">
                 <li data-check="type" data-state="needed"><a href="#section-basics">Organization type</a><span class="check-state">Needed</span></li>
                 <li data-check="name" data-state="needed"><a href="#input-name">Listing name</a><span class="check-state">Needed</span></li>
+                <li data-check="faith" data-state="needed"><a href="#section-faith">Faith identity</a><span class="check-state">Needed</span></li>
                 <li data-check="attestation" data-state="needed"><a href="#input-attestation">Accuracy confirmation</a><span class="check-state">Needed</span></li>
                 <li data-check="terms" data-state="needed"><a href="#input-terms">Terms agreement</a><span class="check-state">Needed</span></li>
               </ul>
               <label class="review-check" for="input-attestation">
                 <input type="checkbox" name="attestation" id="input-attestation" required class="mt-1 h-4 w-4 shrink-0 accent-[var(--accent)]" />
-                <span>{ATTESTATION}</span>
+                <span>{ATTESTATION} <span class="field-marker field-marker-required">Required</span></span>
               </label>
               <label class="review-check" for="input-terms">
                 <input type="checkbox" name="terms" id="input-terms" required class="mt-1 h-4 w-4 shrink-0 accent-[var(--accent)]" />
-                <span>I am authorized to list this organization, and I agree to the <a href="/terms" class="underline">Terms of Service</a> and <a href="/guidelines" class="underline">Community Guidelines</a>.</span>
+                <span>I am authorized to list this organization, and I agree to the <a href="/terms" class="underline">Terms of Service</a> and <a href="/guidelines" class="underline">Community Guidelines</a>. <span class="field-marker field-marker-required">Required</span></span>
               </label>
             </article>
 
@@ -618,7 +635,7 @@ const CONTACT_PREF_OPTIONS = ['Email', 'Phone call', 'Text message', 'Any is fin
                 <span class="text-sm font-bold">Discovery tags</span>
                 <span class="disclose-hint">Optional</span>
               </summary>
-              <label class="field-label mt-3 block">Hashtags
+              <label class="field-label mt-3 block">Hashtags <span class="field-marker field-marker-optional">Optional</span>
                 <input name="hashtags" class="input mt-1.5" placeholder="e.g. ChristianOwned, FamilyOwned, VeteranOwned" />
                 <span class="field-help">Comma-separated. These help search. They are not a verification.</span>
               </label>
@@ -642,24 +659,6 @@ const CONTACT_PREF_OPTIONS = ['Email', 'Phone call', 'Text message', 'Any is fin
       </div>
     )}
 
-    {!success && (
-      <>
-        <!-- Sticky action bar: 2px progress line on top, one 56px row below -->
-        <div id="sticky-bar" class="fixed inset-x-0 bottom-0 z-40 border-t backdrop-blur" style="border-color:var(--border); background:color-mix(in srgb, var(--surface) 94%, transparent)">
-          <div class="sticky-progress" aria-hidden="true">
-            <div id="progress-bar" class="sticky-progress-fill" style="width: 0%"></div>
-          </div>
-          <div class="sticky-row mx-auto max-w-6xl px-4">
-            <p id="progress-text" class="sticky-text" aria-live="polite">0 of 4 sections complete</p>
-            <p id="sticky-status" class="form-status hidden" aria-hidden="true"></p>
-            <div class="sticky-actions">
-              <button type="button" id="save-draft-btn" class="btn btn-secondary" form="add-listing-form">Save draft</button>
-              <button type="submit" id="publish-btn" class="btn btn-primary" form="add-listing-form" data-label="Publish" aria-describedby="publish-help">Publish</button>
-            </div>
-          </div>
-        </div>
-      </>
-    )}
   </div>
 
   <script define:vars={{ industries, typeCategoryMap: TYPE_CATEGORY_MAP, typeCategoryFilter: TYPE_CATEGORY_FILTER, denominations: denominationOptions }}>
@@ -671,6 +670,8 @@ const CONTACT_PREF_OPTIONS = ['Email', 'Phone call', 'Text message', 'Any is fin
     const inputTypeSlug = document.getElementById('input-type-slug');
     const listingTypeError = document.getElementById('listing-type-error');
     const nameInput = document.getElementById('input-name');
+    const descriptionInput = document.getElementById('input-description');
+    const descriptionCounter = document.getElementById('description-counter');
     const statementInput = document.getElementById('input-statement');
 
     const categoryHelp = document.getElementById('category-filter-help');
@@ -683,6 +684,13 @@ const CONTACT_PREF_OPTIONS = ['Email', 'Phone call', 'Text message', 'Any is fin
     const chipClear = document.getElementById('category-chip-clear');
     const customWrap = document.getElementById('custom-category-wrap');
     const inputCustomCategory = document.getElementById('input-custom-category');
+    const manualCategoryPicker = document.getElementById('manual-category-picker');
+    const professionOptions = document.getElementById('profession-options');
+    const serviceOptions = document.getElementById('service-options');
+    const customProfessionsInput = document.getElementById('input-custom-professions');
+    const customServicesInput = document.getElementById('input-custom-services');
+    const selectedServiceNames = new Set();
+    const selectedServiceSources = new Map();
 
     const searchInput = document.getElementById('category-search-input');
     const searchResults = document.getElementById('category-search-results');
@@ -701,10 +709,6 @@ const CONTACT_PREF_OPTIONS = ['Email', 'Phone call', 'Text message', 'Any is fin
     const previewType = document.getElementById('preview-type');
     const previewCategory = document.getElementById('preview-category');
     const previewLocation = document.getElementById('preview-location');
-    const progressBar = document.getElementById('progress-bar');
-    const progressText = document.getElementById('progress-text');
-    const stickyBar = document.getElementById('sticky-bar');
-    const saveDraftBtn = document.getElementById('save-draft-btn');
     const previewPanel = document.getElementById('preview-panel');
 
     // The live preview sits in the rail: open beside the form on wide screens,
@@ -718,13 +722,14 @@ const CONTACT_PREF_OPTIONS = ['Email', 'Phone call', 'Text message', 'Any is fin
     const flatCategories = [];
     industries.forEach((ind) => {
       (ind.categories || []).forEach((cat) => {
-        flatCategories.push({ catSlug: cat.slug, catName: cat.name, indSlug: ind.slug, indName: ind.name });
+        flatCategories.push({ catSlug: cat.slug, catName: cat.name, indSlug: ind.slug, indName: ind.name, aliases: cat.aliases, keywords: cat.keywords, professions: cat.professions });
       });
     });
 
     const typeCardsArr = Array.from(typeCards);
     let selectedType = '';
     let filteredFlatCategories = flatCategories;
+    if (form) form.dataset.taxonomyCategoryAllowlist = JSON.stringify(flatCategories.map((item) => `${item.indSlug}/${item.catSlug}`));
     let warningTimer = null;
 
     const TYPE_HELPERS = {
@@ -782,18 +787,91 @@ const CONTACT_PREF_OPTIONS = ['Email', 'Phone call', 'Text message', 'Any is fin
         inputCustomCategory.value = '';
         inputCustomCategory.required = false;
       }
+      selectedServiceNames.clear();
+      selectedServiceSources.clear();
+      if (inputIndustrySlug) inputIndustrySlug.dataset.selectionSource = 'manual';
+      if (inputCategorySlug) inputCategorySlug.dataset.selectionSource = 'manual';
+      form?.dispatchEvent(new Event('taxonomy-recommendation-selection-cleared'));
+      if (professionOptions) professionOptions.innerHTML = '<p class="field-help">Select a category above to see its professions.</p>';
+      if (serviceOptions) serviceOptions.innerHTML = '<p class="field-help">Choose a profession above to see its service examples.</p>';
+      if (customProfessionsInput) customProfessionsInput.value = '';
+      if (customServicesInput) customServicesInput.value = '';
       if (searchResults) {
         searchResults.innerHTML = '';
         searchResults.classList.add('hidden');
       }
-      if (showWarning) showTypeWarning();
+      if (showWarning) {
+        manualCategoryPicker?.classList.remove('hidden');
+        showTypeWarning();
+      }
       updatePreview();
       updateCompletion();
     }
 
-    function applyCategorySelection(indSlug, indName, catSlug, catName) {
-      if (inputIndustrySlug) inputIndustrySlug.value = indSlug;
-      if (inputCategorySlug) inputCategorySlug.value = catSlug;
+    function renderProfessionAndServiceOptions(catSlug) {
+      if (!professionOptions || !serviceOptions) return;
+      const category = flatCategories.find((item) => item.catSlug === catSlug);
+      professionOptions.innerHTML = '';
+      serviceOptions.innerHTML = '';
+      selectedServiceNames.clear();
+      selectedServiceSources.clear();
+      if (!category || !category.professions?.length) {
+        professionOptions.innerHTML = '<p class="field-help">No predefined professions are available. Add a custom profession below.</p>';
+        serviceOptions.innerHTML = '<p class="field-help">Add a custom service below.</p>';
+        return;
+      }
+      category.professions.forEach((profession) => {
+        const label = document.createElement('label');
+        label.className = 'flex items-start gap-2 rounded-xl border p-3 text-sm';
+        label.style.borderColor = 'var(--border)';
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox'; checkbox.name = 'professions'; checkbox.value = profession.slug;
+        checkbox.className = 'mt-1';
+        checkbox.dataset.selectionSource = 'manual';
+        const title = document.createElement('span');
+        title.textContent = profession.name;
+        label.append(checkbox, title);
+        professionOptions.appendChild(label);
+        checkbox.addEventListener('change', () => {
+          if (checkbox.dataset.settingSuggestion !== 'true') checkbox.dataset.selectionSource = 'manual';
+          renderSelectedServiceOptions();
+        });
+      });
+      function renderSelectedServiceOptions() {
+        const selected = Array.from(professionOptions.querySelectorAll('input[name="professions"]:checked')).map((input) => input.value);
+        const options = category.professions.filter((profession) => selected.includes(profession.slug)).flatMap((profession) => profession.services.map((name) => ({ name, profession: profession.name })));
+        const deduped = Array.from(new Map(options.map((option) => [option.name.toLowerCase(), option])).values());
+        serviceOptions.innerHTML = '';
+        if (!deduped.length) {
+          serviceOptions.innerHTML = '<p class="field-help">Choose a profession above to see its service examples.</p>';
+          return;
+        }
+        deduped.forEach((option) => {
+          const label = document.createElement('label');
+          label.className = 'flex items-start gap-2 rounded-xl border p-3 text-sm';
+          label.style.borderColor = 'var(--border)';
+          const checkbox = document.createElement('input');
+          checkbox.type = 'checkbox'; checkbox.name = 'services'; checkbox.value = option.name; checkbox.className = 'mt-1';
+          checkbox.checked = selectedServiceNames.has(option.name);
+          checkbox.dataset.selectionSource = selectedServiceSources.get(option.name) ?? 'manual';
+          checkbox.addEventListener('change', () => {
+            const source = checkbox.dataset.settingSuggestion === 'true' ? 'suggested' : 'manual';
+            if (checkbox.checked) { selectedServiceNames.add(option.name); selectedServiceSources.set(option.name, source); }
+            else { selectedServiceNames.delete(option.name); selectedServiceSources.delete(option.name); }
+            checkbox.dataset.selectionSource = source;
+          });
+          const title = document.createElement('span'); title.textContent = option.name;
+          label.append(checkbox, title); serviceOptions.appendChild(label);
+        });
+      }
+    }
+
+    function applyCategorySelection(indSlug, indName, catSlug, catName, source = 'manual') {
+      if (inputIndustrySlug) { inputIndustrySlug.value = indSlug; inputIndustrySlug.dataset.selectionSource = source; }
+      if (inputCategorySlug) { inputCategorySlug.value = catSlug; inputCategorySlug.dataset.selectionSource = source; }
+      const sourceBadge = document.getElementById('category-selection-source');
+      if (sourceBadge) { sourceBadge.textContent = source === 'suggested' ? 'Suggested' : 'Manual'; sourceBadge.classList.remove('hidden'); }
+      renderProfessionAndServiceOptions(catSlug);
       if (chipText) chipText.textContent = `${indName} › ${catName}`;
       if (chipsWrap) chipsWrap.classList.remove('hidden');
 
@@ -812,6 +890,49 @@ const CONTACT_PREF_OPTIONS = ['Email', 'Phone call', 'Text message', 'Any is fin
       updateCompletion();
     }
 
+    form?.addEventListener('taxonomy-recommendation-apply', (event) => {
+      const custom = /** @type {CustomEvent<{ recommendation: { industrySlug: string; categorySlug: string; professionSlug: string; serviceNames: string[]; isFallback?: boolean }; result?: { applied: boolean; message?: string } }>} */ (event);
+      const recommendation = custom.detail.recommendation;
+      const currentIndustry = inputIndustrySlug?.value || '';
+      const currentCategory = inputCategorySlug?.value || '';
+      const currentSource = inputCategorySlug?.dataset.selectionSource || 'manual';
+      const manualProfessions = Array.from(document.querySelectorAll<HTMLInputElement>('#profession-options input[name="professions"]:checked')).some((input) => input.dataset.selectionSource !== 'suggested');
+      const manualServices = Array.from(document.querySelectorAll<HTMLInputElement>('#service-options input[name="services"]:checked')).some((input) => input.dataset.selectionSource !== 'suggested');
+      const customProfessionField = form?.elements.namedItem('customProfessions');
+      const customServiceField = form?.elements.namedItem('customServices');
+      const customProfessionText = customProfessionField instanceof HTMLTextAreaElement ? customProfessionField.value.trim() : '';
+      const customServiceText = customServiceField instanceof HTMLTextAreaElement ? customServiceField.value.trim() : '';
+      const samePath = currentIndustry === recommendation.industrySlug && currentCategory === recommendation.categorySlug;
+      if (!inputTypeSlug?.value) { custom.detail.result = { applied: false, message: 'Choose your listing type first. Suggestions will then match its available categories.' }; return; }
+      const customCategoryText = inputCustomCategory?.value?.trim() || '';
+      if (!samePath && (Boolean(currentCategory && currentSource === 'manual') || manualProfessions || manualServices || customCategoryText || customProfessionText || customServiceText)) {
+        custom.detail.result = { applied: false, message: 'Your manual industry, category, profession, or service selection is preserved. Clear or change it yourself before applying a different path.' };
+        return;
+      }
+      const category = flatCategories.find((item) => item.indSlug === recommendation.industrySlug && item.catSlug === recommendation.categorySlug);
+      const profession = category?.professions.find((item) => item.slug === recommendation.professionSlug);
+      if (!category || !profession) { custom.detail.result = { applied: false, message: 'That taxonomy path is no longer available.' }; return; }
+      if (!samePath) applyCategorySelection(category.indSlug, category.indName, category.catSlug, category.catName, 'suggested');
+      const professionInput = Array.from(document.querySelectorAll<HTMLInputElement>('#profession-options input[name="professions"]')).find((input) => input.value === profession.slug);
+      if (professionInput && !professionInput.checked) {
+        professionInput.dataset.settingSuggestion = 'true';
+        professionInput.dataset.selectionSource = 'suggested';
+        professionInput.checked = true;
+        professionInput.dispatchEvent(new Event('change', { bubbles: true }));
+        professionInput.dataset.settingSuggestion = 'false';
+      }
+      for (const serviceName of recommendation.serviceNames) {
+        const serviceInput = Array.from(document.querySelectorAll<HTMLInputElement>('#service-options input[name="services"]')).find((input) => input.value === serviceName);
+        if (serviceInput && !serviceInput.checked) {
+          serviceInput.dataset.settingSuggestion = 'true';
+          serviceInput.checked = true;
+          serviceInput.dispatchEvent(new Event('change', { bubbles: true }));
+          serviceInput.dataset.settingSuggestion = 'false';
+        }
+      }
+      custom.detail.result = { applied: true, message: 'Suggestion selected. Any manual values already chosen were preserved.' };
+    });
+
     // Recompute the type-filtered category pool (single source for the search
     // picker + helper/status/context copy). No <select> is involved.
     function rebuildCategoryPoolForType(typeSlug) {
@@ -826,12 +947,13 @@ const CONTACT_PREF_OPTIONS = ['Email', 'Phone call', 'Text message', 'Any is fin
         const cats = filterCats ? ind.categories.filter((c) => filterCats.includes(c.slug)) : ind.categories.slice();
         cats.forEach((cat) => {
           allowedSet.add(cat.slug);
-          rebuiltFlat.push({ catSlug: cat.slug, catName: cat.name, indSlug: ind.slug, indName: ind.name });
+          rebuiltFlat.push({ catSlug: cat.slug, catName: cat.name, indSlug: ind.slug, indName: ind.name, aliases: cat.aliases, keywords: cat.keywords, professions: cat.professions });
         });
       });
 
       const validType = Boolean(typeSlug) && Object.prototype.hasOwnProperty.call(typeCategoryMap, typeSlug);
       filteredFlatCategories = rebuiltFlat;
+      if (form) form.dataset.taxonomyCategoryAllowlist = JSON.stringify(rebuiltFlat.map((item) => `${item.indSlug}/${item.catSlug}`));
 
       if (validType) {
         if (categoryHelp) categoryHelp.textContent = TYPE_HELPERS[typeSlug] || 'Showing categories for this organization type.';
@@ -882,6 +1004,7 @@ const CONTACT_PREF_OPTIONS = ['Email', 'Phone call', 'Text message', 'Any is fin
           c.setAttribute('data-selected', String(active));
         });
         rebuildCategoryPoolForType(nextType);
+        form?.dispatchEvent(new Event('taxonomy-recommendations-refresh'));
       });
     });
 
@@ -890,12 +1013,40 @@ const CONTACT_PREF_OPTIONS = ['Email', 'Phone call', 'Text message', 'Any is fin
     // ---------------------------------------------------------------------
     chipClear?.addEventListener('click', () => {
       clearCategorySelection(false);
-      searchInput?.focus();
+      manualCategoryPicker?.classList.remove('hidden');
+      searchInput?.focus({ preventScroll: true });
     });
 
     // ---------------------------------------------------------------------
     // Category search — the single category picker, type-filtered
     // ---------------------------------------------------------------------
+    function appendCustomCategoryShortcut(source) {
+      const fallback = source.find((item) => item.catSlug.startsWith('other-'))
+        || source.find((item) => item.indSlug === 'other-industries');
+      if (!fallback || !searchResults || !searchInput) return false;
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'flex w-full flex-col items-start gap-0.5 border-t px-3 py-2.5 text-left text-xs hover:bg-[var(--surface-2)]';
+      button.style.borderColor = 'var(--border)';
+      button.dataset.customCategoryShortcut = 'true';
+      const title = document.createElement('span');
+      title.className = 'font-semibold';
+      title.textContent = 'Can’t find it? Enter a custom category';
+      const hint = document.createElement('span');
+      hint.className = 'text-[11px]';
+      hint.style.color = 'var(--text-mute)';
+      hint.textContent = 'Choose an “Other” category, then type the exact name.';
+      button.append(title, hint);
+      button.addEventListener('click', () => {
+        applyCategorySelection(fallback.indSlug, fallback.indName, fallback.catSlug, fallback.catName);
+        searchInput.value = '';
+        searchResults.innerHTML = '';
+        searchResults.classList.add('hidden');
+      });
+      searchResults.appendChild(button);
+      return true;
+    }
+
     function renderCategoryResults(q) {
       if (!searchInput || !searchResults) return;
       searchResults.innerHTML = '';
@@ -911,13 +1062,12 @@ const CONTACT_PREF_OPTIONS = ['Email', 'Phone call', 'Text message', 'Any is fin
           (c) =>
             c.catName.toLowerCase().includes(q) ||
             c.indName.toLowerCase().includes(q) ||
-            c.catSlug.includes(q),
+            c.catSlug.includes(q) ||
+            (c.aliases ?? []).some((term) => term.toLowerCase().includes(q)) ||
+            (c.keywords ?? []).some((term) => term.toLowerCase().includes(q)) ||
+            (c.professions ?? []).some((profession) => profession.name.toLowerCase().includes(q) || profession.slug.includes(q) || profession.aliases?.some((term) => term.toLowerCase().includes(q)) || profession.services?.some((term) => term.toLowerCase().includes(q))),
         )
         .slice(0, 8);
-      if (!matches.length) {
-        searchResults.classList.add('hidden');
-        return;
-      }
       matches.forEach((m) => {
         const btn = document.createElement('button');
         btn.type = 'button';
@@ -940,6 +1090,14 @@ const CONTACT_PREF_OPTIONS = ['Email', 'Phone call', 'Text message', 'Any is fin
         });
         searchResults.appendChild(btn);
       });
+      const hasFallback = appendCustomCategoryShortcut(source);
+      if (!matches.length && !hasFallback) {
+        const emptyState = document.createElement('p');
+        emptyState.className = 'px-3 py-2 text-xs';
+        emptyState.style.color = 'var(--text-mute)';
+        emptyState.textContent = 'No matching categories. Try a shorter or different search.';
+        searchResults.appendChild(emptyState);
+      }
       searchResults.classList.remove('hidden');
     }
 
@@ -1043,6 +1201,27 @@ const CONTACT_PREF_OPTIONS = ['Email', 'Phone call', 'Text message', 'Any is fin
         selectedDenoms.set(slug, name);
       }
       renderDenominations();
+    }
+
+    function hasFaithIdentity() {
+      const hasDenomination = Array.from(selectedDenoms.keys()).some((slug) => slug !== 'other');
+      const hasCustomDenomination = Boolean(customDenomInput && customDenomInput.value.trim());
+      const hasStatement = Boolean(statementInput && statementInput.value.trim());
+      return hasDenomination || hasCustomDenomination || hasStatement;
+    }
+
+    function updateFaithValidation(showError = reviewAttempted) {
+      const error = document.getElementById('faith-identity-error');
+      const search = denomSearchInput;
+      const statement = statementInput;
+      const valid = hasFaithIdentity();
+      if (error) error.hidden = valid || !showError;
+      for (const field of [search, statement]) {
+        if (!(field instanceof HTMLInputElement || field instanceof HTMLTextAreaElement)) continue;
+        if (valid) field.removeAttribute('aria-invalid');
+        else if (showError) field.setAttribute('aria-invalid', 'true');
+      }
+      return valid;
     }
 
     // ---------------------------------------------------------------------
@@ -1273,23 +1452,21 @@ const CONTACT_PREF_OPTIONS = ['Email', 'Phone call', 'Text message', 'Any is fin
     }
 
     // ---------------------------------------------------------------------
-    // Completion / progress
+    // Section completion, review checklist, and required-field validation
     // ---------------------------------------------------------------------
     function updateCompletion() {
-      const s1 = selectedType !== '' && (nameInput ? nameInput.value.trim().length >= 2 : false);
-      const s2 = Boolean(inputCategorySlug && inputCategorySlug.value);
-      const stmt = statementInput ? statementInput.value.trim() : '';
-      const s3 = selectedDenoms.size >= 1 || stmt.length > 0;
+      const basicsComplete = selectedType !== '' && (nameInput ? nameInput.value.trim().length >= 2 : false);
       const online = Boolean(onlineToggle && onlineToggle.checked);
       const city = cityInput ? cityInput.value.trim() : '';
       const region = regionInput ? regionInput.value.trim() : '';
-      const postal = postalInput ? postalInput.value.trim() : '';
-      const s4 = online || Boolean(city || region || postal);
+      const contactComplete = online || Boolean(city || region);
+      const faithComplete = hasFaithIdentity();
+      const attestation = document.getElementById('input-attestation');
+      const terms = document.getElementById('input-terms');
+      const publishReady = attestation instanceof HTMLInputElement && attestation.checked
+        && terms instanceof HTMLInputElement && terms.checked;
 
-      const done = [s1, s2, s3, s4].filter(Boolean).length;
-      if (progressText) progressText.textContent = `${done} of 4 sections complete`;
-      if (progressBar) progressBar.style.width = `${(done / 4) * 100}%`;
-      const stepState = { basics: s1, category: s2, faith: s3, contact: s4 };
+      const stepState = { basics: basicsComplete, faith: faithComplete, contact: contactComplete, review: publishReady };
       Object.entries(stepState).forEach(([step, complete]) => {
         const link = document.querySelector(`.form-jump a[data-step="${step}"]`);
         if (link) link.setAttribute('data-complete', complete ? 'true' : 'false');
@@ -1325,15 +1502,18 @@ const CONTACT_PREF_OPTIONS = ['Email', 'Phone call', 'Text message', 'Any is fin
     function updateReviewChecklist() {
       const attestation = document.getElementById('input-attestation');
       const terms = document.getElementById('input-terms');
+      const faithComplete = updateFaithValidation();
       const checks = {
         type: selectedType !== '',
         name: Boolean(nameInput && nameInput.value.trim().length >= 2),
+        faith: faithComplete,
         attestation: Boolean(attestation && attestation.checked),
         terms: Boolean(terms && terms.checked),
       };
       const labels = {
         type: 'organization type',
         name: 'listing name',
+        faith: 'faith identity (a denomination or a statement of faith)',
         attestation: 'accuracy confirmation',
         terms: 'terms agreement',
       };
@@ -1361,7 +1541,17 @@ const CONTACT_PREF_OPTIONS = ['Email', 'Phone call', 'Text message', 'Any is fin
     // ---------------------------------------------------------------------
     // Live input bindings
     // ---------------------------------------------------------------------
+    function updateDescriptionCounter() {
+      if (!(descriptionInput instanceof HTMLTextAreaElement) || !descriptionCounter) return;
+      const count = descriptionInput.value.length;
+      descriptionCounter.textContent = `${count} / 500 characters`;
+      descriptionCounter.style.color = count >= 450 ? 'var(--accent)' : 'var(--text-mute)';
+    }
+    descriptionInput?.addEventListener('input', updateDescriptionCounter);
+    updateDescriptionCounter();
+
     [nameInput, statementInput, cityInput, regionInput, postalInput].forEach((el) => {
+
       if (!el) return;
       el.addEventListener('input', () => {
         updatePreview();
@@ -1378,14 +1568,13 @@ const CONTACT_PREF_OPTIONS = ['Email', 'Phone call', 'Text message', 'Any is fin
     // ---------------------------------------------------------------------
     const formStatus = document.getElementById('form-status');
     const reviewStatus = document.getElementById('review-status');
-    const stickyStatus = document.getElementById('sticky-status');
-    const publishBtn = document.getElementById('publish-btn');
     const reviewPublishBtn = document.getElementById('review-publish-btn');
     const reviewDraftBtn = document.getElementById('review-draft-btn');
     // Mirrors publishBlockReason() in src/lib/formGuards.mjs (server stays authoritative).
     const LOCATION_RULE = 'Add a city or state, or mark the listing as online-only.';
+    const FAITH_RULE = 'Choose at least one denomination or add a statement of faith before publishing.';
     function showFormStatus(message, kind) {
-      [formStatus, reviewStatus, stickyStatus].forEach((el) => {
+      [formStatus, reviewStatus].forEach((el) => {
         if (!el) return;
         el.textContent = message;
         el.classList.remove('hidden', 'is-error', 'is-ok');
@@ -1393,33 +1582,28 @@ const CONTACT_PREF_OPTIONS = ['Email', 'Phone call', 'Text message', 'Any is fin
       });
     }
     function setPublishBusy(busy) {
-      [publishBtn, reviewPublishBtn].forEach((button) => {
-        if (!button) return;
-        button.disabled = busy;
+      if (reviewPublishBtn) {
+        reviewPublishBtn.disabled = busy;
         if (busy) {
-          button.setAttribute('aria-busy', 'true');
-          button.textContent = 'Publishing…';
+          reviewPublishBtn.setAttribute('aria-busy', 'true');
+          reviewPublishBtn.textContent = 'Publishing…';
         } else {
-          button.removeAttribute('aria-busy');
-          button.textContent = button.dataset.label || 'Publish';
+          reviewPublishBtn.removeAttribute('aria-busy');
+          reviewPublishBtn.textContent = reviewPublishBtn.dataset.label || 'Publish';
         }
-      });
-      [saveDraftBtn, reviewDraftBtn].forEach((button) => {
-        if (button) button.disabled = busy;
-      });
+      }
+      if (reviewDraftBtn) reviewDraftBtn.disabled = busy;
     }
     function setDraftBusy(busy) {
-      [saveDraftBtn, reviewDraftBtn].forEach((button) => {
-        if (!button) return;
-        button.disabled = busy;
-        if (busy) {
-          button.setAttribute('aria-busy', 'true');
-          button.textContent = 'Saving…';
-        } else {
-          button.removeAttribute('aria-busy');
-          button.textContent = 'Save draft';
-        }
-      });
+      if (!reviewDraftBtn) return;
+      reviewDraftBtn.disabled = busy;
+      if (busy) {
+        reviewDraftBtn.setAttribute('aria-busy', 'true');
+        reviewDraftBtn.textContent = 'Saving…';
+      } else {
+        reviewDraftBtn.removeAttribute('aria-busy');
+        reviewDraftBtn.textContent = 'Save draft';
+      }
     }
     // One payload builder for publish and draft — shaped like listingInputSchema.
     function collectListing() {
@@ -1428,6 +1612,11 @@ const CONTACT_PREF_OPTIONS = ['Email', 'Phone call', 'Text message', 'Any is fin
       const on = (key) => fd.get(key) === '1';
       const year = str('yearFounded');
       const industrySlug = str('industrySlug');
+      let hours = {};
+      try {
+        const parsedHours = JSON.parse(str('hoursJson'));
+        if (parsedHours && typeof parsedHours === 'object' && !Array.isArray(parsedHours)) hours = parsedHours;
+      } catch { /* Empty or unavailable optional hours remain an empty schedule. */ }
       return {
         name: str('name'),
         typeSlug: str('typeSlug'),
@@ -1454,12 +1643,15 @@ const CONTACT_PREF_OPTIONS = ['Email', 'Phone call', 'Text message', 'Any is fin
         employeeCount: str('employeeCount'),
         ownershipType: str('ownershipType'),
         serviceArea: str('serviceArea'),
-        hours: str('hours'),
+        hours,
         contactPreference: str('contactPreference'),
         isOnlineOnly: on('isOnlineOnly'),
         isHiring: on('isHiring'),
         careersUrl: str('careersUrl'),
         industries: industrySlug ? [industrySlug] : [],
+        professions: Array.from(document.querySelectorAll('#profession-options input[name="professions"]:checked')).map((input) => input.value),
+        customProfessions: String(document.getElementById('input-custom-professions')?.value || '').split(/[\n;,]+/).map((value) => value.trim()).filter(Boolean),
+        services: [...Array.from(document.querySelectorAll('#service-options input[name="services"]:checked')).map((input) => input.value), ...String(document.getElementById('input-custom-services')?.value || '').split(/[\n;,]+/).map((value) => value.trim()).filter(Boolean)],
         denominations: Array.from(new Set(fd.getAll('denominations').map((v) => String(v).trim()).filter(Boolean))),
         hashtags: str('hashtags').split(',').map((s) => s.trim().replace(/^#/, '')).filter(Boolean),
       };
@@ -1474,7 +1666,7 @@ const CONTACT_PREF_OPTIONS = ['Email', 'Phone call', 'Text message', 'Any is fin
       };
     }
     document.querySelectorAll('details[data-open-if]').forEach((panel) => {
-      const filled = Array.from(panel.querySelectorAll('input, select, textarea')).some((el) => 'value' in el && String(el.value).trim() !== '');
+      const filled = Array.from(panel.querySelectorAll('input, select, textarea')).some((el) => !(el instanceof HTMLInputElement && el.type === 'hidden') && 'value' in el && String(el.value).trim() !== '');
       if (filled) panel.open = true;
     });
     function publishFailed(message) {
@@ -1524,9 +1716,9 @@ const CONTACT_PREF_OPTIONS = ['Email', 'Phone call', 'Text message', 'Any is fin
         if (field instanceof HTMLInputElement || field instanceof HTMLTextAreaElement || field instanceof HTMLSelectElement) {
           if (field.validity.valid) field.removeAttribute('aria-invalid');
         }
-        updateReviewChecklist();
+        updateCompletion();
       });
-      form.addEventListener('change', () => updateReviewChecklist());
+      form.addEventListener('change', () => updateCompletion());
       form.addEventListener('submit', (e) => {
         if (!selectedType) {
           e.preventDefault();
@@ -1560,7 +1752,18 @@ const CONTACT_PREF_OPTIONS = ['Email', 'Phone call', 'Text message', 'Any is fin
           cityInput?.focus();
           return;
         }
-        if (publishBtn && publishBtn.disabled) {
+        if (!hasFaithIdentity()) {
+          e.preventDefault();
+          reviewAttempted = true;
+          const faithSection = document.getElementById('section-faith');
+          if (faithSection instanceof HTMLDetailsElement) faithSection.open = true;
+          updateFaithValidation(true);
+          updateReviewChecklist();
+          showFormStatus(FAITH_RULE, 'error');
+          denomSearchInput?.focus();
+          return;
+        }
+        if (reviewPublishBtn && reviewPublishBtn.disabled) {
           e.preventDefault();
           return;
         }
@@ -1572,8 +1775,8 @@ const CONTACT_PREF_OPTIONS = ['Email', 'Phone call', 'Text message', 'Any is fin
     // ---------------------------------------------------------------------
     // Save draft
     // ---------------------------------------------------------------------
-    if (saveDraftBtn && form) {
-      saveDraftBtn.addEventListener('click', async () => {
+    if (reviewDraftBtn && form) {
+      reviewDraftBtn.addEventListener('click', async () => {
         const listing = collectListing();
         if (!listing.name || listing.name.trim().length < 2) {
           showFormStatus('Please enter a listing name before saving a draft.', 'error');
@@ -1603,13 +1806,12 @@ const CONTACT_PREF_OPTIONS = ['Email', 'Phone call', 'Text message', 'Any is fin
         }
       });
     }
-    if (reviewDraftBtn && saveDraftBtn) {
-      reviewDraftBtn.addEventListener('click', () => saveDraftBtn.click());
-    }
-
     // Initial state pass.
     updatePreview();
     updateCompletion();
+  </script>
+  <script>
+    import '@/scripts/taxonomyRecommendationController';
   </script>
 
   <style>
@@ -1702,6 +1904,34 @@ const CONTACT_PREF_OPTIONS = ['Email', 'Phone call', 'Text message', 'Any is fin
     .field-help { display: block; margin-top: 0.3rem; font-size: 0.78rem; line-height: 1.45; color: var(--text-mute); }
     p.field-help { margin-bottom: 0; }
     .req { color: var(--accent); }
+    .field-marker {
+      display: inline-flex;
+      align-items: center;
+      max-width: 100%;
+      margin-left: 0.25rem;
+      border: 1px solid var(--border-strong);
+      border-radius: 999px;
+      padding: 0.08rem 0.4rem;
+      color: var(--text-soft);
+      font-size: 0.64rem;
+      font-weight: 700;
+      line-height: 1.45;
+      vertical-align: middle;
+      white-space: normal;
+    }
+    .field-marker-required { border-style: solid; background: var(--surface-2); color: var(--text); }
+    .field-marker-optional { border-style: dashed; background: transparent; color: var(--text-soft); }
+    .field-validation-error {
+      margin-top: 0.6rem;
+      border: 1px solid #9f2d2d;
+      border-radius: 0.7rem;
+      padding: 0.55rem 0.7rem;
+      background: rgba(159, 45, 45, 0.1);
+      color: var(--text);
+      font-size: 0.8rem;
+      font-weight: 650;
+    }
+    .field-validation-error[hidden] { display: none; }
     .disclose-hint { flex: none; margin-left: auto; font-size: 0.72rem; font-weight: 600; color: var(--text-mute); }
 
     /* ---- Type tiles ---- */
@@ -1765,6 +1995,8 @@ const CONTACT_PREF_OPTIONS = ['Email', 'Phone call', 'Text message', 'Any is fin
     .type-card[aria-pressed='true']:focus-visible {
       box-shadow: 0 0 0 1px var(--accent), 0 0 0 3px var(--ring);
     }
+    .category-picker { overflow-anchor: none; }
+    #category-search-results { overscroll-behavior: contain; scroll-padding-block: 0.5rem; }
     #category-search-results button:focus-visible,
     #denom-search-results button:focus-visible {
       outline: 2px solid var(--accent);
@@ -2189,30 +2421,6 @@ const CONTACT_PREF_OPTIONS = ['Email', 'Phone call', 'Text message', 'Any is fin
     .btn:disabled { cursor: not-allowed; opacity: 0.72; }
     .btn[aria-busy='true'] { cursor: progress; }
 
-    /* ---- Sticky action bar ---- */
-    .sticky-progress { height: 2px; width: 100%; background: var(--border); }
-    .sticky-progress-fill { height: 100%; background: var(--accent); transition: width 0.3s ease; }
-    .sticky-row {
-      display: flex;
-      flex-wrap: wrap;
-      align-items: center;
-      gap: 0.5rem 0.75rem;
-      min-height: 56px;
-      padding-top: 0.5rem;
-      padding-bottom: 0.5rem;
-    }
-    .sticky-text { margin: 0; flex: 1 1 auto; min-width: 9rem; font-size: 0.78rem; font-weight: 600; color: var(--text-soft); }
-    #sticky-status { flex: 1 1 100%; order: 1; padding: 0.45rem 0.7rem; font-size: 0.8125rem; }
-    .sticky-actions { display: flex; gap: 0.5rem; margin-left: auto; order: 2; }
-    .sticky-actions .btn { min-height: 40px; padding-top: 0.5rem; padding-bottom: 0.5rem; }
-    @media (max-width: 639px) {
-      .sticky-actions { width: 100%; }
-      .sticky-actions .btn { flex: 1 1 0; }
-    }
-    @media (min-width: 640px) {
-      #sticky-status { flex: 0 1 auto; order: 0; }
-    }
-
     @media (prefers-reduced-motion: reduce) {
       .choice-pill,
       .choice-mark,
@@ -2223,7 +2431,6 @@ const CONTACT_PREF_OPTIONS = ['Email', 'Phone call', 'Text message', 'Any is fin
       .form-status,
       .form-jump a,
       .form-jump a::before,
-      .sticky-progress-fill,
       details.disclose > summary::after {
         transition: none;
         animation: none;

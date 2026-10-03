@@ -1,10 +1,18 @@
 export function honeypotTripped(value: unknown): boolean;
+export function faithIdentityReason(input: {
+  denominations?: string[] | null;
+  customDenomination?: string | null;
+  statementOfFaith?: string | null;
+}): string;
 export function publishBlockReason(input: {
   user?: { id?: string } | null;
   email?: string | null;
   city?: string | null;
   region?: string | null;
   isOnlineOnly?: boolean;
+  denominations?: string[] | null;
+  customDenomination?: string | null;
+  statementOfFaith?: string | null;
   attestation?: unknown;
   terms?: unknown;
 }): string;
