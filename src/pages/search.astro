@@ -251,7 +251,7 @@ const seo = {
             <EmptyState title="No published listings match" body="Nothing published matches these terms and filters. Try removing a filter, broadening your search, or browsing categories and places that have published listings. We don’t invent entries to fill empty results.">
               <div class="mt-4 flex flex-wrap justify-center gap-2">
                 <a href={clearSearchUrl} class="chip hover:border-[var(--accent)]">Clear filters</a>
-                <a href="/#browse-published" class="chip hover:border-[var(--accent)]">Browse published categories and places</a>
+                <a href="/browse/industries" class="chip hover:border-[var(--accent)]">Browse industry categories</a>
                 <a href="/add-listing" class="chip hover:border-[var(--accent)]">Submit a real listing</a>
                 {filters.q && result.suggestions.map((suggestion) => (
                   <a href={`/search?q=${encodeURIComponent(suggestion)}`} class="chip hover:border-[var(--accent)]">Try: {suggestion}</a>

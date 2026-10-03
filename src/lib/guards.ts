@@ -11,7 +11,7 @@ const ADMIN_ROLES = new Set(['super_admin', 'moderator', 'verification_reviewer'
 /** Roles allowed to grant/revoke roles — effectively the owner-level role. */
 const ROOT_ROLES = new Set(['super_admin']);
 
-export const isStaff = (user: SessionUser | null): boolean =>
+export const isStaff = (user: Pick<SessionUser, 'role'> | null): boolean =>
   Boolean(user && ADMIN_ROLES.has(user.role));
 export const isRoot = (user: SessionUser | null): boolean =>
   Boolean(user && ROOT_ROLES.has(user.role));

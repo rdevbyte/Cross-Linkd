@@ -46,7 +46,7 @@ if (hasDatabase()) {
 ---
 <DashboardLayout user={user} admin active="reports" seo={{ title: 'Admin: Reports', description: 'Saved contact messages and reports.', path: '/admin/reports', noindex: true }}>
   <h1 class="text-2xl font-bold">Reports and messages</h1>
-  <p class="section-sub">Contact, feedback, appeal, and listing-inquiry forms save here. Reading a message does not verify a business, and this page does not send a reply.</p>
+  <p class="section-sub">Contact, appeal, and listing-inquiry messages are saved here. Feedback suggestions are emailed to the configured feedback inbox. Reading a message does not verify a business, and this page does not send a reply.</p>
   {unavailable ? (
     <p class="card mt-6 p-5 text-sm" role="status" style="color:var(--text-soft)">The directory database is not connected, so saved messages cannot be listed.</p>
   ) : rows.length === 0 ? (

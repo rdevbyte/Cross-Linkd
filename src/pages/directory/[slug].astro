@@ -14,6 +14,7 @@ import { compact, timeAgo, fullDate } from '@/lib/format';
 import { recentlyUpdatedState } from '@/lib/recentlyUpdated.mjs';
 import { localBusinessSchema, breadcrumbSchema } from '@/lib/seo';
 import { careersUrlError } from '@/lib/hiringUrl.mjs';
+import { formatRegionForDisplay } from '@/lib/location';
 
 const { slug } = Astro.params;
 const listing: SampleListing | undefined = slug ? await findPublicListing(slug) : undefined;
@@ -137,7 +138,7 @@ const displayProfessions = listing.professions.map((slug) => professionBySlug(sl
               <>No reviews yet • </>
             )}
             {listing.recommendations > 0 ? `${compact(listing.recommendations)} community notes • ` : ''}
-            {listing.isOnlineOnly ? 'Online-only' : `${listing.city}, ${listing.region}`}
+            {listing.isOnlineOnly ? 'Online-only' : `${listing.city}, ${formatRegionForDisplay(listing.region)}`}
             {listing.priceRange ? ` • ${listing.priceRange}` : ''}
           </p>
           {profileUpdatedAtLabel && <p class="text-xs" style="color:var(--text-mute)"><time datetime={listing.updatedAt}>Public listing record last updated {profileUpdatedAtLabel}</time>. This is not a verification.</p>}
@@ -297,7 +298,7 @@ const displayProfessions = listing.professions.map((slug) => professionBySlug(sl
         {!listing.isOnlineOnly && (
           <div class="card p-5">
             <h2 class="font-semibold">Location</h2>
-            <p class="mt-2 text-sm" style="color:var(--text-soft)">{listing.city}, {listing.region}{listing.postalCode ? ` ${listing.postalCode}` : ''}</p>
+            <p class="mt-2 text-sm" style="color:var(--text-soft)">{listing.city}, {formatRegionForDisplay(listing.region)}{listing.postalCode ? ` ${listing.postalCode}` : ''}</p>
           </div>
         )}
         <div class="card p-5">

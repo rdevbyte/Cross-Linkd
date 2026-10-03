@@ -4,6 +4,7 @@ import ListingCard from '@/components/ListingCard.astro';
 import { getPublicListings } from '@/lib/publicListings';
 import { FOCUS_CITIES, stateBySlug } from '@/data/locations';
 import { breadcrumbSchema } from '@/lib/seo';
+import { formatRegionForDisplay } from '@/lib/location';
 
 const { slug } = Astro.params;
 const state = slug ? stateBySlug(slug) : undefined;
@@ -45,7 +46,7 @@ const seo = {
 
     <div class="mt-6 flex flex-wrap gap-2">
       {citiesWithListings.map((c) => (
-        <a href={`/locations/${c.slug}`} class="chip !px-4 !py-2 !text-[13px] hover:border-[var(--accent)]">{c.city}, {c.region} ({allPublic.filter((l) => l.city === c.city && !l.isOnlineOnly).length})</a>
+        <a href={`/locations/${c.slug}`} class="chip !px-4 !py-2 !text-[13px] hover:border-[var(--accent)]">{c.city}, {formatRegionForDisplay(c.region)} ({allPublic.filter((l) => l.city === c.city && !l.isOnlineOnly).length})</a>
       ))}
       <a href={`/search?near=${encodeURIComponent(state.name)}`} class="chip !px-4 !py-2 !text-[13px] hover:border-[var(--accent)]">Search all of {state.name}</a>
     </div>

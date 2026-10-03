@@ -3,6 +3,7 @@ import BaseLayout from '@/layouts/BaseLayout.astro';
 import { eventBySlug, eventDate } from '@/data/events';
 import { includeSamples } from '@/lib/sampleGate';
 import { eventSchema } from '@/lib/seo';
+import { formatRegionForDisplay } from '@/lib/location';
 
 const { slug } = Astro.params;
 const event = slug && includeSamples() ? eventBySlug(slug) : undefined;
@@ -39,7 +40,7 @@ const icsHref = `data:text/calendar;charset=utf-8,${encodeURIComponent(ics)}`;
         <h1 class="mt-2 text-3xl font-bold">{event.title}</h1>
         <p class="mt-3 leading-relaxed" style="color:var(--text-soft)">{event.description}</p>
         <dl class="mt-6 grid gap-3 sm:grid-cols-2">
-          {[['Location', event.format === 'online' ? 'Online event' : `${event.venue} — ${event.city}${event.region ? `, ${event.region}` : ''}`], ['Cost', event.cost], ['Age group', event.ageGroup], ['Category', event.category], ['Organizer', event.organizer], ['Format', { in_person: 'In person', online: 'Online', hybrid: 'Hybrid (in person + online)' }[event.format]]].map(([t, v]) => (
+          {[['Location', event.format === 'online' ? 'Online event' : `${event.venue} — ${event.city}${event.region ? `, ${formatRegionForDisplay(event.region)}` : ''}`], ['Cost', event.cost], ['Age group', event.ageGroup], ['Category', event.category], ['Organizer', event.organizer], ['Format', { in_person: 'In person', online: 'Online', hybrid: 'Hybrid (in person + online)' }[event.format]]].map(([t, v]) => (
             <div class="surface-soft rounded-2xl p-3.5"><dt class="text-[13px] font-bold">{t}</dt><dd class="mt-0.5 text-sm" style="color:var(--text-soft)">{v}</dd></div>
           ))}
         </dl>

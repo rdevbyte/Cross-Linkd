@@ -2,6 +2,7 @@
 import BaseLayout from '@/layouts/BaseLayout.astro';
 import { SAMPLE_EVENTS, eventDate, type SampleEvent } from '@/data/events';
 import { includeSamples } from '@/lib/sampleGate';
+import { formatRegionForDisplay } from '@/lib/location';
 const user = Astro.locals.user;
 const cat = Astro.url.searchParams.get('category');
 const events: SampleEvent[] = (includeSamples() ? [...SAMPLE_EVENTS] : [])
@@ -28,7 +29,7 @@ const cats = includeSamples() ? [...new Set(SAMPLE_EVENTS.map((e) => e.category)
             </p>
             <p class="mt-1 font-bold">{e.title}</p>
             <p class="mt-1 line-clamp-2 text-sm" style="color:var(--text-soft)">{e.description}</p>
-            <p class="mt-2 text-[13px]" style="color:var(--text-mute)">{e.format === 'online' ? 'Online' : `${e.venue ?? ''} • ${e.city}${e.region ? `, ${e.region}` : ''}`} • {e.cost}</p>
+            <p class="mt-2 text-[13px]" style="color:var(--text-mute)">{e.format === 'online' ? 'Online' : `${e.venue ?? ''} • ${e.city}${e.region ? `, ${formatRegionForDisplay(e.region)}` : ''}`} • {e.cost}</p>
           </div>
         </a>
       ))}

@@ -71,8 +71,9 @@ test('homepage cards use published database rows and follow the requested distin
     readFile(new URL('../src/pages/index.astro', import.meta.url), 'utf8'),
     readFile(new URL('../src/lib/publicListings.ts', import.meta.url), 'utf8'),
   ]);
-  assert.match(home, /getDbListings\(\)/);
-  assert.match(home, /calculateHomepageMetrics\(publishedDatabaseListings\)/);
+  assert.match(home, /getPublicListings\(\)/);
+  assert.match(home, /calculateHomepageMetrics\(corpus\)/);
+  assert.doesNotMatch(home, /getDbListings/, 'public listings are database-only, so homepage metrics need no duplicate query');
   const cards = home.match(/const metricCards = \[([\s\S]*?)\n\];/)?.[1] ?? '';
   const orderedMarkers = [
     "label: 'Location coverage'",

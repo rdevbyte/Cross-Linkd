@@ -5,14 +5,12 @@ import {
   listingHashtags, listingIndustries, listingLocations, listingProfessions,
   listingServices, listings, professions, searchLogs,
 } from '@/db/schema';
-import type { SampleListing } from '@/data/listings';
 import { categoryBySlug, canonicalIndustrySlug, canonicalProfessionSlug } from '@/data/industries';
 import { DENOMINATIONS } from '@/data/denominations';
 import { resolveLocation } from '@/data/locations';
 import { parseQuery } from '@/lib/hashtags';
-import { includeSamples } from '@/lib/sampleGate';
 import { RECENTLY_UPDATED_WINDOW_MS } from '@/lib/recentlyUpdated.mjs';
-import { getDbListings, getDbListingsByIds } from '@/lib/publicListings';
+import { getDbListingsByIds } from '@/lib/publicListings';
 import { searchListings, buildAltLinks, buildSuggestions, type SearchHit, type SearchResult } from '@/lib/search';
 import type { SearchFilters } from '@/lib/validation';
 
@@ -344,17 +342,13 @@ async function recordSearch(filters: PublicSearchFilters, resultCount: number, t
  * offset pagination happen before only the requested IDs are hydrated.
  */
 export async function searchPublishedListings(filters: PublicSearchFilters, requestId?: string): Promise<SearchResult> {
-  // Bundled listings are an explicitly gated developer/demo-only feature. Keep
-  // them out of normal directory traffic; a configured but unavailable DB is an error,
-  // never a reason to fall back to a corpus-wide in-memory production search.
+  // A configured but unavailable database is an error, never a reason to fall
+  // back to an in-memory corpus. With no database configured, search is empty.
   const db = getDb();
   if (!db) {
     if (hasDatabase()) throw new Error('Configured database client is unavailable.');
     return searchListings(filters);
   }
-  // The explicit non-production demo flag keeps the historical mixed corpus for
-  // local previews. It cannot be enabled on production through includeSamples().
-  if (includeSamples()) return searchListings(filters, await getDbListings());
 
   const parsed = parseQuery(filters.q ?? '');
   const term = parsed.text.replace(/\bnear\s+me\b/gi, ' ').replace(/\s+/g, ' ').trim();

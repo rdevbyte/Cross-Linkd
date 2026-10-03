@@ -1,20 +1,22 @@
 ---
 import BaseLayout from '@/layouts/BaseLayout.astro';
+import '@/styles/how-it-works.css';
 import StatusBadge from '@/components/StatusBadge.astro';
 import { ATTESTATION, COMMUNITY_LISTED, LISTING_STATUSES, SHORT_DISCLAIMER } from '@/lib/trustCopy';
 
 const user = Astro.locals.user;
+const slugId = (value: string) => value.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
 
 const steps = [
   ['Submit or discover a listing', 'Owners and community members can submit a profile. Visitors can search what is already published.'],
   ['Profile reviewed for completeness', 'CrossLinkd may check for missing fields and obvious inconsistencies. That is not a check of licenses, credentials, faith, or quality.'],
   ['Listing published', 'A published profile is owner-submitted. Publishing is not an endorsement, and an incomplete submission is not published.'],
   ['Owner claims or confirms the profile', 'Owner claimed means someone showed control of a contact channel. Recently confirmed by owner means the owner said the details are current.'],
-  ['Listing is maintained or reported by the community', 'Owners can update a profile. Readers can report a concern. A report is not an investigation.'],
+  ['Listing maintained or reported by the community', 'Owners can update a profile. Readers can report a concern. A report is not an investigation.'],
 ];
 
 const ownerSteps = [
-  ['Submit a basic listing', 'Name, type, and contact details. The basic listing is free. No credit card, and no identity documents.'],
+  ['Submit a basic listing', 'Name, type, and contact details. The basic listing is free. No credit card required.'],
   ['Provide accurate information', 'You are responsible for the text, including any faith or credential statement.'],
   ['Receive a completeness review', 'Missing fields may be flagged. This does not confirm Christian ownership, a license, or service quality.'],
   ['Claim or confirm the listing', 'Show control of a contact channel. That status is Owner claimed, not a verification.'],
@@ -23,25 +25,95 @@ const ownerSteps = [
   ['Respond to corrections or reports', 'Readers can flag a problem. You can correct the profile or reply through the contact form.'],
 ];
 
+const statusItems = [COMMUNITY_LISTED, ...LISTING_STATUSES].map((status) => ({
+  ...status,
+  id: `status-${slugId(status.name)}`,
+}));
+const statusDefinition = (name: string) => statusItems.find((status) => status.name === name)?.definition ?? '';
+
+const listingChanges = [
+  { title: 'Pending review', body: 'A completeness check may still be open. It is not a public verification badge. A listing can appear as owner-submitted before that check.' },
+  { title: 'Published', body: 'The profile is visible in search. Publication is not an endorsement.' },
+  { title: 'Owner claimed', body: statusDefinition('Owner claimed') },
+  { title: 'Recently confirmed by owner', body: statusDefinition('Recently confirmed by owner') },
+  { title: 'Needs update', body: statusDefinition('Needs update') },
+  { title: 'Inactive', body: statusDefinition('Inactive') },
+  { title: 'Community reported', body: statusDefinition('Community reported') },
+];
+
 const reports = [
-  ['Report inaccurate information', '/contact?topic=inaccurate'],
-  ['Report a duplicate', '/contact?topic=duplicate'],
-  ['Report spam or impersonation', '/contact?topic=spam'],
-  ['Request a correction', '/contact?topic=correction'],
-  ['Request removal', '/contact?topic=removal'],
+  'Report inaccurate information',
+  'Report a duplicate',
+  'Report spam or impersonation',
+  'Request a correction',
+  'Request removal',
+];
+
+const profileExampleItems = [
+  { label: 'Category', value: 'Shown when the owner chooses one.' },
+  { label: 'Location', value: 'Shown when the owner provides a place, or marked Online.' },
+  { label: 'Owner-submitted status', badge: { name: 'Owner-submitted', definition: 'The business provided the listing information.' } },
+  { label: 'Owner claimed status', badge: { name: 'Owner claimed', definition: 'Someone demonstrated control of the listing or business contact channel.' } },
+  { label: 'Website confirmed status', badge: { name: 'Website confirmed', definition: 'The owner demonstrated control of the listed website or email address.' } },
+  { label: 'Last confirmed by owner', value: 'Not shown on this example.' },
+  { label: 'Reviews or community feedback', value: 'No reviews yet.' },
+];
+
+const profileElements = [
+  { title: 'Name and category', body: 'Written by the person who submitted the listing.' },
+  { title: 'Status labels', body: 'Readable without hovering. A label is not a quality score.' },
+  { title: 'Confirmation date', body: 'Appears only after an owner reconfirms. This example has none.' },
+  { title: 'Feedback', body: 'Shown only after a person submits it. Nothing is invented here.' },
+  { title: 'Report option', body: 'A report is community reported. It is not proof of an investigation.' },
+];
+
+const requirements = [
+  {
+    title: 'Required information',
+    body: [
+      ['Listing type', 'Choose the type for the profile.'],
+      ['Name', 'Provide the name of the business or organization.'],
+      ['Accuracy attestation', `“${ATTESTATION}”`],
+    ],
+  },
+  {
+    title: 'Information that is not required',
+    intro: 'CrossLinkd does not request:',
+    body: [
+      ['Identity documents', 'Not requested.'],
+      ['Licenses', 'Not requested.'],
+      ['Private religious records', 'Not requested.'],
+    ],
+  },
+  {
+    title: 'Public information',
+    description: 'Only contact fields you mark as public appear on the profile.',
+  },
+  {
+    title: 'Optional faith statements',
+    description: 'A faith statement is optional and self-reported.',
+  },
+  {
+    title: 'What happens after submission',
+    description: 'A complete form may publish as owner-submitted. An incomplete submission is not published. Publication is not an endorsement.',
+  },
+  {
+    title: 'Updating or removing a claimed listing',
+    description: 'Edit a claimed listing from the dashboard when details change, or request removal.',
+  },
 ];
 
 const faqs = [
-  ['What “Christian-owned” means on CrossLinkd', 'It means the person who submitted the listing identified it as Christian-owned. CrossLinkd does not confirm faith, ownership, or practice.'],
-  ['What information is self-reported', 'Name, category, location, hours, faith statements, and any credentials written in the profile are provided by the submitter. Treat them as owner-submitted.'],
-  ['What CrossLinkd reviews', 'A completeness review looks for missing fields and obvious inconsistencies. It is not a background check.'],
-  ['What CrossLinkd does not verify', 'CrossLinkd does not independently verify Christian ownership, religious beliefs, licenses, credentials, certifications, service quality, or business legitimacy.'],
-  ['What Listing Statuses mean', 'They describe how a profile was added or updated. None of them is a certification, a church ruling, or a guarantee of quality.'],
-  ['Where listings come from', 'Business owners, churches, ministries, and sometimes community members submit them. Community-listed means the profile is in the directory, not that it was investigated.'],
-  ['Whether a church recommendation is an endorsement', 'A church or community recommendation indicates that someone submitted or shared the listing. It does not necessarily mean the church endorses the business, its services, its owners, or every belief associated with it.'],
-  ['Why listings may be removed', 'Duplicates, incomplete information, spam, impersonation, or a submission-policy violation can be removed. Removal is a directory decision. It is not a finding that some other listing was verified.'],
-  ['How owners can correct information', 'Claim the listing and edit it, or request a correction from the contact form. A correction does not create a verification.'],
-  ['How users can report inaccurate information', 'Use a report link below. A report is community reported. It asks for a look at the listing. It does not mean the business has already been investigated.'],
+  { question: 'What “Christian-owned” means on CrossLinkd', answer: 'It means the person who submitted the listing identified it as Christian-owned. CrossLinkd does not confirm faith, ownership, or practice.' },
+  { question: 'What information is self-reported', answer: 'Name, category, location, hours, faith statements, and any credentials written in the profile are provided by the submitter. Treat them as owner-submitted.' },
+  { question: 'What CrossLinkd reviews', answer: 'A completeness review looks for missing fields and obvious inconsistencies. It is not a background check.' },
+  { question: 'What CrossLinkd does not verify', answer: 'CrossLinkd does not independently verify Christian ownership, religious beliefs, licenses, credentials, certifications, service quality, or business legitimacy.' },
+  { question: 'What listing statuses mean', answer: 'They describe how a profile was added or updated. None of them is a certification, a church ruling, or a guarantee of quality.' },
+  { question: 'Where listings come from', answer: 'Business owners, churches, ministries, and sometimes community members submit them. Community-listed means the profile is in the directory, not that it was investigated.' },
+  { question: 'Whether a church recommendation is an endorsement', answer: 'A church or community recommendation indicates that someone submitted or shared the listing. It does not necessarily mean the church endorses the business, its services, its owners, or every belief associated with it.' },
+  { question: 'Why listings may be removed', answer: 'Duplicates, incomplete information, spam, impersonation, or a submission-policy violation can be removed. Removal is a directory decision. It is not a finding that some other listing was verified.' },
+  { question: 'How owners can correct information', answer: 'Claim the listing and edit it, or request a correction from the contact form. A correction does not create a verification.' },
+  { question: 'How users can report inaccurate information', answer: 'Use a report option in the Report or Request a Change section. A report asks for a look at the listing; it does not mean the business has already been investigated.' },
 ];
 
 const seo = {
@@ -51,340 +123,245 @@ const seo = {
   schema: {
     '@context': 'https://schema.org',
     '@type': 'FAQPage',
-    mainEntity: faqs.map(([q, a]) => ({
+    mainEntity: faqs.map(({ question, answer }) => ({
       '@type': 'Question',
-      name: q,
-      acceptedAnswer: { '@type': 'Answer', text: a },
+      name: question,
+      acceptedAnswer: { '@type': 'Answer', text: answer },
     })),
   },
 };
 ---
 <BaseLayout user={user} seo={seo}>
   <div class="hiw-page mx-auto max-w-6xl px-4 py-8 sm:py-12">
-    <section class="card hiw-section" aria-labelledby="hiw-heading">
-      <div class="grid items-start gap-5 lg:grid-cols-[1.15fr_.85fr] lg:gap-8">
-        <div>
-          <p class="hiw-kicker">Two ways to use the directory</p>
-          <h1 id="hiw-heading" class="mt-2 text-3xl font-bold leading-tight sm:text-5xl">How CrossLinkd works</h1>
-          <p class="mt-4 max-w-xl text-base leading-relaxed sm:text-lg" style="color:var(--text-soft)">
-            Discover community-listed businesses and organizations, or create a free listing for your own business.
-          </p>
-          <p class="mt-4 max-w-xl text-sm leading-relaxed" style="color:var(--text-soft)">{SHORT_DISCLAIMER}</p>
+    <header class="hiw-intro">
+      <p class="hiw-kicker">A GUIDE TO THE DIRECTORY</p>
+      <h1 id="hiw-heading" class="mt-2 text-3xl font-bold leading-tight sm:text-5xl">How CrossLinkd works</h1>
+      <p class="mt-4 max-w-3xl text-base leading-relaxed sm:text-lg" style="color:var(--text-soft)">
+        Discover community-listed businesses and organizations, or create a free listing for your own business.
+      </p>
+      <p class="mt-3 max-w-3xl text-sm leading-relaxed" style="color:var(--text-soft)">{SHORT_DISCLAIMER}</p>
+    </header>
+
+    <article class="card hiw-outline" aria-labelledby="hiw-heading">
+      <section class="hiw-outline-section" aria-labelledby="process-heading">
+        <span class="hiw-section-index" aria-hidden="true">01</span>
+        <div class="hiw-section-content">
+          <header class="hiw-section-head">
+            <h2 id="process-heading">The Path, in Five Steps</h2>
+            <p>A completeness review checks whether the form is filled in. It does not verify credentials.</p>
+          </header>
+          <ol class="hiw-outline-list">
+            {steps.map(([title, body], index) => (
+              <li class="hiw-outline-entry">
+                <span class="hiw-entry-index" aria-hidden="true">1.{index + 1}</span>
+                <div class="hiw-entry-content">
+                  <h3>{title}</h3>
+                  <p>{body}</p>
+                </div>
+              </li>
+            ))}
+          </ol>
         </div>
+      </section>
 
-        <figure class="hiw-item" aria-label="Example profile preview. Not a published listing.">
-          <figcaption class="text-xs font-bold uppercase tracking-wide" style="color:var(--text-mute)">Example only · not a published listing</figcaption>
-          <div class="mt-3 flex items-start justify-between gap-3">
-            <div>
-              <p class="text-lg font-bold leading-snug">Example profile</p>
-              <p class="mt-1 text-sm leading-relaxed" style="color:var(--text-soft)">Category and place appear when an owner provides them.</p>
-            </div>
-            <span class="chip shrink-0">No reviews yet</span>
-          </div>
-          <div class="mt-3 flex flex-wrap gap-1.5">
-            <StatusBadge name="Owner-submitted" definition="The business provided the listing information." />
-            <StatusBadge name="Owner claimed" definition="Someone demonstrated control of the listing or business contact channel." />
-          </div>
-          <p class="mt-3 text-xs leading-relaxed" style="color:var(--text-mute)">No confirmation date is shown. This illustration has no owner, no reviews, and no credentials.</p>
-        </figure>
-      </div>
-    </section>
-
-    <section class="card hiw-section" aria-labelledby="process-heading">
-      <header class="hiw-head">
-        <h2 id="process-heading" class="section-title">The path, in five steps</h2>
-        <p class="section-sub">A completeness review checks whether the form is filled in. It does not verify credentials.</p>
-      </header>
-      <ol class="hiw-grid hiw-steps">
-        {steps.map(([title, body], index) => (
-          <li class="hiw-item">
-            <p class="hiw-kicker">Step {index + 1} of 5</p>
-            <h3 class="mt-1 text-lg font-semibold leading-snug">{title}</h3>
-            <p class="mt-2 text-sm leading-relaxed" style="color:var(--text-soft)">{body}</p>
-          </li>
-        ))}
-      </ol>
-    </section>
-
-    <section class="card hiw-section" aria-labelledby="demo-heading">
-      <header class="hiw-head">
-        <h2 id="demo-heading" class="section-title">What a profile shows</h2>
-        <p class="section-sub">Status details describe how this profile was submitted or updated. They do not guarantee business quality, licensing, pricing, outcomes, Christian ownership, or theological agreement.</p>
-      </header>
-      <div class="hiw-profile">
-        <article class="hiw-item" aria-label="Annotated example listing. Not a real business.">
-          <p class="text-xs font-bold uppercase tracking-wide" style="color:var(--text-mute)">Illustration · not in the directory</p>
-          <h3 class="mt-2 text-2xl font-semibold leading-snug">Example profile</h3>
-          <p class="mt-1 text-sm leading-relaxed" style="color:var(--text-soft)">Category: shown when the owner chooses one</p>
-          <p class="text-sm leading-relaxed" style="color:var(--text-soft)">Location: shown when the owner provides a place, or marked Online</p>
-          <div class="mt-4 flex flex-wrap gap-1.5">
-            <StatusBadge name="Owner-submitted" />
-            <StatusBadge name="Owner claimed" />
-            <StatusBadge name="Website confirmed" />
-          </div>
-          <dl class="mt-4 text-sm">
-            <div class="flex justify-between gap-3 border-b py-2.5" style="border-color:var(--border)">
-              <dt style="color:var(--text-mute)">Last confirmed by owner</dt>
-              <dd class="text-right font-semibold">Not shown on this example</dd>
-            </div>
-            <div class="flex justify-between gap-3 border-b py-2.5" style="border-color:var(--border)">
-              <dt style="color:var(--text-mute)">Reviews or community feedback</dt>
-              <dd class="text-right font-semibold">No reviews yet</dd>
-            </div>
-          </dl>
-          <div class="mt-4 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
-            <button type="button" class="btn btn-secondary min-h-11 w-full sm:w-auto" disabled aria-disabled="true">Contact</button>
-            <a href="/contact?topic=inaccurate" class="btn btn-primary min-h-11 w-full sm:w-auto">Report listing</a>
-          </div>
-          <p class="mt-3 text-xs leading-relaxed" style="color:var(--text-mute)">Contact is disabled here because this is not a published listing. A real profile shows the contact method the owner chose to make public.</p>
-        </article>
-        <ol class="hiw-notes">
-          <li class="hiw-item"><strong style="color:var(--text)">1. Name and category.</strong> <span style="color:var(--text-soft)">Written by the person who submitted the listing.</span></li>
-          <li class="hiw-item"><strong style="color:var(--text)">2. Status labels.</strong> <span style="color:var(--text-soft)">Readable without hovering. A label is not a quality score.</span></li>
-          <li class="hiw-item"><strong style="color:var(--text)">3. Confirmation date.</strong> <span style="color:var(--text-soft)">Appears only after an owner reconfirms. This example has none.</span></li>
-          <li class="hiw-item"><strong style="color:var(--text)">4. Feedback.</strong> <span style="color:var(--text-soft)">Shown only after a person submits it. Nothing is invented here.</span></li>
-          <li class="hiw-item"><strong style="color:var(--text)">5. Report.</strong> <span style="color:var(--text-soft)">A report is community reported. It is not proof of an investigation.</span></li>
-        </ol>
-      </div>
-    </section>
-
-    <section id="statuses" class="card hiw-section" aria-labelledby="status-heading">
-      <header class="hiw-head">
-        <h2 id="status-heading" class="section-title">Listing Statuses</h2>
-        <p class="section-sub">Each label is text plus an icon. Color is not the only cue. None of these means CrossLinkd certified the organization.</p>
-      </header>
-      <dl class="hiw-grid hiw-statuses">
-        <div class="hiw-item">
-          <dt class="font-bold"><StatusBadge name={COMMUNITY_LISTED.name} /></dt>
-          <dd class="mt-2 text-sm leading-relaxed" style="color:var(--text-soft)">{COMMUNITY_LISTED.definition}</dd>
+      <section class="hiw-outline-section" aria-labelledby="profile-heading">
+        <span class="hiw-section-index" aria-hidden="true">02</span>
+        <div class="hiw-section-content">
+          <header class="hiw-section-head">
+            <h2 id="profile-heading">What a Profile Shows</h2>
+          </header>
+          <ol class="hiw-outline-list">
+            <li class="hiw-outline-entry">
+              <span class="hiw-entry-index" aria-hidden="true">2.1</span>
+              <div class="hiw-entry-content">
+                <h3>Profile status details</h3>
+                <p>Status details describe how a profile was submitted or updated. They do not guarantee business quality, licensing, pricing, outcomes, Christian ownership, or theological agreement.</p>
+              </div>
+            </li>
+            <li class="hiw-outline-entry">
+              <span class="hiw-entry-index" aria-hidden="true">2.2</span>
+              <div class="hiw-entry-content">
+                <h3>Example profile</h3>
+                <div class="hiw-example">
+                  <p class="hiw-example-label">ILLUSTRATION · NOT A PUBLISHED LISTING</p>
+                  <ul class="hiw-detail-list">
+                    {profileExampleItems.map((item) => (
+                      <li class="hiw-detail-row">
+                        <span class="hiw-detail-label">{item.label}</span>
+                        <span class="hiw-detail-value">
+                          {item.badge ? <StatusBadge name={item.badge.name} definition={item.badge.definition} /> : item.value}
+                        </span>
+                      </li>
+                    ))}
+                    <li class="hiw-detail-row">
+                      <span class="hiw-detail-label">Contact options</span>
+                      <span class="hiw-detail-value">
+                        <span class="hiw-contact-demo">
+                          <button type="button" class="btn btn-secondary min-h-11" disabled aria-disabled="true">Contact</button>
+                          <a href="/contact?topic=inaccurate" class="btn btn-primary min-h-11">Report listing</a>
+                        </span>
+                        <span class="hiw-detail-note">Contact is disabled here because this is not a published listing. A real profile shows the contact method the owner chose to make public.</span>
+                      </span>
+                    </li>
+                  </ul>
+                  <p class="hiw-example-footnote">This illustration has no owner, no reviews, and no credentials.</p>
+                </div>
+              </div>
+            </li>
+            <li class="hiw-outline-entry">
+              <span class="hiw-entry-index" aria-hidden="true">2.3</span>
+              <div class="hiw-entry-content">
+                <h3>Profile elements explained</h3>
+                <ul class="hiw-explanation-list">
+                  {profileElements.map((item) => (
+                    <li class="hiw-explanation-row">
+                      <span class="hiw-bullet" aria-hidden="true"></span>
+                      <p><strong>{item.title}.</strong> {item.body}</p>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </li>
+          </ol>
         </div>
-        {LISTING_STATUSES.map((status) => (
-          <div class="hiw-item">
-            <dt class="font-bold"><StatusBadge name={status.name} /></dt>
-            <dd class="mt-2 text-sm leading-relaxed" style="color:var(--text-soft)">{status.definition}</dd>
-          </div>
-        ))}
-      </dl>
-    </section>
+      </section>
 
-    <section class="card hiw-section" aria-labelledby="owner-heading">
-      <header class="hiw-head">
-        <h2 id="owner-heading" class="section-title">For business owners</h2>
-        <p class="section-sub">Free forever for the basic listing. No credit card required.</p>
-      </header>
-      <ol class="hiw-grid hiw-owners">
-        {ownerSteps.map(([title, body], index) => (
-          <li class="hiw-item hiw-owner">
-            <span class="hiw-num" aria-hidden="true">{index + 1}</span>
-            <span>
-              <h3 class="text-base font-semibold leading-snug">{title}</h3>
-              <p class="mt-1 text-sm leading-relaxed" style="color:var(--text-soft)">{body}</p>
-            </span>
-          </li>
-        ))}
-      </ol>
-      <div class="hiw-grid hiw-notes-3">
-        <div class="hiw-item text-sm leading-relaxed" style="color:var(--text-soft)"><strong style="color:var(--text)">Required.</strong> Listing type, name, and this attestation: “{ATTESTATION}” No identity documents, licenses, or private religious records are requested.</div>
-        <div class="hiw-item text-sm leading-relaxed" style="color:var(--text-soft)"><strong style="color:var(--text)">Public.</strong> Only contact fields you mark as public appear on the profile. A faith statement is optional and self-reported.</div>
-        <div class="hiw-item text-sm leading-relaxed" style="color:var(--text-soft)"><strong style="color:var(--text)">After submit.</strong> A complete form may publish as owner-submitted. That is not guaranteed if required fields are missing, and it is not an endorsement. Update a claimed listing in the dashboard, or <a href="/contact?topic=removal" class="underline">request removal</a>.</div>
-      </div>
-    </section>
-
-    <section class="card hiw-section" aria-labelledby="maintain-heading">
-      <header class="hiw-head">
-        <h2 id="maintain-heading" class="section-title">How a listing changes</h2>
-        <p class="section-sub">These are directory states, not quality grades.</p>
-      </header>
-      <ul class="hiw-grid hiw-states">
-        {[
-          ['Pending review', 'A completeness check may still be open. It is not a public verification badge. A listing can appear as owner-submitted before that check.'],
-          ['Published', 'The profile is visible in search. Publication is not an endorsement.'],
-          ['Owner claimed', LISTING_STATUSES[1].definition],
-          ['Recently confirmed by owner', LISTING_STATUSES[3].definition],
-          ['Needs update', LISTING_STATUSES[5].definition],
-          ['Inactive', LISTING_STATUSES[6].definition],
-          ['Community reported', LISTING_STATUSES[4].definition],
-        ].map(([title, body]) => (
-          <li class="hiw-item">
-            <h3 class="text-base font-semibold"><StatusBadge name={title} /></h3>
-            <p class="mt-2 text-sm leading-relaxed" style="color:var(--text-soft)">{body}</p>
-          </li>
-        ))}
-      </ul>
-      <div class="hiw-foot">
-        <h3 class="text-lg font-semibold">Report or request a change</h3>
-        <div class="mt-3 grid gap-2 sm:flex sm:flex-wrap">
-          {reports.map(([label, href]) => (
-            <a href={href} class="btn btn-secondary min-h-11 w-full justify-center sm:w-auto">{label}</a>
-          ))}
+      <section id="statuses" class="hiw-outline-section" aria-labelledby="statuses-heading">
+        <span class="hiw-section-index" aria-hidden="true">03</span>
+        <div class="hiw-section-content">
+          <header class="hiw-section-head">
+            <h2 id="statuses-heading">Listing Statuses</h2>
+            <p>Each label is text plus an icon. Color is not the only cue. None of these means CrossLinkd certified the organization.</p>
+          </header>
+          <ol class="hiw-outline-list">
+            {statusItems.map((status, index) => (
+              <li class="hiw-outline-entry">
+                <span class="hiw-entry-index" aria-hidden="true">3.{index + 1}</span>
+                <div class="hiw-entry-content hiw-status-entry">
+                  <h3><StatusBadge name={status.name} /></h3>
+                  <p>{status.definition}</p>
+                </div>
+              </li>
+            ))}
+          </ol>
         </div>
-      </div>
-    </section>
+      </section>
 
-    <section class="card hiw-section" aria-labelledby="faq-heading">
-      <header class="hiw-head">
-        <h2 id="faq-heading" class="section-title">Trust and transparency</h2>
-      </header>
-      <div class="hiw-grid hiw-faq">
-        {faqs.map(([q, a]) => (
-          <details class="hiw-item hiw-faq-item">
-            <summary>
-              <span class="font-bold leading-snug">{q}</span>
-              <span class="faq-state">
-                <span class="faq-show">Show</span>
-                <span class="faq-hide">Hide</span>
-              </span>
-            </summary>
-            <p>{a}</p>
-          </details>
-        ))}
-      </div>
-    </section>
+      <section class="hiw-outline-section" aria-labelledby="owners-heading">
+        <span class="hiw-section-index" aria-hidden="true">04</span>
+        <div class="hiw-section-content">
+          <header class="hiw-section-head">
+            <h2 id="owners-heading">For Business Owners</h2>
+            <p>Free forever for the basic listing. No credit card required.</p>
+          </header>
+          <ol class="hiw-outline-list">
+            {ownerSteps.map(([title, body], index) => (
+              <li class="hiw-outline-entry">
+                <span class="hiw-entry-index" aria-hidden="true">4.{index + 1}</span>
+                <div class="hiw-entry-content">
+                  <h3>{title}</h3>
+                  <p>{body}</p>
+                </div>
+              </li>
+            ))}
+          </ol>
+        </div>
+      </section>
 
-    <section class="card hiw-section hiw-close" aria-labelledby="hiw-close-heading">
-      <h2 id="hiw-close-heading" class="text-2xl font-semibold leading-snug sm:text-3xl">Help build a clearer, more transparent directory for your community.</h2>
-    </section>
+      <section class="hiw-outline-section" aria-labelledby="requirements-heading">
+        <span class="hiw-section-index" aria-hidden="true">05</span>
+        <div class="hiw-section-content">
+          <header class="hiw-section-head">
+            <h2 id="requirements-heading">Listing Requirements and Visibility</h2>
+            <p>What you need to submit, what remains optional, and what appears on a public profile.</p>
+          </header>
+          <ol class="hiw-outline-list">
+            {requirements.map((item, index) => (
+              <li class="hiw-outline-entry">
+                <span class="hiw-entry-index" aria-hidden="true">5.{index + 1}</span>
+                <div class="hiw-entry-content">
+                  <h3>{item.title}</h3>
+                  {item.intro && <p class="hiw-entry-intro">{item.intro}</p>}
+                  {item.body && (
+                    <ul class="hiw-requirement-list">
+                      {item.body.map(([label, description]) => (
+                        <li><strong>{label}.</strong> {description}</li>
+                      ))}
+                    </ul>
+                  )}
+                  {item.description && <p>{item.description}</p>}
+                  {index === 5 && <p class="hiw-entry-link"><a href="/contact?topic=removal">Request removal</a></p>}
+                </div>
+              </li>
+            ))}
+          </ol>
+        </div>
+      </section>
+
+      <section class="hiw-outline-section" aria-labelledby="lifecycle-heading">
+        <span class="hiw-section-index" aria-hidden="true">06</span>
+        <div class="hiw-section-content">
+          <header class="hiw-section-head">
+            <h2 id="lifecycle-heading">How a Listing Changes</h2>
+            <p>These are directory states, not quality grades.</p>
+          </header>
+          <ol class="hiw-outline-list">
+            {listingChanges.map((item, index) => (
+              <li class="hiw-outline-entry">
+                <span class="hiw-entry-index" aria-hidden="true">6.{index + 1}</span>
+                <div class="hiw-entry-content hiw-status-entry">
+                  <h3><StatusBadge name={item.title} /></h3>
+                  <p>{item.body}</p>
+                </div>
+              </li>
+            ))}
+          </ol>
+        </div>
+      </section>
+
+      <section class="hiw-outline-section" aria-labelledby="reports-heading">
+        <span class="hiw-section-index" aria-hidden="true">07</span>
+        <div class="hiw-section-content">
+          <header class="hiw-section-head">
+            <h2 id="reports-heading">Report or Request a Change</h2>
+            <p>Choose the reason that best describes the issue. A report asks for a review of a directory listing; it is not proof of an investigation.</p>
+          </header>
+          <ol class="hiw-outline-list">
+            {reports.map((report, index) => (
+              <li class="hiw-outline-entry">
+                <span class="hiw-entry-index" aria-hidden="true">7.{index + 1}</span>
+                <div class="hiw-entry-content">
+                  <h3>{report}</h3>
+                </div>
+              </li>
+            ))}
+          </ol>
+          <div class="hiw-report-footer">
+            <a class="hiw-action-link" href="/contact">Open the contact form <span aria-hidden="true">↗</span></a>
+          </div>
+        </div>
+      </section>
+
+      <section class="hiw-outline-section hiw-last-section" aria-labelledby="transparency-heading">
+        <span class="hiw-section-index" aria-hidden="true">08</span>
+        <div class="hiw-section-content">
+          <header class="hiw-section-head">
+            <h2 id="transparency-heading">Trust and Transparency</h2>
+            <p>Clear answers about what the directory does, what it does not do, and how to interpret a listing.</p>
+          </header>
+          <ol class="hiw-outline-list">
+            {faqs.map((faq, index) => (
+              <li class="hiw-outline-entry hiw-faq-entry">
+                <span class="hiw-entry-index" aria-hidden="true">8.{index + 1}</span>
+                <div class="hiw-entry-content">
+                  <h3>{faq.question}</h3>
+                  <p>{faq.answer}</p>
+                </div>
+              </li>
+            ))}
+          </ol>
+        </div>
+      </section>
+    </article>
   </div>
 </BaseLayout>
-<style>
-  .hiw-page {
-    display: grid;
-    gap: 1.25rem;
-  }
-  .hiw-section {
-    padding: 1.25rem;
-    scroll-margin-top: 5.5rem;
-  }
-  .hiw-head {
-    margin-bottom: 1.25rem;
-    padding-bottom: 1rem;
-    border-bottom: 1px solid var(--border);
-  }
-  .hiw-head .section-title {
-    font-weight: 800;
-    color: var(--text);
-  }
-  .hiw-head .section-sub {
-    margin-top: 0.4rem;
-    max-width: 46rem;
-    line-height: 1.6;
-  }
-  .hiw-kicker {
-    color: var(--accent);
-    font-size: 0.8125rem;
-    font-weight: 700;
-    letter-spacing: 0.01em;
-  }
-  .hiw-grid,
-  .hiw-notes,
-  .hiw-profile {
-    display: grid;
-    gap: 0.875rem;
-  }
-  .hiw-item {
-    min-width: 0;
-    height: 100%;
-    padding: 1rem 1.125rem;
-    border: 1px solid var(--border);
-    border-radius: 1.25rem;
-    background: var(--surface-2);
-    box-shadow: 0 1px 2px rgba(15, 16, 20, 0.04);
-    color: var(--text);
-  }
-  .hiw-owner {
-    display: flex;
-    gap: 0.75rem;
-    align-items: flex-start;
-  }
-  .hiw-num {
-    display: inline-flex;
-    height: 2rem;
-    width: 2rem;
-    flex-shrink: 0;
-    align-items: center;
-    justify-content: center;
-    border-radius: 999px;
-    border: 1px solid var(--border-strong);
-    background: var(--surface);
-    font-size: 0.875rem;
-    font-weight: 700;
-  }
-  .hiw-foot {
-    margin-top: 1.25rem;
-    padding-top: 1.25rem;
-    border-top: 1px solid var(--border);
-  }
-  .hiw-close {
-    padding-top: 2.25rem;
-    padding-bottom: 2.25rem;
-    text-align: center;
-  }
-  .min-h-11 { min-height: 44px; }
-  .hiw-page a:focus-visible,
-  .hiw-page button:focus-visible,
-  .hiw-page summary:focus-visible {
-    outline: 2px solid var(--accent);
-    outline-offset: 3px;
-  }
-  .hiw-faq-item {
-    height: auto;
-    padding: 0;
-  }
-  .hiw-faq-item summary {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 0.75rem;
-    min-height: 44px;
-    padding: 0.9rem 1.125rem;
-    cursor: pointer;
-    list-style: none;
-    border-radius: 1.25rem;
-  }
-  .hiw-faq-item summary::-webkit-details-marker { display: none; }
-  .hiw-faq-item p {
-    padding: 0 1.125rem 1rem;
-    color: var(--text-soft);
-    font-size: 0.875rem;
-    line-height: 1.65;
-  }
-  .faq-state {
-    flex-shrink: 0;
-    color: var(--text-soft);
-    font-size: 0.8125rem;
-    font-weight: 700;
-  }
-  .faq-hide { display: none; }
-  details[open] .faq-show { display: none; }
-  details[open] .faq-hide { display: inline; }
-  .hiw-page .btn:disabled {
-    cursor: not-allowed;
-    color: var(--text-soft);
-    border-color: var(--border);
-  }
-  @media (min-width: 640px) {
-    .hiw-page { gap: 1.5rem; }
-    .hiw-section { padding: 1.5rem 1.75rem 1.75rem; }
-    .hiw-owners,
-    .hiw-states,
-    .hiw-faq { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-    .hiw-notes { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  }
-  @media (min-width: 1024px) {
-    .hiw-section { padding: 1.75rem 2rem 2rem; }
-    .hiw-steps { grid-template-columns: repeat(6, minmax(0, 1fr)); }
-    .hiw-steps > li { grid-column: span 2; }
-    .hiw-steps > li:nth-child(n + 4) { grid-column: span 3; }
-    .hiw-profile { grid-template-columns: 1.08fr 0.92fr; align-items: start; }
-    .hiw-notes { grid-template-columns: 1fr; }
-    .hiw-statuses,
-    .hiw-notes-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-    .hiw-states { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-  }
-  @media (min-width: 1200px) {
-    .hiw-statuses { grid-template-columns: repeat(4, minmax(0, 1fr)); }
-  }
-  @media (prefers-reduced-motion: reduce) {
-    .hiw-page { scroll-behavior: auto; }
-  }
-</style>

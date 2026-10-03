@@ -16,17 +16,16 @@
 | `AUTH_SECRET` | Session signing key — generate with `openssl rand -hex 32` |
 | `PUBLIC_SITE_URL` | e.g. `https://crosslinkd.com` — used in emails/links |
 | `CRON_SECRET` | Bearer token Vercel Cron sends to `/api/cron/*` |
-| `RESEND_API_KEY` | Email delivery (magic links, verification, resets, contact form) |
+| `RESEND_API_KEY` | Email delivery (magic links, verification, resets, feedback suggestions) |
 | `MAIL_FROM` | e.g. `CrossLinkd <mail@your-domain>` |
 | `ADMIN_SETUP_KEY` | Optional: enables the one-time `/admin/setup` bootstrap; remove after use |
-| `CONTACT_INBOX` | Optional: where contact-form mail lands |
+| `CONTACT_INBOX` | Optional: destination for feedback-suggestion email; `/contact` submissions are saved in the admin inbox, not emailed |
 
 ## Database schema
 ```bash
 DATABASE_URL=… DIRECT_URL=… npm run db:migrate     # applies drizzle/*.sql in order
-DATABASE_URL=… npm run db:seed -- --taxonomy       # optional: seed industries/denominations/types
+DATABASE_URL=… npm run db:seed                    # upserts taxonomy and event categories; no business rows
 ```
-`db:seed` without `--taxonomy` also copies the bundled sample listings into the DB as published rows — use it only for demo deployments.
 
 ## First administrator (choose one)
 1. **CLI (recommended):** register through the normal sign-up page, then
@@ -41,6 +40,8 @@ Role changes take effect on the user's **next sign-in** (roles ride the session 
 `/admin` — overview · `/admin/listings` — moderation queue (approve / request changes / reject / delete, note to owner) · `/admin/users` — role management (super admin only) · plus analytics, claims, reports, reviews, taxonomy, verifications.
 All admin pages and `/api/admin/*` endpoints enforce the role **server-side**; signed-out users are redirected to sign-in, non-admins get 403.
 
+Contact, appeal, and listing-inquiry submissions are saved in the `reports` table and appear in **Messages & reports** (`/admin/reports`). The `/api/contact` handler does not send an email notification; `CONTACT_INBOX` is used for feedback-suggestion emails.
+
 ## Listing workflow
 `Draft → Pending Review → Approved (published)` with `Rejected` / `Changes Requested` branches (owner revises & resubmits).
 Approved listings become publicly visible on search/detail/city/state pages; nothing else is ever rendered publicly. Owners see reviewer notes on their dashboard and can only ever read/write their own rows.
@@ -52,8 +53,8 @@ Approved listings become publicly visible on search/detail/city/state pages; not
 4. Reject a second listing with a note → A sees the note and "Revise & resubmit".
 5. Negative checks: signed-out `/admin` → redirected; signed-in non-admin `/admin` → 403; B opening A's listing edit API → 404; `/api/admin/users/<id>/role` as non-super-admin → 403.
 
-## Sample content (demo listings/events)
-The bundled curated listings and events are **demo data and are hidden by default** — a fresh deployment shows an empty directory, not fake businesses. For local demos/tests set `SHOW_SAMPLE_CONTENT=1` in the environment (or `.env`). Never enable it in production. To wipe submitted listings at any time: `npm run db:wipe-listings` (keeps users and taxonomy).
+## Sample content
+Bundled sample business listings have been removed from the application and are never seeded, including in demo mode. `SHOW_SAMPLE_CONTENT=1` may still enable illustrative local events/testimonials, but it never adds businesses. Production always suppresses that remaining sample content. To wipe real submitted listings: `npm run db:wipe-listings` (keeps users and taxonomy).
 
 ## Preview-data sections
 Secondary console pages (admin: analytics, claims, reports, reviews, taxonomy, verifications; dashboard: analytics, events, reviews, verification) are gated like everything else but currently render clearly labeled **illustrative sample content** ("Preview data" banner). No fake numbers are presented as live metrics. Core flows (listing queue, users/roles, moderation, owner lifecycle) are fully live against the database.

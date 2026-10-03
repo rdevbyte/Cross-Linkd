@@ -1,6 +1,6 @@
 /**
  * Seed script — loads listing types, industries, professions, denominations,
- * hashtags, event categories, and sample listings into Postgres.
+ * hashtags, and event categories into Postgres. No sample business listings are seeded.
  * Usage: DATABASE_URL=... npm run db:seed
  */
 import { drizzle } from 'drizzle-orm/node-postgres';
@@ -10,10 +10,8 @@ import { LISTING_TYPES } from '../data/listing-types';
 import { INDUSTRIES } from '../data/industries';
 import { DENOMINATIONS, TRADITIONS } from '../data/denominations';
 import { HASHTAG_CATALOG } from '../data/hashtags';
-import { SAMPLE_LISTINGS } from '../data/listings';
 
 async function main() {
-  const taxonomyOnly = process.argv.includes('--taxonomy') || process.env.SEED_TAXONOMY_ONLY === '1';
   const url = process.env.DATABASE_URL;
   if (!url) throw new Error('DATABASE_URL is required to seed.');
   const pool = new Pool({ connectionString: url });
@@ -92,23 +90,6 @@ async function main() {
   }
   console.log('  ✓ event categories');
 
-  // Sample listings (skip with --taxonomy: bundled sample data already powers
-  // previews; DB copies would duplicate them once approved listings merge in).
-  for (const l of taxonomyOnly ? [] : SAMPLE_LISTINGS) {
-    await db.insert(schema.listings).values({
-      slug: l.slug, name: l.name, typeSlug: l.typeSlug,
-      tagline: l.tagline, description: l.description,
-      website: l.website ?? null, phone: l.phone ?? null, email: l.email ?? null,
-      status: 'published', isClaimed: l.claimed ?? false,
-      isOnlineOnly: l.isOnlineOnly ?? false, priceRange: l.priceRange || null,
-      statementOfFaith: l.statementOfFaith ?? null,
-      languages: l.languages, accessibility: l.accessibility,
-      avgRating: String(l.rating), reviewCount: l.reviewCount,
-      recommendationCount: l.recommendations, viewCount: l.views,
-      featuredRank: l.featured ? 1 : 0, publishedAt: new Date(),
-    }).onConflictDoNothing();
-  }
-  console.log(`  ✓ sample listings seeded`);
 
   await pool.end();
   console.log('✅ Seed complete. Soli Deo Gloria!');

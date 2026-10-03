@@ -30,6 +30,18 @@ function withEnv(patch, fn) {
     });
 }
 
+// ----------------------------------------------------------- location display
+
+test('state names are abbreviated for display while non-U.S. regions are preserved', async () => {
+  const { formatRegionForDisplay } = await import('../src/lib/location.ts');
+  assert.equal(formatRegionForDisplay('IDAHO'), 'ID');
+  assert.equal(formatRegionForDisplay(' id '), 'ID');
+  assert.equal(formatRegionForDisplay('District of Columbia'), 'DC');
+  assert.equal(formatRegionForDisplay('Puerto Rico'), 'Puerto Rico');
+  assert.equal(formatRegionForDisplay('Ontario'), 'Ontario');
+  assert.equal(formatRegionForDisplay(null), '');
+});
+
 // ---------------------------------------------------------------- validation
 
 test('validation module loads and both listing schemas are usable', async () => {

@@ -1,6 +1,7 @@
 ---
 import BaseLayout from './BaseLayout.astro';
 import type { SeoInput } from '@/lib/seo';
+import { isStaff } from '@/lib/guards';
 
 interface Props {
   seo: SeoInput;
@@ -9,25 +10,28 @@ interface Props {
   active?: string;
 }
 const { seo, user, admin = false, active = '' } = Astro.props;
-const ownerLinks = [
-  ['Overview', '/dashboard', 'overview'],
-  ['My listings', '/dashboard/listings', 'listings'],
-  ['Reviews', '/dashboard/reviews', 'reviews'],
-  ['Listing status', '/dashboard/verification', 'verification'],
-  ['Analytics', '/dashboard/analytics', 'analytics'],
-  ['Events', '/dashboard/events', 'events'],
-  ['Account', '/account', 'account'],
+const canViewAdmin = isStaff(user);
+type SidebarLink = { label: string; href: string; key: string };
+const ownerLinks: SidebarLink[] = [
+  { label: 'Overview', href: '/dashboard', key: 'overview' },
+  { label: 'My listings', href: '/dashboard/listings', key: 'listings' },
+  { label: 'Reviews', href: '/dashboard/reviews', key: 'reviews' },
+  { label: 'Listing status', href: '/dashboard/verification', key: 'verification' },
+  { label: 'Analytics', href: '/dashboard/analytics', key: 'analytics' },
+  { label: 'Events', href: '/dashboard/events', key: 'events' },
+  { label: 'Account', href: '/account', key: 'account' },
+  ...(canViewAdmin ? [{ label: 'Messages & reports', href: '/admin/reports', key: 'reports' }] : []),
 ];
-const adminLinks = [
-  ['Overview', '/admin', 'overview'],
-  ['Listings', '/admin/listings', 'listings'],
-  ['Listing notes', '/admin/verifications', 'verifications'],
-  ['Claims', '/admin/claims', 'claims'],
-  ['Reviews', '/admin/reviews', 'reviews'],
-  ['Reports', '/admin/reports', 'reports'],
-  ['Taxonomy', '/admin/taxonomy', 'taxonomy'],
-  ['Users', '/admin/users', 'users'],
-  ['Analytics', '/admin/analytics', 'analytics'],
+const adminLinks: SidebarLink[] = [
+  { label: 'Overview', href: '/admin', key: 'overview' },
+  { label: 'Listings', href: '/admin/listings', key: 'listings' },
+  { label: 'Listing notes', href: '/admin/verifications', key: 'verifications' },
+  { label: 'Claims', href: '/admin/claims', key: 'claims' },
+  { label: 'Reviews', href: '/admin/reviews', key: 'reviews' },
+  { label: 'Messages & reports', href: '/admin/reports', key: 'reports' },
+  { label: 'Taxonomy', href: '/admin/taxonomy', key: 'taxonomy' },
+  { label: 'Users', href: '/admin/users', key: 'users' },
+  { label: 'Analytics', href: '/admin/analytics', key: 'analytics' },
 ];
 const links = admin ? adminLinks : ownerLinks;
 ---
@@ -39,13 +43,16 @@ const links = admin ? adminLinks : ownerLinks;
           <p class="text-xs font-bold uppercase tracking-wide" style="color:var(--text-mute)">{admin ? 'Admin' : 'Owner dashboard'}</p>
           <p class="truncate text-sm font-bold">{user?.displayName ?? 'Account'}</p>
         </div>
-        <nav class="mt-2 space-y-1">
-          {links.map(([label, href, key]) => (
-            <a href={href} aria-current={active === key ? 'page' : undefined}
-              class={`block rounded-xl px-3 py-2 text-sm font-medium transition-colors ${active === key ? 'bg-[rgba(216,149,34,.16)] font-bold' : 'hover:bg-[var(--surface-2)]'}`}>
-              {label}
-            </a>
-          ))}
+        <nav class="mt-2" aria-label={admin ? 'Admin pages' : 'Dashboard pages'}>
+          <ul class="dashboard-nav-list">
+            {links.map((link) => (
+              <li>
+                <a href={link.href} aria-current={active === link.key ? 'page' : undefined} class="dashboard-nav-link">
+                  {link.label}
+                </a>
+              </li>
+            ))}
+          </ul>
         </nav>
         <form method="POST" action="/api/auth/signout" class="mt-3 border-t pt-3" style="border-color:var(--border)">
           <button class="w-full rounded-xl px-3 py-2 text-left text-sm font-medium hover:bg-[var(--surface-2)]" style="color:var(--text-soft)">Sign out →</button>
@@ -55,3 +62,29 @@ const links = admin ? adminLinks : ownerLinks;
     </div>
   </div>
 </BaseLayout>
+<style>
+  .dashboard-nav-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+  .dashboard-nav-link {
+    display: block;
+    border-radius: 0.75rem;
+    padding: 0.5rem 0.75rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    line-height: 1.25rem;
+    transition: background-color 0.15s ease, color 0.15s ease;
+  }
+  .dashboard-nav-link:hover {
+    background: var(--surface-2);
+  }
+  .dashboard-nav-link[aria-current='page'] {
+    background: rgba(216, 149, 34, 0.16);
+    font-weight: 700;
+  }
+</style>

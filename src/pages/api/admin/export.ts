@@ -1,7 +1,5 @@
 import type { APIRoute } from 'astro';
 import { apiGuard } from '@/lib/guards';
-import { SAMPLE_LISTINGS } from '@/data/listings';
-import { includeSamples } from '@/lib/sampleGate';
 import { INDUSTRIES } from '@/data/industries';
 import { DENOMINATIONS } from '@/data/denominations';
 import { getDb, hasDatabase } from '@/db/client';
@@ -49,24 +47,6 @@ export const GET: APIRoute = async ({ url, locals }) => {
     }
   }
 
-  if (includeSamples()) {
-    for (const l of SAMPLE_LISTINGS) {
-      exportRows.push([
-        l.id,
-        l.slug,
-        l.name,
-        l.typeSlug,
-        l.industrySlug ?? (l.industries[0] ?? ''),
-        l.categorySlug ?? (l.professions[0] ?? ''),
-        l.customCategory ?? '',
-        (l.denominations ?? []).join(';'),
-        l.city,
-        l.region,
-        l.rating,
-        l.reviewCount,
-      ]);
-    }
-  }
 
   const header = 'id,slug,name,type,industry,category,custom_category,denominations,city,region,rating,reviews';
   const csvCell = (value: string | number) => {

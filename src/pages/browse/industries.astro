@@ -1,28 +1,51 @@
 ---
 import BaseLayout from '@/layouts/BaseLayout.astro';
+import '@/styles/how-it-works.css';
 import { INDUSTRIES, listingMatchesIndustry } from '@/data/industries';
 import { getPublicListings } from '@/lib/publicListings';
 
 const corpus = await getPublicListings();
 const user = Astro.locals.user;
 const countFor = (slug: string) => corpus.filter((listing) => listingMatchesIndustry(listing, slug)).length;
-const publishedCount = INDUSTRIES.reduce((sum, industry) => sum + countFor(industry.slug), 0);
+const industrySummaries = INDUSTRIES.map((industry) => ({
+  ...industry,
+  publishedCount: countFor(industry.slug),
+}));
+const publishedCount = industrySummaries.reduce((sum, industry) => sum + industry.publishedCount, 0);
 ---
 <BaseLayout user={user} seo={{ title: 'Browse Industries — CrossLinkd', description: 'Explore every industry in the directory, from skilled trades to healthcare to creative services.', path: '/browse/industries' }}>
-  <div class="mx-auto max-w-7xl px-4 py-10">
-    <h1 class="text-3xl font-bold">Browse industries</h1>
-    <p class="section-sub">Industry → Category → Profession → Service. Listings can belong to multiple industries.</p>
+  <div class="hiw-page mx-auto max-w-6xl px-4 py-8 sm:py-12">
+    <header class="hiw-intro">
+      <p class="hiw-kicker">Directory taxonomy</p>
+      <h1 class="mt-2 text-3xl font-bold leading-tight sm:text-5xl">Browse Industries</h1>
+    </header>
+
     {publishedCount === 0 && (
-      <p class="card mt-6 p-4 text-sm leading-relaxed" style="color:var(--text-soft)" role="status">No published listings are in these industries yet. A category with zero listings is not a coverage claim, and this page does not invent businesses to fill it.</p>
+      <p class="card hiw-example p-4 text-sm leading-relaxed" style="color:var(--text-soft)" role="status">No published listings are in these industries yet. A category with zero listings is not a coverage claim, and this page does not invent businesses to fill it.</p>
     )}
-    <div class="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3" data-animate="grid">
-      {INDUSTRIES.map((i) => (
-        <a href={`/industries/${i.slug}`} class="card card-hover p-5">
-          <p class="font-bold">{i.name}</p>
-          <p class="mt-1 text-sm" style="color:var(--text-soft)">{i.description}</p>
-          <p class="mt-2 text-[13px]" style="color:var(--text-mute)">{i.categories.length} categories • {countFor(i.slug)} published listing{countFor(i.slug) === 1 ? '' : 's'}</p>
-        </a>
-      ))}
-    </div>
+
+    <article class="card hiw-outline" aria-labelledby="industries-heading">
+      <section class="hiw-outline-section hiw-last-section">
+        <span class="hiw-section-index" aria-hidden="true">01</span>
+        <div class="hiw-section-content">
+          <header class="hiw-section-head">
+            <h2 id="industries-heading">Industries</h2>
+            <p>Industry → Category → Profession → Service. Listings can belong to multiple industries.</p>
+          </header>
+          <ol class="hiw-outline-list">
+            {industrySummaries.map((industry, index) => (
+              <li class="hiw-outline-entry">
+                <span class="hiw-entry-index" aria-hidden="true">{String(index + 1).padStart(2, '0')}</span>
+                <a class="hiw-entry-content hiw-industry-link" href={`/industries/${industry.slug}`}>
+                  <h3>{industry.name}</h3>
+                  <p>{industry.description}</p>
+                  <p class="hiw-industry-count">{industry.categories.length} categories • {industry.publishedCount} published listing{industry.publishedCount === 1 ? '' : 's'}</p>
+                </a>
+              </li>
+            ))}
+          </ol>
+        </div>
+      </section>
+    </article>
   </div>
 </BaseLayout>

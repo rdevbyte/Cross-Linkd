@@ -242,8 +242,7 @@ whitelisted renderer.
 - **Auth token hygiene**: single-use tokens stored **hashed** with short TTLs; magic-link & reset request flows
   are user-enumeration-safe (same response either way); setup key compared **timing-safe** and self-disables
   after the first super-admin; signup hard-codes `role: 'member'`.
-- **Sample content is properly gated** (`SHOW_SAMPLE_CONTENT` default off) across search/directory/sitemap —
-  the old "fake businesses in prod" blocker (B1) is genuinely fixed.
+- **Bundled sample business listings have been removed** from source, seed, search, directory, autocomplete, and exports. The remaining `SHOW_SAMPLE_CONTENT` gate applies only to illustrative non-listing content such as local preview events/testimonials.
 - **Security headers** present (nosniff, X-Frame-Options, Referrer-Policy, Permissions-Policy); cookies are
   HttpOnly + SameSite=Lax + Secure-in-prod; bcrypt cost 12.
 - **Privacy flags respected**: `showEmail/showPhone/showWebsite/showAddress/showDenomination` are enforced in

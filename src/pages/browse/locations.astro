@@ -4,6 +4,7 @@ import { getPublicListings } from '@/lib/publicListings';
 import { FOCUS_STATES } from '@/data/locations';
 import { slugify } from '@/lib/slug';
 import { isUsRegion } from '@/lib/trustCopy';
+import { formatRegionForDisplay } from '@/lib/location';
 
 const corpus = await getPublicListings();
 const user = Astro.locals.user;
@@ -86,7 +87,7 @@ const seo = {
         <section class="mt-8" aria-label={state.name}>
           <div class="flex items-baseline justify-between">
             <h2 class="text-xl font-semibold">
-              <a href={isUsRegion(state.abbr) ? `/states/${state.slug}` : (state.cities[0] ? `/locations/${state.cities[0].slug}` : '/search')} class="hover:underline">{state.name}</a>
+              <a href={isUsRegion(state.abbr) ? `/states/${state.slug}` : (state.cities[0] ? `/locations/${state.cities[0].slug}` : '/search')} class="hover:underline">{formatRegionForDisplay(state.abbr)}</a>
             </h2>
             <span class="chip">{state.count} {state.count === 1 ? 'listing' : 'listings'}</span>
           </div>
@@ -94,14 +95,14 @@ const seo = {
             {state.cities.map((c) => (
               <a href={`/locations/${c.slug}`} class="card card-hover p-4">
                 <div class="flex items-baseline justify-between gap-2">
-                  <p class="font-bold">{c.city}, {c.region}</p>
+                  <p class="font-bold">{c.city}, {formatRegionForDisplay(c.region)}</p>
                   <span class="chip !py-0.5 !text-[11px] font-bold">{c.count}</span>
                 </div>
                 <p class="mt-1 text-[13px]" style="color:var(--text-soft)">{isUsRegion(c.region) ? 'Owner-submitted listings. Not independently verified.' : 'Owner-submitted listing outside the United States.'}</p>
               </a>
             ))}
             <a href={`/search?near=${encodeURIComponent(state.name)}`} class="card card-hover p-4">
-              <p class="font-bold">All of {state.name}</p>
+              <p class="font-bold">All of {formatRegionForDisplay(state.abbr)}</p>
               <p class="mt-1 text-[13px]" style="color:var(--text-soft)">{isUsRegion(state.abbr) ? 'Search owner-submitted listings in this state.' : 'This is not a U.S. state. Search owner-submitted listings in this place.'}</p>
             </a>
           </div>

@@ -1,19 +1,18 @@
 ---
 import BaseLayout from '@/layouts/BaseLayout.astro';
 import Section from '@/components/Section.astro';
-import ListingCard from '@/components/ListingCard.astro';
 import SearchBar from '@/components/SearchBar';
-import { getDbListings, getPublicListings } from '@/lib/publicListings';
+import { getPublicListings } from '@/lib/publicListings';
 import { ARTICLES } from '@/data/articles';
 import { industryBySlug } from '@/data/industries';
 import { LISTING_TYPES } from '@/data/listing-types';
-import { slugify } from '@/lib/slug';
 import { isUsRegion } from '@/lib/trustCopy';
 import { calculateHomepageMetrics, formatMetricCount, metricNoun } from '@/lib/homeMetrics.mjs';
+import { formatRegionForDisplay } from '@/lib/location';
 
 const user = Astro.locals.user;
-const [corpus, publishedDatabaseListings] = await Promise.all([getPublicListings(), getDbListings()]);
-const homepageMetrics = calculateHomepageMetrics(publishedDatabaseListings);
+const corpus = await getPublicListings();
+const homepageMetrics = calculateHomepageMetrics(corpus);
 const metricCards = [
   {
     label: 'Location coverage',
@@ -22,9 +21,9 @@ const metricCards = [
   },
   {
     label: 'Top location',
-    value: homepageMetrics.topState?.name ?? '—',
+    value: formatRegionForDisplay(homepageMetrics.topState?.state),
     detail: homepageMetrics.topState && homepageMetrics.topCity
-      ? `${homepageMetrics.topCity.city}, ${homepageMetrics.topCity.state} · ${formatMetricCount(homepageMetrics.topState.listingCount, 'listing', 'listings')} statewide · ${homepageMetrics.topCity.listingCount.toLocaleString()} in the city`
+      ? `${homepageMetrics.topCity.city}, ${formatRegionForDisplay(homepageMetrics.topCity.state)} · ${formatMetricCount(homepageMetrics.topState.listingCount, 'listing', 'listings')} statewide · ${homepageMetrics.topCity.listingCount.toLocaleString()} in the city`
       : homepageMetrics.topState
         ? `${formatMetricCount(homepageMetrics.topState.listingCount, 'listing', 'listings')} statewide · No city data`
         : 'No U.S. location data yet',
@@ -44,7 +43,6 @@ const metricCards = [
 interface ActiveLocation {
   city: string;
   region: string;
-  slug: string;
   count: number;
 }
 
@@ -58,7 +56,6 @@ for (const item of corpus) {
       locationMap.set(key, {
         city: item.city.trim(),
         region: item.region.trim().toUpperCase(),
-        slug: slugify(`${item.city.trim()}-${item.region.trim()}`),
         count: 1,
       });
     }
@@ -66,7 +63,6 @@ for (const item of corpus) {
 }
 const activeLocations = Array.from(locationMap.values()).sort((a, b) => b.count - a.count);
 const onlineOnlyCount = corpus.filter((l) => l.isOnlineOnly).length;
-const hasInternational = activeLocations.some((loc) => !isUsRegion(loc.region));
 const locationChoices = [
   ...(onlineOnlyCount > 0 ? [{ label: 'Online', value: 'Online', kind: 'online' }] : []),
   ...activeLocations.map((loc) => ({
@@ -75,8 +71,6 @@ const locationChoices = [
     kind: isUsRegion(loc.region) ? 'city' : 'outside the U.S.',
   })),
 ];
-
-const available = [...corpus].sort((a, b) => (a.addedDaysAgo ?? Number.POSITIVE_INFINITY) - (b.addedDaysAgo ?? Number.POSITIVE_INFINITY)).slice(0, 6);
 
 const industryCounts = new Map<string, { label: string; count: number; href: string }>();
 for (const listing of corpus) {
@@ -196,86 +190,6 @@ const seo = {
       ))}
     </div>
   </section>
-
-  <Section
-    title="Available listings"
-    sub={corpus.length > 0
-      ? (available.length === corpus.length
-        ? `Every published listing is shown. ${corpus.length} ${corpus.length === 1 ? 'listing is' : 'listings are'} in the directory right now.`
-        : `Showing the ${available.length} newest of ${corpus.length} published listings.`)
-      : 'No listings are published yet.'}
-    href={corpus.length > available.length ? '/search?sort=newest' : undefined}
-    linkLabel="See all listings"
-  >
-    {available.length > 0 ? (
-      <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {available.map((listing) => <ListingCard listing={listing} />)}
-      </div>
-    ) : (
-      <div class="card p-6 text-center sm:p-10">
-        <h3 class="text-xl font-semibold">Help grow the directory by adding a business or organization.</h3>
-        <p class="mx-auto mt-2 max-w-lg text-sm leading-relaxed" style="color:var(--text-soft)">
-          There is nothing to browse yet. A free listing is owner-submitted. Publishing it does not verify the organization.
-        </p>
-        <a href="/add-listing" class="btn btn-primary mt-4 inline-flex">Submit a real listing</a>
-      </div>
-    )}
-  </Section>
-
-  <Section id="browse-published" title="Browse what is published" sub={hasInternational
-    ? 'Categories and places appear only when a published listing uses them. Some places are outside the United States. This is not a coverage map or a verification.'
-    : 'Categories and places appear only when a published listing uses them. This is not a national network or a verification.'}
-  >
-    {populatedCategories.length === 0 && activeLocations.length === 0 && onlineOnlyCount === 0 ? (
-      <div class="card p-6 text-sm leading-relaxed" style="color:var(--text-soft)">
-        No categories or places to browse yet. Help grow the directory by adding a business or organization.
-      </div>
-    ) : (
-      <div class="space-y-8">
-        {populatedCategories.length > 0 && (
-          <div>
-            <h3 class="text-base font-semibold">Categories with listings</h3>
-            <div class="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              {populatedCategories.map((category) => (
-                <a href={category.href} class="card card-hover flex items-center justify-between gap-3 p-4">
-                  <span class="font-bold">{category.label}</span>
-                  <span class="chip shrink-0">{category.count} {category.count === 1 ? 'listing' : 'listings'}</span>
-                </a>
-              ))}
-            </div>
-          </div>
-        )}
-        {(activeLocations.length > 0 || onlineOnlyCount > 0) && (
-          <div>
-            <h3 class="text-base font-semibold">Places with listings</h3>
-            {hasInternational && (
-              <p class="mt-1 text-sm" style="color:var(--text-soft)">Includes locations outside the United States. A city name is where the listing says it is based.</p>
-            )}
-            <div class="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              {activeLocations.map((loc) => (
-                <a href={`/locations/${loc.slug}`} class="card card-hover p-4">
-                  <span class="flex items-center justify-between gap-3">
-                    <span class="font-bold">{loc.city}, {loc.region}</span>
-                    <span class="chip shrink-0">{loc.count}</span>
-                  </span>
-                  <span class="mt-1 block text-sm" style="color:var(--text-soft)">{isUsRegion(loc.region) ? 'Owner-submitted' : 'Owner-submitted, outside the U.S.'}</span>
-                </a>
-              ))}
-              {onlineOnlyCount > 0 && (
-                <a href="/search?onlineOnly=1" class="card card-hover p-4">
-                  <span class="flex items-center justify-between gap-3">
-                    <span class="font-bold">Online</span>
-                    <span class="chip shrink-0">{onlineOnlyCount}</span>
-                  </span>
-                  <span class="mt-1 block text-sm" style="color:var(--text-soft)">Listings that say they work without a storefront.</span>
-                </a>
-              )}
-            </div>
-          </div>
-        )}
-      </div>
-    )}
-  </Section>
 
   <Section title="For business owners" sub="Free forever for the basic listing. No credit card required.">
     <div class="card p-6 sm:p-8">

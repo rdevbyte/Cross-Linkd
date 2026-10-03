@@ -64,7 +64,7 @@ This creates all tables from `src/db/schema.ts` plus the FTS/trigram indexes in 
 DATABASE_URL="<pooled>" npm run db:seed
 ```
 
-Loads: 18 listing types, 17 industries (+ categories/professions), 17 traditions + 30+ denominations + aliases, hashtag catalog, event categories, 48 sample listings (5 focus states, 6 metros). Re-run safely (idempotent via `onConflictDoNothing`).
+Loads taxonomy, hashtag catalog, and event categories. No sample business listings are bundled or seeded; the listings table stays empty until real submissions are published. Re-run safely (idempotent via `onConflictDoNothing`).
 
 Create the first admin (SQL):
 
@@ -76,7 +76,7 @@ UPDATE users SET role = 'super_admin' WHERE email = 'you@example.com';
 
 - `git push main` → Vercel auto-deploys, or **Deployments → Redeploy**.
 - First deploy: confirm build log shows `astro build` success and serverless functions bundled.
-- Smoke test: `/`, `/search?q=bakery+%23Baptist`, `/directory/grace-and-grain-bakery`, `/sitemap.xml`, theme toggle, sign-up → dashboard, `/admin` (as admin).
+- Smoke test: `/`, `/search`, `/sitemap.xml`, theme toggle, sign-up → dashboard, `/admin` (as admin). Test `/directory/<slug>` after publishing a real listing.
 
 ## 8. Configure a custom domain
 

@@ -5,6 +5,7 @@ import { getDb, hasDatabase } from '@/db/client';
 import { listings, listingLocations } from '@/db/schema';
 import { and, eq, isNull, desc } from 'drizzle-orm';
 import { STATUS_LABEL } from '@/lib/submissions';
+import { formatRegionForDisplay } from '@/lib/location';
 
 const __userGate = requireUserPage(Astro);
 if (__userGate) return __userGate;
@@ -148,7 +149,7 @@ const stats = [
               </span>
             </p>
             <p class="text-[13px]" style="color:var(--text-mute)">
-              {l.city ? `${l.city}, ${l.region} • ` : ''}★ {l.rating > 0 ? l.rating.toFixed(1) : 'No rating'} • {l.reviewCount} reviews • {l.views} views
+              {l.city ? `${l.city}, ${formatRegionForDisplay(l.region)} • ` : ''}★ {l.rating > 0 ? l.rating.toFixed(1) : 'No rating'} • {l.reviewCount} reviews • {l.views} views
             </p>
           </div>
           <div class="flex gap-2">

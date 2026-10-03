@@ -2,7 +2,6 @@
 import BaseLayout from '@/layouts/BaseLayout.astro';
 import ListingCard from '@/components/ListingCard.astro';
 import { articleBySlug } from '@/data/articles';
-import { listingBySlug } from '@/data/listings';
 import { getPublicListings } from '@/lib/publicListings';
 import { articleSchema, breadcrumbSchema } from '@/lib/seo';
 
@@ -13,10 +12,10 @@ if (!article) return Astro.redirect('/articles', 302);
 const user = Astro.locals.user;
 const siteUrl = Astro.url.origin;
 const pageUrl = `${siteUrl}/articles/${article.slug}`;
-const publicSlugs = new Set((await getPublicListings()).map((l) => l.slug));
-const relatedListings = article.relatedListingSlugs
-  .map((s) => listingBySlug(s))
-  .filter((l): l is NonNullable<typeof l> => l !== undefined && publicSlugs.has(l.slug));
+const relatedListingSlugs = new Set(article.relatedListingSlugs);
+const relatedListings = relatedListingSlugs.size
+  ? (await getPublicListings()).filter((listing) => relatedListingSlugs.has(listing.slug))
+  : [];
 
 const seo = {
   title: `${article.title} | CrossLinkd`,

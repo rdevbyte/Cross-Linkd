@@ -9,6 +9,7 @@ import { requireUserPage } from '@/lib/guards';
 import { DENOMINATIONS } from '@/data/denominations';
 import { INDUSTRIES } from '@/data/industries';
 import { recentlyUpdatedState } from '@/lib/recentlyUpdated.mjs';
+import { formatRegionForDisplay } from '@/lib/location';
 
 const gate = requireUserPage(Astro);
 if (gate) return gate;
@@ -683,7 +684,7 @@ const allOtherDenominations = [...DENOMINATIONS]
     ) : rows.map((r) => (
       <article class="card p-4" data-owner-listing data-owner-view="mobile" data-id={r.id} data-name={r.name} data-location={`${r.city ?? ''} ${r.region ?? ''}`} data-status={r.status}>
         <div class="flex items-start justify-between gap-3">
-          <div class="min-w-0"><h2 class="font-semibold">{r.name}</h2><p class="text-xs" style="color:var(--text-mute)">{r.typeSlug} · {r.city || '—'}{r.region ? `, ${r.region}` : ''}</p></div>
+          <div class="min-w-0"><h2 class="font-semibold">{r.name}</h2><p class="text-xs" style="color:var(--text-mute)">{r.typeSlug} · {r.city || '—'}{r.region ? `, ${formatRegionForDisplay(r.region)}` : ''}</p></div>
           <span class={`chip shrink-0 !text-[11px] ${STATUS_CHIP[r.status] ?? ''}`} style={r.status === 'published' ? 'color:var(--teal)' : ''}>{STATUS_LABEL[r.status] ?? r.status}</span>
         </div>
         {r.reviewNote && <p class="mt-2 rounded-lg bg-[var(--surface-2)] p-2 text-xs" style="color:var(--text-soft)"><strong>Reviewer note:</strong> {r.reviewNote}</p>}
@@ -735,7 +736,7 @@ const allOtherDenominations = [...DENOMINATIONS]
                   <p class="mt-1 text-xs text-amber-600 font-medium">Reviewer note: {r.reviewNote}</p>
                 )}
               </td>
-              <td class="p-3">{r.city || '—'}{r.region ? `, ${r.region}` : ''}</td>
+              <td class="p-3">{r.city || '—'}{r.region ? `, ${formatRegionForDisplay(r.region)}` : ''}</td>
               <td class="p-3">
                 <span class={`chip !text-[11px] ${STATUS_CHIP[r.status] ?? ''}`} style={r.status === 'published' ? 'color:var(--teal)' : ''}>
                   {STATUS_LABEL[r.status] ?? r.status}

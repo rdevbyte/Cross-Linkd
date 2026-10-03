@@ -124,6 +124,8 @@ export const US_STATES: { abbr: string; name: string }[] = [
   { abbr: 'DC', name: 'District of Columbia' },
 ];
 
+const DISPLAY_REGION_ABBRS = new Set(US_STATES.map(({ abbr }) => abbr));
+
 function collapseSpaces(s: string): string {
   return s.trim().replace(/\s+/g, ' ');
 }
@@ -158,6 +160,13 @@ export function normalizeState(input: string | null | undefined): string | null 
 
 export function isValidState(input: string | null | undefined): boolean {
   return normalizeState(input) !== null;
+}
+
+/** Display recognized U.S. state names/codes consistently as two-letter abbreviations. */
+export function formatRegionForDisplay(input: string | null | undefined): string {
+  const raw = input?.trim() ?? '';
+  const normalized = normalizeState(raw);
+  return normalized && DISPLAY_REGION_ABBRS.has(normalized) ? normalized : raw;
 }
 
 export function stateErrorMessage(): string {

@@ -1,7 +1,6 @@
 import type { APIRoute } from 'astro';
 import { hasDatabase } from '@/db/client';
 import { searchPublishedListings } from '@/lib/dbSearch';
-import { includeSamples } from '@/lib/sampleGate';
 import { sharedRateLimit } from '@/lib/sharedRateLimit';
 import { clientIp } from '@/lib/clientIp';
 
@@ -61,7 +60,7 @@ export const GET: APIRoute = async ({ url, request }) => {
   const requestId = crypto.randomUUID();
   try {
     const result = await searchPublishedListings(filters, requestId);
-    return json({ mode: includeSamples() ? 'memory-demo' : (hasDatabase() ? 'postgres' : 'memory-empty'), ...result });
+    return json({ mode: hasDatabase() ? 'postgres' : 'memory-empty', ...result });
   } catch {
     console.error('[api/search] failed to serve search request', { requestId });
     return json({ ok: false, error: 'Search is temporarily unavailable.', requestId }, 503);

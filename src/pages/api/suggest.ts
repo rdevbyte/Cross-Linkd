@@ -2,9 +2,6 @@ import type { APIRoute } from 'astro';
 import { and, asc, desc, eq, ilike, isNull, sql } from 'drizzle-orm';
 import { getDb, hasDatabase } from '@/db/client';
 import { listingServices, listings } from '@/db/schema';
-import { autocompleteSuggestions } from '@/lib/search';
-import { SAMPLE_LISTINGS } from '@/data/listings';
-import { includeSamples } from '@/lib/sampleGate';
 import { suggestHashtags } from '@/lib/hashtags';
 import { sharedRateLimit } from '@/lib/sharedRateLimit';
 import { clientIp } from '@/lib/clientIp';
@@ -58,12 +55,6 @@ export const GET: APIRoute = async ({ url, request }) => {
     }
   }
 
-  if (includeSamples()) {
-    const demoSuggestions = autocompleteSuggestions(fragment, 6, SAMPLE_LISTINGS);
-    suggestions = [...suggestions, ...demoSuggestions]
-      .filter((item, index, items) => items.findIndex((candidate) => candidate.label.toLowerCase() === item.label.toLowerCase()) === index)
-      .slice(0, 6);
-  }
   return json({ suggestions, tags });
 };
 

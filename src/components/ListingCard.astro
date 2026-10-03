@@ -5,6 +5,7 @@ import TypeGlyph from './TypeGlyph.astro';
 import type { SampleListing } from '@/data/listings';
 import { typeBySlug } from '@/data/listing-types';
 import { compact, timeAgo } from '@/lib/format';
+import { formatRegionForDisplay } from '@/lib/location';
 import { recentlyUpdatedState, recentCardShimmerState } from '@/lib/recentlyUpdated.mjs';
 
 interface Props { listing: SampleListing; distanceMiles?: number; sponsored?: boolean }
@@ -147,7 +148,7 @@ const shimmerDelay = (Array.from(l.id).reduce((hash, char) => (hash * 31 + char.
       ) : (
         <span>No reviews yet • </span>
       )}
-      {l.isOnlineOnly ? 'Online-only' : `${l.city}, ${l.region}`}
+      {l.isOnlineOnly ? 'Online-only' : `${l.city}, ${formatRegionForDisplay(l.region)}`}
       {typeof distanceMiles === 'number' && distanceMiles < 9999 ? ` • ${distanceMiles.toFixed(1)} mi` : ''}
       {l.priceRange ? ` • ${l.priceRange}` : ''}
       {typeof l.addedDaysAgo === 'number' && Number.isFinite(l.addedDaysAgo) ? ` • added ${timeAgo(l.addedDaysAgo)}` : ''}

@@ -1,32 +1,75 @@
 ---
 import BaseLayout from '@/layouts/BaseLayout.astro';
+import '@/styles/how-it-works.css';
 import { ARTICLES } from '@/data/articles';
+
 const user = Astro.locals.user;
 const seo = {
   title: 'Resource Center — Guides for Finding Christian-Owned Businesses | CrossLinkd',
   description: 'Practical guides for evaluating businesses yourself. CrossLinkd does not verify the organizations you hire.',
   path: '/articles',
 };
+
+// Guard against the same guide being included twice in the listing data.
+const resourceArticles = Array.from(new Map(
+  ARTICLES.map((article) => [JSON.stringify([article.title, article.excerpt, article.sections]), article]),
+).values());
+
+const publishedLabel = (daysAgo: number) =>
+  daysAgo < 7 ? 'This week' : daysAgo < 30 ? `${Math.round(daysAgo / 7)} weeks ago` : `${Math.round(daysAgo / 30)} month${daysAgo >= 60 ? 's' : ''} ago`;
 ---
 <BaseLayout user={user} seo={seo}>
-  <div class="mx-auto max-w-4xl px-4 py-12">
-    <h1 class="text-3xl font-bold">Resource center</h1>
-    <p class="section-sub">Short, practical guides. They do not confirm that a business was verified, and they do not invent listings. See our <a href="/editorial-policy" class="underline">editorial policy</a>.</p>
+  <div class="hiw-page mx-auto max-w-6xl px-4 py-8 sm:py-12">
+    <header class="hiw-intro">
+      <p class="hiw-kicker">Practical, independent guides</p>
+      <h1 id="resource-center-heading" class="mt-2 text-3xl font-bold leading-tight sm:text-5xl">Resource Center</h1>
+      <p class="mt-4 max-w-3xl text-base leading-relaxed sm:text-lg" style="color:var(--text-soft)">
+        Short, practical guides. They do not confirm that a business was verified, and they do not invent listings.
+      </p>
+      <p class="mt-3 max-w-3xl text-sm leading-relaxed" style="color:var(--text-soft)">
+        See our <a href="/editorial-policy" class="underline">editorial policy</a>.
+      </p>
+    </header>
 
-    <div class="mt-8 grid gap-4 sm:grid-cols-2" data-animate="grid">
-      {ARTICLES.map((a) => (
-        <a href={`/articles/${a.slug}`} class="card card-hover overflow-hidden">
-          <div class="h-24" style={`background:hsl(${a.hue},26%,80%)`}></div>
-          <div class="p-5">
-            <p class="text-xs font-bold uppercase tracking-wide" style="color:var(--teal)">{a.category}</p>
-            <h2 class="mt-1 font-semibold leading-snug">{a.title}</h2>
-            <p class="mt-1.5 text-sm" style="color:var(--text-soft)">{a.excerpt}</p>
-            <p class="mt-3 text-xs" style="color:var(--text-mute)">
-              {a.publishedDaysAgo < 7 ? 'This week' : a.publishedDaysAgo < 30 ? `${Math.round(a.publishedDaysAgo / 7)} weeks ago` : `${Math.round(a.publishedDaysAgo / 30)} month${a.publishedDaysAgo >= 60 ? 's' : ''} ago`}{a.updatedDaysAgo !== undefined && a.updatedDaysAgo < a.publishedDaysAgo ? ' · updated recently' : ''}
-            </p>
-          </div>
-        </a>
-      ))}
-    </div>
+    {resourceArticles.length > 0 ? (
+      <article class="card hiw-outline" aria-labelledby="resource-center-heading">
+        {resourceArticles.map((article, articleIndex) => (
+          <section class={`hiw-outline-section ${articleIndex === resourceArticles.length - 1 ? 'hiw-last-section' : ''}`} aria-labelledby={`resource-${article.slug}`}>
+            <span class="hiw-section-index" aria-hidden="true">{String(articleIndex + 1).padStart(2, '0')}</span>
+            <div class="hiw-section-content">
+              <header class="hiw-section-head">
+                <p class="hiw-kicker">{article.category}</p>
+                <h2 id={`resource-${article.slug}`}>{article.title}</h2>
+                <p>{article.excerpt}</p>
+                <p class="hiw-resource-meta">
+                  {publishedLabel(article.publishedDaysAgo)}{article.updatedDaysAgo !== undefined && article.updatedDaysAgo < article.publishedDaysAgo ? ' · updated recently' : ''}
+                </p>
+              </header>
+
+              <ol class="hiw-outline-list">
+                {article.sections.map((section, sectionIndex) => (
+                  <li class="hiw-outline-entry">
+                    <span class="hiw-entry-index" aria-hidden="true">{articleIndex + 1}.{sectionIndex + 1}</span>
+                    <div class="hiw-entry-content">
+                      <h3>{section.heading}</h3>
+                      {section.body.map((paragraph) => <p class="hiw-resource-paragraph">{paragraph}</p>)}
+                    </div>
+                  </li>
+                ))}
+              </ol>
+
+              {(article.relatedCategory || article.relatedCity) && (
+                <div class="hiw-resource-links" aria-label={`Related links for ${article.title}`}>
+                  {article.relatedCategory && <a class="hiw-action-link" href={article.relatedCategory.href}>{article.relatedCategory.label} <span aria-hidden="true">↗</span></a>}
+                  {article.relatedCity && <a class="hiw-action-link" href={article.relatedCity.href}>{article.relatedCity.label} <span aria-hidden="true">↗</span></a>}
+                </div>
+              )}
+            </div>
+          </section>
+        ))}
+      </article>
+    ) : (
+      <p class="card hiw-example p-5 text-sm" role="status" style="color:var(--text-soft)">No guides have been published yet.</p>
+    )}
   </div>
 </BaseLayout>

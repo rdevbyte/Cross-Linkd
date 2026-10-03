@@ -150,8 +150,9 @@ test('optional taxonomy suggestions preserve manual custom values and fail open'
 
 test('homepage shows four distinct live-data metrics in the requested order', () => {
   const home = readFileSync(new URL('../src/pages/index.astro', import.meta.url), 'utf8');
-  assert.match(home, /getDbListings\(\)/);
-  assert.match(home, /calculateHomepageMetrics\(publishedDatabaseListings\)/);
+  assert.match(home, /getPublicListings\(\)/);
+  assert.match(home, /calculateHomepageMetrics\(corpus\)/);
+  assert.doesNotMatch(home, /getDbListings/, 'the public catalog is already database-only, so metrics share its single query');
   const cards = home.match(/const metricCards = \[([\s\S]*?)\n\];/)?.[1] ?? '';
   const positions = [
     "label: 'Location coverage'",

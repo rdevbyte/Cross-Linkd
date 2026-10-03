@@ -38,7 +38,7 @@ Keys: `gen_random_uuid()` PKs · FK constraints everywhere · `slug` unique for 
 1. `src/middleware.ts` → verifies session cookie → `locals.user`.
 2. Pages SSR with `locals.user`; React islands hydrate (`client:load` for search/theme, `client:visible` for cards, `client:only` for map).
 3. Forms POST to `/api/*` (progressive enhancement — works without JS); Zod-validated; DB or demo-mode branch.
-4. Search: `hasDatabase()` ? Postgres `tsvector` + filters : identical in-memory engine over sample data.
+4. Search: `hasDatabase()` ? Postgres `tsvector` + filters : an empty result set. No bundled business-listing corpus is available in demo mode; local sample events/testimonials are gated separately.
 
 ## Caching
 
