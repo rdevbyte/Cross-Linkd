@@ -5,20 +5,19 @@ import { COMMUNITY_LISTED, LISTING_STATUSES, LONG_DISCLAIMER, SHORT_DISCLAIMER }
 
 const user = Astro.locals.user;
 const terms = [
-  { title: 'Christian-owned', body: 'The owner identified the business as Christian-owned. It is not a confirmation of faith or ownership.' },
-  { title: 'Self-identified Christian-owned', body: 'The person who submitted the listing said the business is Christian-owned. CrossLinkd did not independently check that claim.' },
-  { title: 'Founded by a Christian', body: 'A Christian may have started the company and may no longer own or run it. Do not read this as current ownership.' },
-  { title: 'Faith-inspired', body: 'A descriptive phrase some owners use. It is not a verification of belief, practice, or ownership.' },
-  { title: 'Christian-operated', body: 'A claim about who runs the business day to day. Treat it as owner-submitted unless you confirm it yourself.' },
-  { title: 'Serves Christian customers', body: 'This only describes a market. It says nothing about ownership or belief.' },
+  { title: 'Christian-owned', body: 'The submitter identifies the business as Christian-owned. CrossLinkd does not independently verify that claim.' },
+  { title: 'Founded by a Christian', body: 'A Christian may have started the company and may no longer own or run it. This is not a claim about current ownership.' },
+  { title: 'Faith-inspired', body: 'A descriptive phrase used by some organizations. It does not verify belief, practice, or ownership.' },
+  { title: 'Christian-operated', body: 'A claim about who runs the business day to day. CrossLinkd does not independently verify it.' },
+  { title: 'Serves Christian customers', body: 'This describes a market, not ownership or belief.' },
 ];
 const statuses = [
   { name: COMMUNITY_LISTED.name, definition: COMMUNITY_LISTED.definition },
   ...LISTING_STATUSES,
 ];
 const seo = {
-  title: 'Listing Statuses — What CrossLinkd does and does not check | CrossLinkd',
-  description: 'Listing Statuses describe how a profile was submitted or updated. CrossLinkd does not independently verify faith, ownership, licenses, credentials, or service quality.',
+  title: 'Listing Statuses — Submission sources and updates | CrossLinkd',
+  description: 'Understand submission-source and management labels. Listing details are not independently verified, and inclusion is not an endorsement.',
   path: '/listing-statuses',
 };
 ---
@@ -27,7 +26,7 @@ const seo = {
     <section class="card p-5 sm:p-7" aria-labelledby="listing-status-heading">
       <p class="text-sm font-bold" style="color:var(--accent)">Not a certification</p>
       <h1 id="listing-status-heading" class="mt-2 text-3xl font-bold leading-tight sm:text-4xl">Listing Statuses</h1>
-      <p class="section-sub">These labels describe how a listing was added or updated. None of them means CrossLinkd verified faith, ownership, a license, a credential, or the quality of the work.</p>
+      <p class="section-sub">Source labels appear only when the submission source is recorded. Other labels describe profile management or directory status. None of these labels indicates independent verification of the details or endorsement of the listing.</p>
     </section>
 
     <ListingStatuses

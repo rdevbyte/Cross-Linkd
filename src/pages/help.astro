@@ -1,16 +1,18 @@
 ---
 import BaseLayout from '@/layouts/BaseLayout.astro';
+import { REPORT_DISCLOSURE } from '@/lib/trustCopy';
 const user = Astro.locals.user;
 const faqs = [
-  ['How do I add my business or ministry?', 'Open “List Your Business,” fill in your details, and submit. A published listing is owner-submitted. CrossLinkd may review it for completeness. That is not a verification of faith, ownership, or licenses. Basic listings are free.'],
-  ['How do hashtags work?', 'Type # while searching to get suggestions like #Baptist or #ChristianOwned. A hashtag is a label the listing uses. It is not a CrossLinkd verification.'],
-  ['Does CrossLinkd verify listings?', 'No. CrossLinkd does not independently verify faith, ownership, licenses, certifications, credentials, or service quality. See Listing Statuses for the words we do use.'],
-  ['How do I claim an existing listing?', 'Open the profile and click “Claim this listing,” or visit the claim page. You show control of a contact channel. A successful claim is Owner claimed, not verified.'],
-  ['Does CrossLinkd charge for anything?', 'No. Listings and claiming are free right now, and you will not be asked for payment details to list. CrossLinkd does not sell verification, because it does not offer it.'],
-  ['How do I report a listing or review?', 'Use the contact form to report a listing or review. Appeals are saved from the appeals page for a person to read. An appeal is not a verification, and a reply time is not promised.'],
+  ['How do I add or suggest a listing?', 'Owners and authorized representatives can use “Add a listing.” Community members can choose “Suggest a listing” on the contact form. Some guest submissions may be held for content moderation before publication. Publication is not an independent check or endorsement. Basic listings are free.'],
+  ['Where does the directory have listings?', 'Location suggestions focus on selected U.S. metros in Texas, Tennessee, Georgia, Arizona, and Colorado. Other places appear only when profiles are published; online-only listings are shown separately. Coverage is not comprehensive.'],
+  ['How do hashtags work?', 'Type # while searching to see tags such as #Baptist or #ChristianOwned. A hashtag is a submitter-provided label, not an independent check or endorsement by CrossLinkd.'],
+  ['Does CrossLinkd verify listings?', 'No. Listing details are not independently verified, and inclusion is not an endorsement. See Listing Statuses for source and management labels.'],
+  ['How do I manage an existing listing?', 'Open the profile and request access to manage it, or visit the management page. If access is granted, you can update the profile. Management access does not verify the business or its claims.'],
+  ['Does CrossLinkd charge for anything?', 'Basic listings, management requests, and accounts are free at this time. You will not be asked for payment details to list.'],
+  ['How do I report a listing or review?', REPORT_DISCLOSURE],
 ];
 ---
-<BaseLayout user={user} seo={{ title: 'Help Center — CrossLinkd', description: 'Answers about adding listings, claiming profiles, Listing Statuses, and hashtags.', path: '/help' }}>
+<BaseLayout user={user} seo={{ title: 'Help Center — CrossLinkd', description: 'Answers about adding listings, managing profiles, listing statuses, reports, and hashtags.', path: '/help' }}>
   <div class="mx-auto max-w-3xl px-4 py-12">
     <h1 class="text-3xl font-bold">Help center</h1>
     <p class="section-sub">Quick answers. Still stuck? <a href="/contact" class="underline">Contact us</a> · <a href="/feedback" class="underline">Suggest an improvement</a>.</p>

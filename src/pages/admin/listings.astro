@@ -123,10 +123,9 @@ const tabUrl = (s: string) => `/admin/listings?status=${s}`;
   <script>
     const banner = () => document.getElementById('mod-banner');
     const bannerText = () => document.getElementById('mod-banner-text');
-    function show(ok: boolean, msg: string) {
+    function show(_ok: boolean, msg: string) {
       const b = banner(); const t = bannerText();
       if (!b || !t) return;
-      b.style.borderLeftColor = ok ? 'var(--teal)' : 'var(--accent)';
       t.textContent = msg;
       b.classList.remove('hidden');
       b.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -181,7 +180,7 @@ const tabUrl = (s: string) => `/admin/listings?status=${s}`;
     if (flash) { sessionStorage.removeItem('cl:modflash'); show(true, flash); }
   </script>
 
-  <div id="mod-banner" class="card mt-4 hidden border-l-4 p-4" role="status" style="border-left-color:var(--teal)">
+  <div id="mod-banner" class="card mt-4 hidden p-4 pl-[19px]" role="status">
     <p id="mod-banner-text" class="text-sm font-bold"></p>
   </div>
 </DashboardLayout>

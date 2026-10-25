@@ -2,21 +2,21 @@
 import BaseLayout from '@/layouts/BaseLayout.astro';
 import ListingCard from '@/components/ListingCard.astro';
 import { articleBySlug } from '@/data/articles';
-import { listingBySlug } from '@/data/listings';
 import { getPublicListings } from '@/lib/publicListings';
 import { articleSchema, breadcrumbSchema } from '@/lib/seo';
 
 const { slug } = Astro.params;
+if (slug === 'how-crosslinkd-verifies-a-business') return Astro.redirect('/articles/what-crosslinkd-does-not-verify', 301);
 const article = slug ? articleBySlug(slug) : undefined;
 if (!article) return Astro.redirect('/articles', 302);
 
 const user = Astro.locals.user;
 const siteUrl = Astro.url.origin;
 const pageUrl = `${siteUrl}/articles/${article.slug}`;
-const publicSlugs = new Set((await getPublicListings()).map((l) => l.slug));
-const relatedListings = article.relatedListingSlugs
-  .map((s) => listingBySlug(s))
-  .filter((l): l is NonNullable<typeof l> => l !== undefined && publicSlugs.has(l.slug));
+const relatedListingSlugs = new Set(article.relatedListingSlugs);
+const relatedListings = relatedListingSlugs.size
+  ? (await getPublicListings()).filter((listing) => relatedListingSlugs.has(listing.slug))
+  : [];
 
 const seo = {
   title: `${article.title} | CrossLinkd`,
@@ -49,7 +49,7 @@ const seo = {
     <p class="mt-3 text-xs" style="color:var(--text-mute)">
       Published {new Date(Date.now() - article.publishedDaysAgo * 86400000).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
       {article.updatedDaysAgo ? ` · updated ${new Date(Date.now() - article.updatedDaysAgo * 86400000).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}` : ''}
-      · by the CrossLinkd team
+      · by CrossLinkd
     </p>
 
     <div class="prose-custom mt-8 space-y-8">
@@ -64,7 +64,7 @@ const seo = {
     {relatedListings.length > 0 && (
       <section class="mt-12" aria-label="Listings mentioned in this article">
         <h2 class="text-xl font-semibold">Published listings</h2>
-        <p class="mt-1 text-sm" style="color:var(--text-soft)">These are owner-submitted listings already in the directory. They were not independently verified for this guide.</p>
+        <p class="mt-1 text-sm" style="color:var(--text-soft)">These profiles may have been submitted by owners or community members. Their details are not independently verified, and inclusion is not an endorsement.</p>
         <div class="mt-4 grid gap-4 sm:grid-cols-2">
           {relatedListings.map((l) => <ListingCard listing={l} />)}
         </div>

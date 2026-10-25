@@ -1,20 +1,25 @@
 ---
 import BaseLayout from '@/layouts/BaseLayout.astro';
+import { REPORT_DISCLOSURE } from '@/lib/trustCopy';
 const user = Astro.locals.user;
 const sent = Astro.url.searchParams.get('sent') === '1';
 const topic = Astro.url.searchParams.get('topic') ?? '';
 const error = Astro.url.searchParams.get('error') ?? '';
+const rawListing = Astro.url.searchParams.get('listing') ?? '';
+const listingRef = /^[a-z0-9-]{1,200}$/.test(rawListing) ? rawListing : '';
+const returnPath = listingRef ? `/directory/${listingRef}` : '/contact';
 const topics: [string, string][] = [
   ['general', 'General question'],
   ['support', 'Listing support'],
+  ['suggest', 'Suggest a listing'],
   ['status', 'Listing status'],
-  ['inaccurate', 'Report inaccurate information'],
+  ['inaccurate', 'Flag inaccurate or outdated information'],
   ['duplicate', 'Report a duplicate'],
-  ['spam', 'Report spam or impersonation'],
-  ['correction', 'Request a correction'],
-  ['removal', 'Request removal'],
-  ['report', 'Report a listing'],
-  ['review', 'Report a review'],
+  ['spam', 'Report spam or inappropriate content'],
+  ['correction', 'Request a listing correction'],
+  ['removal', 'Request listing removal'],
+  ['report', 'Report a listing or content issue'],
+  ['review', 'Flag a review'],
   ['appeals', 'Appeals'],
   ['partnership', 'Partnership'],
   ['press', 'Press'],
@@ -24,20 +29,21 @@ const selectedTopic = topics.find(([id]) => id === topic)?.[0]
   ?? topics.find(([, label]) => topic && label.toLowerCase().includes(topic.toLowerCase()))?.[0]
   ?? 'general';
 ---
-<BaseLayout user={user} seo={{ title: 'Contact — CrossLinkd', description: 'Send a message to CrossLinkd. A saved message is not a promise of a reply time, and a reply is not a verification.', path: '/contact' }}>
+<BaseLayout user={user} seo={{ title: 'Contact or suggest a listing — CrossLinkd', description: 'Contact CrossLinkd, suggest a listing, or flag inaccurate, outdated, spam, or inappropriate directory content for review.', path: '/contact' }}>
   <div class="mx-auto max-w-xl px-4 py-12">
     <h1 class="text-3xl font-bold">Contact us</h1>
-    <p class="section-sub">A person can read saved messages. We do not promise a reply within 1–2 business days.</p>
+    <p class="section-sub">Ask a question, suggest a listing, or flag a listing or review issue. No response time or outcome is promised.</p>
 
     <div class="card mt-4 p-5 text-sm leading-relaxed" style="color:var(--text-soft)">
-      <p>Have a question about a listing, a report, or the community guidelines? Submit your message below. A reply is not a verification of a business.</p>
+      <p>{REPORT_DISCLOSURE}</p>
     </div>
 
     {sent ? (
-      <div class="card mt-6 p-6" style="border-left:4px solid var(--teal)" role="status"><p class="font-bold">Message saved</p><p class="text-sm" style="color:var(--text-soft)">A person can read it from the contact inbox. We do not promise a reply time, and a reply is not a verification of a business.</p></div>
+      <div class="card mt-6 p-6 pl-[27px]" role="status"><p class="font-bold">Message saved</p><p class="text-sm" style="color:var(--text-soft)">Submitting a question, report, or correction does not guarantee a response or a content change.</p></div>
     ) : (
       <form method="POST" action="/api/contact" class="card mt-6 space-y-4 p-6">
-        <input type="hidden" name="return" value="/contact" />
+        <input type="hidden" name="return" value={returnPath} />
+        {listingRef && <input type="hidden" name="listing" value={listingRef} />}
         <p class="hp-field" aria-hidden="true"><label>Leave this blank<input type="text" name="hp_company" tabindex="-1" autocomplete="off" /></label></p>
         {error && <p class="rounded-xl bg-red-500/10 p-3 text-sm font-medium text-red-700" role="alert">{error}</p>}
         <div class="grid gap-4 sm:grid-cols-2">
@@ -51,6 +57,8 @@ const selectedTopic = topics.find(([id]) => id === topic)?.[0]
             ))}
           </select>
         </label>
+        {selectedTopic === 'suggest' && <p class="text-sm" style="color:var(--text-soft)">Include the organization name, website, and location if you know them. A suggestion does not guarantee a reply or publication.</p>}
+        {['inaccurate', 'duplicate', 'spam', 'correction', 'removal', 'review'].includes(selectedTopic) && <p class="text-sm" style="color:var(--text-soft)">Include the listing name or link and a brief description of the issue, if available.</p>}
         <label class="block text-sm font-medium">Message<textarea name="message" required rows="5" class="input mt-1.5"></textarea></label>
         <button class="btn btn-primary w-full !py-3" type="submit">Send message</button>
       </form>

@@ -1,22 +1,23 @@
 ---
 import BaseLayout from '@/layouts/BaseLayout.astro';
+import { REPORT_DISCLOSURE } from '@/lib/trustCopy';
 const user = Astro.locals.user;
 const seo = {
   title: 'Review & Moderation Policy | CrossLinkd',
-  description: 'How reviews work on CrossLinkd: who can review, what gets removed, how owners respond, and how moderation decisions can be appealed.',
+  description: 'How community-submitted reviews work and how to flag inaccurate, outdated, spam, or inappropriate content.',
   path: '/reviews-policy',
 };
 ---
 <BaseLayout user={user} seo={seo}>
   <div class="mx-auto max-w-3xl px-4 py-12">
     <h1 class="text-3xl font-bold">Review &amp; moderation policy</h1>
-    <p class="section-sub">Reviews are the community's quality control. Here is exactly how they are handled.</p>
+    <p class="section-sub">Reviews are community-submitted feedback, not CrossLinkd verification or an endorsement.</p>
 
     <div class="mt-8 space-y-4 text-[15px]" style="color:var(--text-soft)">
       <div class="card p-5">
         <h2 class="font-semibold" style="color:var(--text)">Who can review</h2>
         <ul class="mt-2 list-disc space-y-1.5 pl-5">
-          <li>Anyone with a genuine customer experience may submit a review. Reviews are community reported. CrossLinkd does not mark them as verified visits.</li>
+          <li>Anyone may submit a review about a customer experience. CrossLinkd does not independently verify the reviewer's identity or experience.</li>
           <li>Owners cannot review their own business, and featured status does nothing to reviews.</li>
         </ul>
       </div>
@@ -24,7 +25,7 @@ const seo = {
         <h2 class="font-semibold" style="color:var(--text)">What reviews must be about</h2>
         <ul class="mt-2 list-disc space-y-1.5 pl-5">
           <li>Your actual experience: service quality, professionalism, responsiveness, and — where relevant — how faith shaped the work.</li>
-          <li>We separate these dimensions so ratings are useful, not vibes.</li>
+          <li>Ratings and review text are user opinions; they are not independent assessments by CrossLinkd.</li>
         </ul>
       </div>
       <div class="card p-5">
@@ -40,7 +41,7 @@ const seo = {
         <h2 class="font-semibold" style="color:var(--text)">Owner responses &amp; moderation process</h2>
         <ul class="mt-2 list-disc space-y-1.5 pl-5">
           <li>Owners can respond once per review; responses follow the same rules and are moderated identically.</li>
-          <li>Flagged reviews are saved for a person to read. Decisions can be appealed through the <a href="/appeals" class="underline">appeals page</a>. An appeal is not a verification, and this page does not promise a reply time.</li>
+          <li>Users can flag review content through the contact form. A flag does not guarantee a response or a change. Moderation decisions can be appealed through the <a href="/appeals" class="underline">appeals page</a>.</li>
           <li>We never edit a review's text. We publish it, remove it, or ask the reviewer to revise.</li>
         </ul>
       </div>
@@ -48,7 +49,7 @@ const seo = {
 
     <div class="card mt-8 p-6">
       <p class="font-bold">Flag a review from any profile.</p>
-      <p class="mt-1 text-sm" style="color:var(--text-soft)">Every review has a report link, and every report is read by a person.</p>
+      <p class="mt-1 text-sm" style="color:var(--text-soft)">{REPORT_DISCLOSURE}</p>
     </div>
   </div>
 </BaseLayout>

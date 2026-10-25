@@ -70,6 +70,6 @@ const { execSync } = await import('node:child_process');
 const env = { ...process.env, DATABASE_URL: LOCAL_URL, DIRECT_URL: LOCAL_URL };
 execSync('npx tsx src/db/migrate.ts', { env, stdio: 'inherit' });
 if (process.argv.includes('--seed')) {
-  execSync('npx tsx src/db/seed.ts --taxonomy', { env, stdio: 'inherit' });
+  execSync('npx tsx src/db/seed.ts', { env, stdio: 'inherit' });
 }
 console.log('✅ Local database reset complete.');

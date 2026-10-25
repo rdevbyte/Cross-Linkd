@@ -4,8 +4,9 @@ import AxeBuilder from '@axe-core/playwright';
 
 const BASE = process.env.BASE_URL ?? 'http://localhost:4321';
 const browser = await chromium.launch();
+const context = await browser.newContext({ viewport: { width: 1280, height: 900 } });
 try {
-  const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
+  const page = await context.newPage();
   const errors = [];
   page.on('pageerror', (error) => errors.push(error.message));
 
@@ -54,5 +55,6 @@ try {
   assert.deepEqual(errors, [], `browser errors: ${errors.join('; ')}`);
   console.log('PASS: keyboard search autocomplete and axe accessibility audit');
 } finally {
+  await context.close();
   await browser.close();
 }

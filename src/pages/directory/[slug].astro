@@ -14,6 +14,8 @@ import { compact, timeAgo, fullDate } from '@/lib/format';
 import { recentlyUpdatedState } from '@/lib/recentlyUpdated.mjs';
 import { localBusinessSchema, breadcrumbSchema } from '@/lib/seo';
 import { careersUrlError } from '@/lib/hiringUrl.mjs';
+import { formatRegionForDisplay } from '@/lib/location';
+import { REPORT_DISCLOSURE, SUBMISSION_SOURCES } from '@/lib/trustCopy';
 
 const { slug } = Astro.params;
 const listing: SampleListing | undefined = slug ? await findPublicListing(slug) : undefined;
@@ -24,6 +26,18 @@ const sent = Astro.url.searchParams.get('sent') === '1';
 const formError = Astro.url.searchParams.get('error') ?? '';
 const canClaimListing = listing.claimable === true;
 const type = typeBySlug(listing.typeSlug);
+const cityName = listing.city?.trim() ?? '';
+const regionName = listing.region?.trim() ?? '';
+const hasPhysicalLocation = !listing.isOnlineOnly && Boolean(cityName || regionName);
+const locationLabel = listing.isOnlineOnly
+  ? 'Online-only'
+  : [cityName, regionName ? formatRegionForDisplay(regionName) : ''].filter(Boolean).join(', ');
+const locationSlug = hasPhysicalLocation
+  ? [cityName, regionName].filter(Boolean).join('-').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')
+  : '';
+const hasHours = Boolean(listing.hours && Object.keys(listing.hours).length > 0);
+const hasAbout = Boolean(listing.description.trim() || listing.statementOfFaith || listing.hashtags.length > 0);
+const hasServices = Boolean(listing.services.length > 0 || listing.serviceArea?.trim());
 const siteUrl = Astro.url.origin;
 const pageUrl = `${siteUrl}/directory/${listing.slug}`;
 const profileUpdatedAtMs = listing.updatedAt ? Date.parse(listing.updatedAt) : Number.NaN;
@@ -42,14 +56,26 @@ const related = (await getPublicListings()).filter((l) =>
 ).slice(0, 3);
 
 const badgeLabels: Record<string, [string, string]> = {
-  claimed: ['Owner claimed', 'Someone demonstrated control of the listing or a business contact channel. This is not a check of faith, ownership, or credentials.'],
-  christian_owned: ['Self-identified Christian-owned', 'The listing says it is Christian-owned. CrossLinkd has not independently confirmed that claim.'],
+  claimed: ['Owner-managed', 'The listing is connected to an account that can manage or update it. This does not verify the business or its details.'],
+  christian_owned: ['Self-identified Christian-owned', 'The submitter identifies the business as Christian-owned. CrossLinkd does not independently verify that claim.'],
 };
+const submissionSource = listing.submissionSource ? SUBMISSION_SOURCES[listing.submissionSource] : undefined;
 
 const reviews: SampleReview[] = listing.reviews ?? [];
 const socialLinks: [string, string][] = listing.social
   ? (Object.entries(listing.social).filter(([, v]) => Boolean(v)) as [string, string][])
   : [];
+const faithNames = (listing.denominations ?? [])
+  .filter((d) => d !== 'other')
+  .map((d) => denominationBySlug(d)?.name ?? d);
+if (listing.customDenomination) faithNames.push(listing.customDenomination);
+if (!faithNames.length && listing.denominations?.includes('other')) faithNames.push('Other');
+const faithLabel = faithNames.join(', ');
+const hasFaithLabel = listing.showDenomination !== false && Boolean(faithLabel);
+const hasAdditionalDetails = Boolean(
+  hasFaithLabel || listing.languages.length > 0 || listing.accessibility.length > 0
+  || Number.isFinite(listing.addedDaysAgo) || socialLinks.length > 0,
+);
 const socialHref = (network: string, value: string) => {
   if (/^https?:\/\//i.test(value)) return value;
   const domain = network === 'x' ? 'x.com' : network === 'linkedin' ? 'linkedin.com' : `${network}.com`;
@@ -62,13 +88,13 @@ const careersHref = listing.careersUrl && !careersUrlError(listing.careersUrl) ?
 const seo = {
   title: listing.isOnlineOnly
     ? `${listing.name} — Online listing | CrossLinkd`
-    : `${listing.name} — ${listing.city}, ${listing.region} | CrossLinkd`,
-  description: `${listing.name} — ${listing.tagline} Owner-submitted listing. CrossLinkd has not independently verified faith, ownership, licenses, or service quality.`.slice(0, 160),
+    : hasPhysicalLocation ? `${listing.name} — ${locationLabel} | CrossLinkd` : `${listing.name} | CrossLinkd`,
+  description: `${listing.name}${listing.tagline ? ` — ${listing.tagline}` : ''}. Listing details are not independently verified; inclusion is not an endorsement.`.slice(0, 160),
   path: `/directory/${listing.slug}`,
   schema: [
     localBusinessSchema({
-      name: listing.name, description: listing.description, url: pageUrl,
-      phone: listing.phone, email: listing.email, city: listing.city, region: listing.region,
+      name: listing.name, description: listing.description || undefined, url: pageUrl,
+      phone: listing.phone, email: listing.email, city: cityName || undefined, region: regionName || undefined,
       rating: listing.rating, reviewCount: listing.reviewCount, priceRange: listing.priceRange || undefined,
       lat: listing.lat, lng: listing.lng,
       sameAs: socialLinks.map(([k, v]) => socialHref(k, v)),
@@ -76,7 +102,7 @@ const seo = {
     breadcrumbSchema([
       { name: 'Home', url: siteUrl },
       { name: type.plural, url: `${siteUrl}/search?type=${type.slug}` },
-      { name: `Listings in ${listing.city}, ${listing.region}`, url: `${siteUrl}/locations/${listing.city.toLowerCase().replace(/\s+/g, '-')}-${listing.region.toLowerCase()}` },
+      ...(hasPhysicalLocation ? [{ name: `Listings in ${locationLabel}`, url: `${siteUrl}/locations/${locationSlug}` }] : []),
       { name: listing.name, url: pageUrl },
     ]),
   ],
@@ -97,7 +123,7 @@ const displayProfessions = listing.professions.map((slug) => professionBySlug(sl
       <ol class="breadcrumb">
         <li><a href="/">Home</a></li>
         <li><a href={`/search?type=${type.slug}`}>{type.plural}</a></li>
-        <li><a href={`/locations/${listing.city.toLowerCase().replace(/\s+/g, '-')}-${listing.region.toLowerCase()}`}>{listing.city}, {listing.region}</a></li>
+        {hasPhysicalLocation && <li><a href={`/locations/${locationSlug}`}>{locationLabel}</a></li>}
         <li aria-current="page">{listing.name}</li>
       </ol>
     </nav>
@@ -121,7 +147,6 @@ const displayProfessions = listing.professions.map((slug) => professionBySlug(sl
       </div>
       <div class="flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-6">
         <div class="space-y-2">
-          <p class="font-medium">{listing.tagline}</p>
           {(displayCategory || industryMatch) && (
             <div class="flex items-center gap-2 pt-0.5">
               <span class="chip !text-[12px] font-semibold" style="background:rgba(46,146,131,.12);color:var(--teal)">
@@ -129,25 +154,27 @@ const displayProfessions = listing.professions.map((slug) => professionBySlug(sl
               </span>
             </div>
           )}
+          {locationLabel && <p class="text-sm" style="color:var(--text-soft)"><strong style="color:var(--text)">Location:</strong> {locationLabel}{listing.postalCode ? ` ${listing.postalCode}` : ''}</p>}
+          {listing.tagline && <p class="font-medium">{listing.tagline}</p>}
           {displayProfessions.length > 0 && <div class="flex flex-wrap gap-1.5" aria-label="Professions">{displayProfessions.map((name) => <span class="chip !text-xs">{name}</span>)}</div>}
           <p class="text-sm" style="color:var(--text-soft)">
             {listing.reviewCount > 0 ? (
-              <>★ <strong>{listing.rating.toFixed(1)}</strong> ({listing.reviewCount} reviews) • </>
+              <>★ <strong>{listing.rating.toFixed(1)}</strong> ({listing.reviewCount} reviews)</>
             ) : (
-              <>No reviews yet • </>
+              <>No reviews yet</>
             )}
-            {listing.recommendations > 0 ? `${compact(listing.recommendations)} community notes • ` : ''}
-            {listing.isOnlineOnly ? 'Online-only' : `${listing.city}, ${listing.region}`}
-            {listing.priceRange ? ` • ${listing.priceRange}` : ''}
+            {listing.recommendations > 0 ? ` · ${compact(listing.recommendations)} community notes` : ''}
+            {listing.priceRange ? ` · ${listing.priceRange}` : ''}
           </p>
           {profileUpdatedAtLabel && <p class="text-xs" style="color:var(--text-mute)"><time datetime={listing.updatedAt}>Public listing record last updated {profileUpdatedAtLabel}</time>. This is not a verification.</p>}
           {meaningfulUpdateDate && <p class="text-xs" style="color:var(--text-mute)">{meaningfulUpdateState && <span class="recent-update-badge mr-1"><strong>Recently Updated</strong><time datetime={listing.recentlyUpdatedAt}>{meaningfulUpdateState.label}</time></span>}Owner-published profile update: <time datetime={listing.recentlyUpdatedAt}>{meaningfulUpdateDate}</time>. This timestamp does not imply verification or endorsement.</p>}
           <div class="flex flex-wrap gap-1.5">
-            <StatusBadge name="Owner-submitted" definition="The business provided the listing information." />
+            {submissionSource && <StatusBadge name={submissionSource.name} definition={submissionSource.definition} />}
+            {listing.claimed && <StatusBadge name="Owner-managed" definition="An account can manage or update this profile. This does not verify the business or its details." />}
             {listing.badges.filter((b) => badgeLabels[b]).map((b) => (
               <StatusBadge name={badgeLabels[b][0]} definition={badgeLabels[b][1]} />
             ))}
-            {canClaimListing && <a href={`/claim-listing?listing=${listing.slug}`} class="btn btn-secondary !min-h-11 !px-3 !py-1.5 !text-xs">Unclaimed — own this? Claim it</a>}
+            {canClaimListing && <a href={`/claim-listing?listing=${listing.slug}`} class="btn btn-secondary !min-h-11 !px-3 !py-1.5 !text-xs">Request access to manage</a>}
           </div>
         </div>
         <div class="flex flex-wrap gap-2">
@@ -176,12 +203,12 @@ const displayProfessions = listing.professions.map((slug) => professionBySlug(sl
           </section>
         )}
 
-        <section class="card p-6" aria-label="About">
+        {hasAbout && <section class="card p-6" aria-label="About">
           <h2 class="text-lg font-semibold">About</h2>
-          <p class="mt-1 text-xs" style="color:var(--text-mute)">Profile text, credentials, and faith statements below are provided by the listing. CrossLinkd has not independently checked them.</p>
-          <p class="mt-2 text-[15px] leading-relaxed" style="color:var(--text-soft)">{listing.description}</p>
+          <p class="mt-1 text-xs" style="color:var(--text-mute)">Profile text, credentials, and faith statements below are provided by the submitter. CrossLinkd has not independently checked them.</p>
+          {listing.description && <p class="mt-2 text-[15px] leading-relaxed" style="color:var(--text-soft)">{listing.description}</p>}
           {listing.statementOfFaith && (
-            <blockquote class="mt-4 rounded-2xl border-l-4 p-4 text-[15px] italic" style="border-color:var(--accent);background:var(--surface-2)">
+            <blockquote class="mt-4 rounded-2xl p-4 pl-5 text-[15px] italic" style="background:var(--surface-2)">
               “{listing.statementOfFaith}”
               <footer class="mt-1 text-xs not-italic" style="color:var(--text-mute)">— Statement of faith, provided by the listing</footer>
             </blockquote>
@@ -189,23 +216,23 @@ const displayProfessions = listing.professions.map((slug) => professionBySlug(sl
           <div class="mt-4 flex flex-wrap gap-1.5">
             {listing.hashtags.map((t) => <a href={`/search?q=${encodeURIComponent('#' + t)}`} class="chip hover:border-[var(--accent)]">#{t}</a>)}
           </div>
-        </section>
+        </section>}
 
-        <section id="services" class="card p-6" aria-label="Services">
+        {hasServices && <section id="services" class="card p-6" aria-label="Services">
           <h2 class="text-lg font-semibold">{isChurch ? 'Ministries & gatherings' : isPro ? 'Services & expertise' : 'Products & services'}</h2>
-          <div class="mt-3 flex flex-wrap gap-2">
+          {listing.services.length > 0 && <div class="mt-3 flex flex-wrap gap-2">
             {listing.services.map((s) => <a href={`/search?q=${encodeURIComponent(s)}`} class="chip !px-3.5 !py-1.5 !text-[13px] hover:border-[var(--accent)]">{s}</a>)}
-          </div>
+          </div>}
           {listing.serviceArea && (
             <p class="mt-4 text-sm" style="color:var(--text-soft)"><strong style="color:var(--text)">Service area:</strong> {listing.serviceArea}</p>
           )}
-        </section>
+        </section>}
 
-        {listing.hours && (
+        {hasHours && (
           <section class="card p-6" aria-label="Hours">
             <h2 class="text-lg font-semibold">Hours</h2>
             <dl class="mt-3 grid max-w-md grid-cols-2 gap-x-6 gap-y-1.5 text-sm">
-              {Object.entries(listing.hours).map(([d, h]) => (
+              {Object.entries(listing.hours ?? {}).map(([d, h]) => (
                 <><dt style="color:var(--text-mute)">{d}</dt><dd class="text-right font-medium">{h}</dd></>
               ))}
             </dl>
@@ -214,8 +241,9 @@ const displayProfessions = listing.professions.map((slug) => professionBySlug(sl
         )}
 
         <section class="card p-6" aria-label="Contact">
-          <h2 class="text-lg font-semibold">Contact {listing.name.split(' ')[0].length > 24 ? 'them' : listing.name.split(',')[0]}</h2>
-          {sent && <p class="mt-3 rounded-xl p-3 text-sm" style="background:rgba(46,146,131,.12)" role="status">Message saved. CrossLinkd does not automatically email the listing owner, and sending a message does not verify the listing.</p>}
+          <h2 class="text-lg font-semibold">Ask CrossLinkd about this listing</h2>
+          <p class="mt-1 text-sm" style="color:var(--text-soft)">This form sends a message to CrossLinkd, not the organization. Use the public contact options above to reach the organization directly.</p>
+          {sent && <p class="mt-3 rounded-xl p-3 text-sm" style="background:rgba(46,146,131,.12)" role="status">Message saved in CrossLinkd’s inbox. The listing owner is not emailed automatically.</p>}
           {formError && <p class="mt-3 rounded-xl bg-red-500/10 p-3 text-sm font-medium text-red-700" role="alert">{formError}</p>}
           <form method="POST" action="/api/contact" class="mt-3 space-y-3" data-listing-contact-form>
             <input type="hidden" name="topic" value="Listing inquiry" />
@@ -227,8 +255,8 @@ const displayProfessions = listing.professions.map((slug) => professionBySlug(sl
               <label class="text-sm font-medium">Email or phone<input name="email" required class="input mt-1" autocomplete="email" /></label>
             </div>
             <label class="block text-sm font-medium">Message<textarea name="message" rows="3" required class="input mt-1" placeholder={`Hi — I found you on CrossLinkd and have a question about ${listing.services[0]?.toLowerCase() ?? 'your services'}.`}></textarea></label>
-            <button class="btn btn-primary !py-2.5" type="submit">Send message</button>
-            <p class="text-xs" style="color:var(--text-mute)">Saved for a person to read. CrossLinkd does not automatically email the listing owner. Prefer talking? {listing.phone && <a href={`tel:${listing.phone}`} class="underline" data-listing-event="phone_click">Call {listing.phone}</a>}</p>
+            <button class="btn btn-primary !py-2.5" type="submit">Send message to CrossLinkd</button>
+            <p class="text-xs" style="color:var(--text-mute)">This message is saved in CrossLinkd’s contact inbox and is not forwarded to the listing owner.</p>
           </form>
         </section>
 
@@ -243,14 +271,14 @@ const displayProfessions = listing.professions.map((slug) => professionBySlug(sl
                 <div class="flex items-center gap-2">
                   <span class="flex h-9 w-9 items-center justify-center rounded-full text-sm font-bold" style="background:var(--surface-2)">{rev.name.charAt(0)}</span>
                   <div>
-                    <p class="text-sm font-bold">{rev.name} <span class="badge-verify ml-1" style="background:var(--surface-2);color:var(--text-soft)">Community reported</span></p>
+                    <p class="text-sm font-bold">{rev.name} <span class="badge-verify ml-1" style="background:var(--surface-2);color:var(--text-soft)">Community-submitted review</span></p>
                     <p class="text-xs" style="color:var(--text-mute)">★ {rev.rating}.0 • {timeAgo(rev.daysAgo)}</p>
                   </div>
                 </div>
                 <p class="mt-2 text-sm font-bold">{rev.title}</p>
                 <p class="mt-0.5 text-sm" style="color:var(--text-soft)">{rev.body}</p>
                 {rev.ownerResponse && (
-                  <div class="mt-2.5 rounded-2xl border-l-4 p-3 text-sm" style="border-color:var(--teal);background:var(--surface-2)">
+                  <div class="mt-2.5 rounded-2xl p-3 pl-4 text-sm" style="background:var(--surface-2)">
                     <p class="text-xs font-bold" style="color:var(--teal)">Response from the owner</p>
                     <p class="mt-1" style="color:var(--text-soft)">{rev.ownerResponse}</p>
                   </div>
@@ -294,55 +322,26 @@ const displayProfessions = listing.professions.map((slug) => professionBySlug(sl
             )}
           </div>
         )}
-        {!listing.isOnlineOnly && (
-          <div class="card p-5">
-            <h2 class="font-semibold">Location</h2>
-            <p class="mt-2 text-sm" style="color:var(--text-soft)">{listing.city}, {listing.region}{listing.postalCode ? ` ${listing.postalCode}` : ''}</p>
-          </div>
-        )}
         <div class="card p-5">
           <h2 class="font-semibold">Listing status</h2>
           <ul class="mt-3 space-y-2 text-sm" style="color:var(--text-soft)">
-            <li class="flex flex-wrap items-center gap-2"><StatusBadge name="Owner-submitted" /> The business provided the listing information.</li>
+            <li><strong style="color:var(--text)">Submission source:</strong> {submissionSource?.name ?? 'Not recorded'}</li>
             <li class="flex flex-wrap items-center gap-2">
               {listing.claimed
-                ? <><StatusBadge name="Owner claimed" /> Someone demonstrated control of a contact channel. This is not a verification.</>
-                : <><StatusBadge name="Not claimed" /> Claiming shows control of a contact channel. It is not a verification.</>}
+                ? <><StatusBadge name="Owner-managed" /> An account can manage or update this profile. This does not verify the business or its details.</>
+                : <>No owner-management account is linked. An owner may request access to update the profile; access does not verify the business or its claims.</>}
             </li>
-            <li>CrossLinkd has not independently verified faith, ownership, licenses, credentials, or service quality.</li>
+            <li>Listing details are not independently verified. Inclusion is not an endorsement.</li>
           </ul>
-          <a href="/how-it-works#statuses" class="mt-3 inline-flex min-h-11 items-center text-sm font-semibold underline" style="color:var(--teal)">What these statuses mean</a>
-          <a href="/contact?topic=inaccurate" class="mt-1 block text-sm font-semibold underline" style="color:var(--teal)">Report inaccurate information</a>
+          <a href="/how-it-works#statuses" class="mt-3 inline-flex min-h-11 items-center text-sm font-semibold underline" style="color:var(--teal)">What these labels mean</a>
         </div>
-        <div class="card p-5">
-          <h2 class="font-semibold">Details</h2>
+        {hasAdditionalDetails && <div class="card p-5">
+          <h2 class="font-semibold">Additional details</h2>
           <dl class="mt-3 space-y-2 text-sm">
-            {listing.showDenomination !== false && (listing.customDenomination || (listing.denominations && listing.denominations.length > 0)) && (
-              <div>
-                <dt class="font-semibold" style="color:var(--text-mute)">Faith affiliation</dt>
-                <dd>
-                  {(() => {
-                    const names = (listing.denominations ?? [])
-                      .filter((d) => d !== 'other')
-                      .map((d) => denominationBySlug(d)?.name ?? d);
-                    if (listing.customDenomination) {
-                      names.push(listing.customDenomination);
-                    }
-                    return names.join(', ') || 'Christian-owned';
-                  })()}
-                </dd>
-              </div>
-            )}
-            {(displayCategory || industryMatch) && (
-              <div>
-                <dt class="font-semibold" style="color:var(--text-mute)">Category</dt>
-                <dd>{industryMatch?.name ? `${industryMatch.name} › ` : ''}{displayCategory ?? industryMatch?.name}</dd>
-              </div>
-            )}
-            <div><dt class="font-semibold" style="color:var(--text-mute)">Languages</dt><dd>{listing.languages.join(', ')}</dd></div>
+            {hasFaithLabel && <div><dt class="font-semibold" style="color:var(--text-mute)">Faith affiliation</dt><dd>{faithLabel}</dd></div>}
+            {listing.languages.length > 0 && <div><dt class="font-semibold" style="color:var(--text-mute)">Languages</dt><dd>{listing.languages.join(', ')}</dd></div>}
             {listing.accessibility.length > 0 && <div><dt class="font-semibold" style="color:var(--text-mute)">Accessibility</dt><dd>{listing.accessibility.join(' • ')}</dd></div>}
-            {listing.email && <div><dt class="font-semibold" style="color:var(--text-mute)">Email</dt><dd><a class="underline" href={`mailto:${listing.email}`}>{listing.email}</a></dd></div>}
-            {typeof listing.addedDaysAgo === 'number' && Number.isFinite(listing.addedDaysAgo) && <div><dt class="font-semibold" style="color:var(--text-mute)">Added to directory</dt><dd>{fullDate(listing.addedDaysAgo)}</dd></div>}
+            {Number.isFinite(listing.addedDaysAgo) && <div><dt class="font-semibold" style="color:var(--text-mute)">Added to directory</dt><dd>{fullDate(listing.addedDaysAgo!)}</dd></div>}
           </dl>
           {socialLinks.length > 0 && (
             <>
@@ -363,11 +362,13 @@ const displayProfessions = listing.professions.map((slug) => professionBySlug(sl
               </div>
             </>
           )}
-        </div>
+        </div>}
         <div class="card space-y-2 p-5">
-          <button onclick="alert('Thanks! Our moderation team will review this listing.')" class="btn btn-ghost w-full !justify-start !text-sm">Report this listing</button>
-          <button onclick="alert('Thanks! Suggest-an-edit opens after sign-in in production.')" class="btn btn-ghost w-full !justify-start !text-sm">Suggest an edit</button>
-          {canClaimListing && <a href={`/claim-listing?listing=${listing.slug}`} class="btn btn-ghost w-full !justify-start !text-sm">Claim this listing</a>}
+          <p class="text-xs leading-relaxed" style="color:var(--text-mute)">{REPORT_DISCLOSURE}</p>
+          <a href={`/contact?topic=inaccurate&listing=${listing.slug}`} class="btn btn-ghost w-full !justify-start !text-sm">Flag inaccurate or outdated information</a>
+          <a href={`/contact?topic=spam&listing=${listing.slug}`} class="btn btn-ghost w-full !justify-start !text-sm">Report spam or inappropriate content</a>
+          <a href={`/contact?topic=correction&listing=${listing.slug}`} class="btn btn-ghost w-full !justify-start !text-sm">Request a correction</a>
+          {canClaimListing && <a href={`/claim-listing?listing=${listing.slug}`} class="btn btn-ghost w-full !justify-start !text-sm">Request access to manage</a>}
         </div>
       </aside>
     </div>

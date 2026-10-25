@@ -13,10 +13,10 @@ if (__userGate) return __userGate;
 <DashboardLayout user={user} active="verification" seo={{ title: 'Listing status — Dashboard', description: 'What your listing status does and does not mean.', path: '/dashboard/verification', noindex: true }}>
   <h1 class="text-2xl font-bold">Listing status</h1>
   <p class="mt-1 text-sm leading-relaxed" style="color:var(--text-soft)">{LONG_DISCLAIMER}</p>
-  {submitted && <p class="card mt-4 border-l-4 p-3 text-sm font-medium" style="border-left-color:var(--teal)" role="status">We received your note. A reply is not a verification of the business.</p>}
+  {submitted && <p class="card mt-4 p-3 pl-[15px] text-sm font-medium" role="status">We received your note. A reply is not a verification of the business.</p>}
   <div class="card mt-4 p-4 text-sm leading-relaxed" style="color:var(--text-soft)">
-    <p><strong style="color:var(--text)">Account email:</strong> {user?.email ?? 'No email on the account'}. Confirming an account email does not verify a business.</p>
-    <p class="mt-2">Owner claimed is applied only after you show control of a contact channel. CrossLinkd does not offer an independent verification of faith, ownership, licenses, or credentials.</p>
+    <p><strong style="color:var(--text)">Account email:</strong> {user?.email ?? 'No email on the account'}. Confirming it applies only to your account, not a business listing.</p>
+    <p class="mt-2">Owner-managed means an account can update a profile. It does not verify legal ownership, listing details, credentials, or other claims.</p>
     <p class="mt-3"><a href="/how-it-works#statuses" class="font-semibold underline">Read the public status definitions</a></p>
   </div>
   <ul class="mt-4 grid gap-2">

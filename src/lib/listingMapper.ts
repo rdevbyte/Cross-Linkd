@@ -21,16 +21,21 @@ export function mapListingRow(
   const denoms = (row.denominationsList && row.denominationsList.length > 0)
     ? row.denominationsList
     : denominationsList;
+  const storedLanguages = row.languages ?? [];
+  // Older rows inherited an automatic English default; don't present that as submitter-provided.
+  const publicLanguages = storedLanguages.length === 1 && storedLanguages[0]?.trim().toLowerCase() === 'english'
+    ? []
+    : storedLanguages;
 
   return {
     id: `db-${row.id}`,
     slug: row.slug,
     name: row.name,
     typeSlug: row.typeSlug,
-    tagline: row.tagline ?? 'Christian-owned business in the CrossLinkd directory.',
+    tagline: row.tagline ?? '',
     description: row.description ?? '',
-    city: loc?.city ?? '—',
-    region: loc?.region ?? '—',
+    city: loc?.city ?? '',
+    region: loc?.region ?? '',
     // Only expose postal code if showAddress is enabled
     postalCode: row.showAddress ? (loc?.postalCode ?? undefined) : undefined,
     lat: loc?.latitude ? Number(loc.latitude) : undefined,
@@ -55,7 +60,7 @@ export function mapListingRow(
     denominations: row.showDenomination ? denoms.slice(0, 2) : [],
     hashtags: hashtagsList,
     services: [],
-    languages: row.languages ?? ['English'],
+    languages: publicLanguages,
     accessibility: row.accessibility ?? [],
     badges: [],
     rating: Number(row.avgRating ?? 0),
@@ -63,7 +68,8 @@ export function mapListingRow(
     recommendations: row.recommendationCount,
     views: row.viewCount,
     verified: false,
-    claimed: row.isClaimed,
+    claimed: Boolean(row.ownerId || row.isClaimed),
+    // The listings table has no submission-source column; do not infer a source from ownerId.
     hours: row.hours ?? undefined,
     // Postgres column is jsonb string[]; expose a display string for the profile.
     serviceArea: (() => {
@@ -80,7 +86,7 @@ export function mapListingRow(
     // to 0, which made every database listing look like it had just been added.
     addedDaysAgo: (() => {
       const since = row.publishedAt ?? row.createdAt;
-      return since ? Math.max(0, Math.floor((Date.now() - since.getTime()) / 86_400_000)) : 0;
+      return since ? Math.max(0, Math.floor((Date.now() - since.getTime()) / 86_400_000)) : undefined;
     })(),
     imageHue: hue,
   };

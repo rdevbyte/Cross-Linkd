@@ -35,7 +35,7 @@ export const ARTICLES: Article[] = [
         heading: 'Start with the license, not the label',
         body: [
           'Texas licenses plumbers through the Texas State Board of Plumbing Examiners. Ask for the license number and look it up yourself. CrossLinkd does not confirm licenses.',
-          'A "Christian-owned" label on this directory is owner-submitted. It does not tell you how well the company does the work. Check both the license and the work.',
+          'A "Christian-owned" label reflects what the submitter said; it does not tell you how well the company does the work. Check both the license and the work.',
         ],
       },
       {
@@ -76,7 +76,7 @@ export const ARTICLES: Article[] = [
         heading: 'Confirm the credential',
         body: [
           'CPAs are licensed by the state. Enrolled Agents are licensed by the IRS. Bookkeepers may hold certifications but are not licensed — fine for monthly books, less relevant for complex filings.',
-          'CrossLinkd does not show a credential-verified badge. Ask the firm for the license or enrollment number and check it with the state board or the IRS.',
+          'CrossLinkd does not independently verify credentials. Ask the firm for the license or enrollment number and check it with the state board or the IRS.',
         ],
       },
       {
@@ -110,7 +110,7 @@ export const ARTICLES: Article[] = [
       {
         heading: '1. Who owns it today?',
         body: [
-          'A company can be founded by a Christian and sold years ago. "Christian-owned" is a claim about current ownership. On CrossLinkd that claim is self-identified. CrossLinkd does not independently confirm it.',
+          'A company can be founded by a Christian and sold years ago. "Christian-owned" is a claim about current ownership. On CrossLinkd it is self-identified by the submitter and not independently verified.',
         ],
       },
       {
@@ -128,13 +128,13 @@ export const ARTICLES: Article[] = [
       {
         heading: '4. Is a church standing behind it?',
         body: [
-          'A church member or neighbor may recommend a business. On CrossLinkd, that kind of note is community reported. It is an opinion, not a CrossLinkd investigation or a doctrinal seal.',
+          'A church member or neighbor may recommend a business. That is community-submitted feedback: an opinion, not a CrossLinkd investigation, endorsement, or doctrinal seal.',
         ],
       },
       {
         heading: '5. Does the label change the work?',
         body: [
-          'Read reviews for execution: did they show up, communicate, and fix mistakes? Reviews on CrossLinkd are community reported. They are not a verification of identity or licenses. Check those yourself.',
+          'Read reviews for execution: did they show up, communicate, and fix mistakes? Reviews on CrossLinkd are community-submitted opinions, not independent checks of identity or licenses. Check those yourself.'
         ],
       },
     ],
@@ -157,7 +157,7 @@ export const ARTICLES: Article[] = [
           '3. What is your change-order process, in writing?',
           '4. Can I call the last three clients?',
           '5. What is the payment schedule? (Never pay everything up front.)',
-          '6. Is your license and insurance current? Ask for the documents. CrossLinkd does not show a license verification date.',
+          '6. Is your license and insurance current? Ask for the documents. CrossLinkd does not independently verify licenses.',
           '7. What does your warranty cover after you drive away?',
         ],
       },
@@ -173,37 +173,36 @@ export const ARTICLES: Article[] = [
     relatedCategory: { label: 'Contractors', href: '/search?type=contractor' },
   },
   {
-    slug: 'how-crosslinkd-verifies-a-business',
+    slug: 'what-crosslinkd-does-not-verify',
     title: 'What CrossLinkd does not verify',
-    excerpt: 'Listings are owner-submitted. CrossLinkd does not independently verify faith, ownership, licenses, credentials, or service quality.',
+    excerpt: 'Listings may be submitted by owners or community members. Details are not independently verified; inclusion is not an endorsement.',
     category: 'How CrossLinkd works',
     publishedDaysAgo: 42,
     updatedDaysAgo: 0,
     hue: 160,
     sections: [
       {
-        heading: 'Owner-submitted',
+        heading: 'Submission source',
         body: [
-          'An owner can submit a listing for free and may identify the business as Christian-owned. That identification is theirs. CrossLinkd does not independently confirm it.',
+          'Listings may be submitted by owners or community members. A profile shows an Owner-submitted or Community-submitted label only when the source is recorded. Otherwise, the source is not recorded.',
         ],
       },
       {
-        heading: 'Completeness is not a background check',
+        heading: 'No independent fact-check',
         body: [
-          'CrossLinkd may review a submission for missing fields and obvious inconsistencies. That review does not confirm faith, ownership, licenses, certifications, credentials, or service quality.',
-          'If a profile mentions a license, ask the business for the number and check it with the issuing authority yourself.',
+          'A completed form or published profile does not mean CrossLinkd checked faith, ownership, licenses, certifications, credentials, or service quality. If a profile mentions a license, ask the business for the number and check it with the issuing authority.',
         ],
       },
       {
-        heading: 'There is no Verified badge',
+        heading: 'Managing a profile',
         body: [
-          'CrossLinkd does not publish a generic Verified badge, a credential-verified badge, or a Christian-ownership-confirmed badge. Owner claimed means someone showed control of a contact channel. It does not mean the business was investigated.',
+          'An owner or authorized representative can request access to manage or update an existing profile. Management access is not proof that the business or its claims have been verified.',
         ],
       },
       {
-        heading: 'Do your own diligence',
+        heading: 'Evaluate for yourself',
         body: [
-          'Read the profile as owner-submitted information. Contact the business. Check licenses, insurance, and references before you hire or support the organization. Listing on CrossLinkd is not an endorsement.',
+          'Contact the business. Check licenses, insurance, and references before you hire or support the organization. Listing on CrossLinkd is not an endorsement.',
         ],
       },
     ],

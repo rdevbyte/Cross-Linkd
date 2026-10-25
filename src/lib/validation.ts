@@ -123,7 +123,7 @@ const listingInputBase = z.object({
   services: z.array(z.string().trim().min(1).max(200)).max(30).default([]),
   denominations: z.array(z.string()).max(2, 'You can select up to two denominations.').default([]),
   hashtags: z.array(z.string().max(80)).default([]),
-  languages: z.array(z.string()).default(['English']),
+  languages: z.array(z.string()).default([]),
   accessibility: z.array(z.string()).default([]),
 });
 

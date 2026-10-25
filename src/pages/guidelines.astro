@@ -1,22 +1,23 @@
 ---
 import BaseLayout from '@/layouts/BaseLayout.astro';
+import { REPORT_DISCLOSURE } from '@/lib/trustCopy';
 const user = Astro.locals.user;
 const seo = {
   title: 'Community Guidelines | CrossLinkd',
-  description: 'Behavior rules for listings, reviews, and messages on CrossLinkd. Following the guidelines is not a verification.',
+  description: 'Behavior rules for listings, reviews, and messages on CrossLinkd. Listing details are not independently verified.',
   path: '/guidelines',
 };
 ---
 <BaseLayout user={user} seo={seo}>
   <div class="mx-auto max-w-3xl px-4 py-12">
     <h1 class="text-3xl font-bold">Community guidelines</h1>
-    <p class="section-sub">These are behavior rules for people using the directory. They are not a verification of faith, ownership, licenses, or service quality.</p>
+    <p class="section-sub">These are behavior rules for directory users. They do not validate listing details or make inclusion an endorsement.</p>
 
     <div class="mt-8 space-y-4 text-[15px] leading-relaxed" style="color:var(--text-soft)">
       <div class="card p-5">
         <h2 class="font-semibold" style="color:var(--text)">Listings</h2>
         <ul class="mt-2 list-disc space-y-1.5 pl-5">
-          <li>Submit a listing only if you are allowed to speak for that organization. A published listing is owner-submitted.</li>
+          <li>Listings may be submitted by owners or community members. Do not misrepresent who submitted a profile or imply CrossLinkd verified the submitter's relationship to the organization.</li>
           <li>Use the organization's real public name, and do not copy another listing.</li>
           <li>Do not present a license, credential, or faith claim as something CrossLinkd checked. CrossLinkd does not independently confirm those.</li>
           <li>Incomplete or contradictory listings can be removed. Removal is a directory decision, not a finding about the people involved.</li>
@@ -27,13 +28,13 @@ const seo = {
         <ul class="mt-2 list-disc space-y-1.5 pl-5">
           <li>Reviews should describe a real customer experience. Owners do not review their own business.</li>
           <li>No harassment, impersonation, private information, or illegal content.</li>
-          <li>Do not use a review or a message to demand a verification badge. CrossLinkd does not issue one.</li>
+          <li>Do not present a listing as verified or endorsed by CrossLinkd. Listing details are not independently verified.</li>
         </ul>
       </div>
       <div class="card p-5">
         <h2 class="font-semibold" style="color:var(--text)">If something breaks these rules</h2>
-        <p class="mt-2">Use the contact form to report a listing, a review, or spam. A report is saved for a person to read. It is not an automatic takedown, and it is not a verification of the remaining listings.</p>
-        <p class="mt-3"><a href="/contact?topic=report" class="underline">Report a listing</a> · <a href="/submission-policy" class="underline">Submission policy</a> · <a href="/reviews-policy" class="underline">Review policy</a> · <a href="/appeals" class="underline">Appeals</a></p>
+        <p class="mt-2">{REPORT_DISCLOSURE} A report is not an automatic takedown.</p>
+        <p class="mt-3"><a href="/contact?topic=report" class="underline">Flag a listing or review</a> · <a href="/submission-policy" class="underline">Submission policy</a> · <a href="/reviews-policy" class="underline">Review policy</a> · <a href="/appeals" class="underline">Appeals</a></p>
       </div>
     </div>
   </div>

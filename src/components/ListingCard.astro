@@ -4,6 +4,8 @@ import StatusBadge from './StatusBadge.astro';
 import TypeGlyph from './TypeGlyph.astro';
 import type { SampleListing } from '@/data/listings';
 import { typeBySlug } from '@/data/listing-types';
+import { formatRegionForDisplay } from '@/lib/location';
+import { SUBMISSION_SOURCES } from '@/lib/trustCopy';
 import { compact, timeAgo } from '@/lib/format';
 import { recentlyUpdatedState, recentCardShimmerState } from '@/lib/recentlyUpdated.mjs';
 
@@ -13,9 +15,13 @@ const { listing: l, distanceMiles, sponsored = false } = Astro.props;
 const artUid = String(l.id).replace(/[^a-zA-Z0-9_-]/g, '') || 'card';
 const glowDelay = (-((Array.from(String(l.id)).reduce((a, c) => a + c.charCodeAt(0), 0) * 7) % 75) / 10).toFixed(1);
 const badgeLabels: Record<string, string> = {
-  claimed: 'Owner claimed',
+  claimed: 'Owner-managed',
   christian_owned: 'Self-identified Christian-owned',
 };
+const submissionSource = l.submissionSource ? SUBMISSION_SOURCES[l.submissionSource] : undefined;
+const locationLabel = l.isOnlineOnly
+  ? 'Online-only'
+  : [l.city?.trim(), formatRegionForDisplay(l.region)].filter(Boolean).join(', ');
 const initial = l.name.trim().charAt(0).toUpperCase();
 const typeIcon = typeBySlug(l.typeSlug)?.icon ?? 'store';
 const MAX_TAGS = 3;
@@ -138,19 +144,19 @@ const shimmerDelay = (Array.from(l.id).reduce((hash, char) => (hash * 31 + char.
           <span class={`chip mb-1 !py-0 !text-[11px] ${sponsored ? '' : 'chip-featured'}`}>{sponsored ? 'Sponsored' : 'Highlighted'}</span>
         )}
         <a href={`/directory/${l.slug}`} class="card-title block" data-listing-card-link>{l.name}</a>
-        <p class="line-clamp-2 mt-0.5 text-sm" style="color:var(--text-soft)">{l.tagline}</p>
+        {l.tagline && <p class="line-clamp-2 mt-0.5 text-sm" style="color:var(--text-soft)">{l.tagline}</p>}
       </div>
     </div>
     <p class="text-[13px]" style="color:var(--text-mute)">
       {l.reviewCount > 0 ? (
-        <span title={`${l.reviewCount} reviews`}><strong class="font-semibold" style="color:var(--text)">★ {l.rating.toFixed(1)}</strong> ({compact(l.reviewCount)}) • </span>
+        <span title={`${l.reviewCount} reviews`}><strong class="font-semibold" style="color:var(--text)">★ {l.rating.toFixed(1)}</strong> ({compact(l.reviewCount)})</span>
       ) : (
-        <span>No reviews yet • </span>
+        <span>No reviews yet</span>
       )}
-      {l.isOnlineOnly ? 'Online-only' : `${l.city}, ${l.region}`}
-      {typeof distanceMiles === 'number' && distanceMiles < 9999 ? ` • ${distanceMiles.toFixed(1)} mi` : ''}
-      {l.priceRange ? ` • ${l.priceRange}` : ''}
-      {typeof l.addedDaysAgo === 'number' && Number.isFinite(l.addedDaysAgo) ? ` • added ${timeAgo(l.addedDaysAgo)}` : ''}
+      {locationLabel && <> • {locationLabel}</>}
+      {typeof distanceMiles === 'number' && distanceMiles < 9999 && <> • {distanceMiles.toFixed(1)} mi</>}
+      {l.priceRange && <> • {l.priceRange}</>}
+      {typeof l.addedDaysAgo === 'number' && Number.isFinite(l.addedDaysAgo) && <> • added {timeAgo(l.addedDaysAgo)}</>}
     </p>
     {updatedAtLabel && <p class="text-xs" style="color:var(--text-mute)"><time datetime={l.updatedAt} title="Public listing record last updated">Profile record updated {updatedAtLabel}</time></p>}
     {serviceLabels.length > 0 && (
@@ -162,8 +168,9 @@ const shimmerDelay = (Array.from(l.id).reduce((hash, char) => (hash * 31 + char.
     {serviceArea && <p class="line-clamp-1 text-xs" style="color:var(--text-soft)" title={`Service area: ${serviceArea}`}><strong style="color:var(--text)">Service area:</strong> {serviceArea}</p>}
     <div class="flex flex-wrap items-center gap-1.5">
       {recentUpdate && <span data-recent-update-badge role="note" aria-label={`Recently Updated. This listing was recently updated by its owner. ${recentUpdate.label}.`} title="This listing was recently updated by its owner." class="recent-update-badge"><span aria-hidden="true" class="recent-update-dot"></span><strong>Recently Updated</strong><time datetime={recentUpdate.timestamp}>{recentUpdate.label}</time></span>}
-      <StatusBadge name="Owner-submitted" definition="The business provided the listing information." />
-      {l.badges.filter((b) => badgeLabels[b]).map((b) => (
+      {submissionSource && <StatusBadge name={submissionSource.name} definition={submissionSource.definition} />}
+      {(l.claimed || l.badges.includes('claimed')) && <StatusBadge name="Owner-managed" definition="An account can manage or update this profile. This does not verify legal ownership or profile details." />}
+      {l.badges.filter((b) => b !== 'claimed' && badgeLabels[b]).map((b) => (
         <StatusBadge name={badgeLabels[b]} />
       ))}
     </div>

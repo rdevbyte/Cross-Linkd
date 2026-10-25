@@ -8,11 +8,11 @@ export interface ListingType {
 }
 
 export const LISTING_TYPES: ListingType[] = [
-  { slug: 'business', label: 'Business', plural: 'Businesses', description: 'Christian-owned companies, shops, and service providers.', icon: 'store' },
+  { slug: 'business', label: 'Business', plural: 'Businesses', description: 'Businesses whose submitters identify them as Christian-owned.', icon: 'store' },
   { slug: 'church', label: 'Church', plural: 'Churches', description: 'Local congregations across every Christian tradition.', icon: 'church' },
   { slug: 'ministry', label: 'Ministry', plural: 'Ministries', description: 'Parachurch ministries, outreaches, and missions.', icon: 'hands' },
   { slug: 'nonprofit', label: 'Nonprofit', plural: 'Nonprofits', description: 'Faith-rooted charities and civic organizations.', icon: 'heart' },
-  { slug: 'professional', label: 'Professional', plural: 'Professionals', description: 'Christian professionals for hire. Credentials are owner-submitted and not independently checked.', icon: 'briefcase' },
+  { slug: 'professional', label: 'Professional', plural: 'Professionals', description: 'Christian professionals for hire. Credentials, when listed, are supplied by the submitter and not independently checked.', icon: 'briefcase' },
   { slug: 'school', label: 'School', plural: 'Schools', description: 'Christian schools, colleges, and training programs.', icon: 'cap' },
   { slug: 'event', label: 'Event', plural: 'Events', description: 'Conferences, concerts, retreats, and gatherings.', icon: 'calendar' },
   { slug: 'author', label: 'Author', plural: 'Authors', description: 'Christian writers and publishers.', icon: 'book' },
@@ -20,7 +20,7 @@ export const LISTING_TYPES: ListingType[] = [
   { slug: 'worship-leader', label: 'Worship Leader', plural: 'Worship Leaders', description: 'Worship pastors, leaders, and teams.', icon: 'music' },
   { slug: 'musician', label: 'Musician', plural: 'Musicians', description: 'Christian artists, bands, and producers.', icon: 'guitar' },
   { slug: 'counselor', label: 'Counselor', plural: 'Counselors', description: 'Christian counselors and therapists.', icon: 'chat' },
-  { slug: 'contractor', label: 'Contractor', plural: 'Contractors', description: 'Christian contractors and trades. A license, if listed, is owner-submitted.', icon: 'hammer' },
+  { slug: 'contractor', label: 'Contractor', plural: 'Contractors', description: 'Christian contractors and trades. A license, if listed, is supplied by the submitter and not independently checked.', icon: 'hammer' },
   { slug: 'organization', label: 'Organization', plural: 'Organizations', description: 'Associations, networks, and community groups.', icon: 'globe' },
   { slug: 'mission', label: 'Mission', plural: 'Missions', description: 'Mission agencies and sending organizations.', icon: 'send' },
   { slug: 'conference', label: 'Conference', plural: 'Conferences', description: 'Multi-day conferences and expos.', icon: 'users' },

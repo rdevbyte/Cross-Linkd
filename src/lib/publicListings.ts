@@ -1,14 +1,13 @@
 /**
- * Public listing source: bundled sample data + published database listings.
- * Draft and deleted listings are never served publicly.
- * When no database is configured (previews), only sample data is returned.
+ * Public listing source: published database listings only.
+ * Draft, deleted, and non-database sample listings are never served publicly.
+ * When no database is configured, the public catalog is empty.
  */
 import { and, eq, isNull, desc, inArray } from 'drizzle-orm';
 import { getDb } from '@/db/client';
 import { listings, listingLocations, listingDenominations, denominations, listingHashtags, hashtags, listingProfessions, professions, listingServices, listingIndustries, industries, reviews } from '@/db/schema';
-import { SAMPLE_LISTINGS, type SampleListing, type SampleReview } from '@/data/listings';
+import type { SampleListing, SampleReview } from '@/data/listings';
 import { mapListingRow } from '@/lib/submissions';
-import { includeSamples } from '@/lib/sampleGate';
 
 /** Published, non-deleted DB listings (optionally narrowed by unique slug). Empty when no DB is configured. */
 async function getDbPublished(slug?: string, onlyIds?: string[], throwOnError = false): Promise<SampleListing[]> {
@@ -110,14 +109,9 @@ async function getDbPublished(slug?: string, onlyIds?: string[], throwOnError = 
   }
 }
 
-/**
- * Everything the public may see right now: published DB listings, plus the
- * bundled demo corpus ONLY when SHOW_SAMPLE_CONTENT is enabled (off by
- * default, so a fresh deployment starts with a genuinely clean slate).
- */
+/** Every published, non-deleted database listing currently visible to the public. */
 export async function getPublicListings(): Promise<SampleListing[]> {
-  const dbItems = await getDbPublished();
-  return includeSamples() ? [...dbItems, ...SAMPLE_LISTINGS] : dbItems;
+  return getDbPublished();
 }
 
 /** DB-published listings only (legacy bulk callers; avoid for public search paths). */
@@ -136,6 +130,5 @@ export async function getDbListingsByIds(ids: string[]): Promise<SampleListing[]
  */
 export async function findPublicListing(slug: string): Promise<SampleListing | undefined> {
   const [hit] = await getDbPublished(slug);
-  if (hit) return hit;
-  return includeSamples() ? SAMPLE_LISTINGS.find((l) => l.slug === slug) : undefined;
+  return hit;
 }

@@ -4,6 +4,8 @@ import ListingCard from '@/components/ListingCard.astro';
 import { getPublicListings } from '@/lib/publicListings';
 import { FOCUS_CITIES, stateBySlug } from '@/data/locations';
 import { breadcrumbSchema } from '@/lib/seo';
+import { formatRegionForDisplay } from '@/lib/location';
+import { SHORT_DISCLAIMER } from '@/lib/trustCopy';
 
 const { slug } = Astro.params;
 const state = slug ? stateBySlug(slug) : undefined;
@@ -16,10 +18,10 @@ const stateListings = allPublic.filter((l) => l.region === state.abbr && !l.isOn
 const citiesWithListings = FOCUS_CITIES.filter((c) => c.region === state.abbr && allPublic.some((l) => l.city === c.city && !l.isOnlineOnly));
 
 const seo = {
-  title: `Owner-submitted listings in ${state.name} | CrossLinkd`,
+  title: `Listings in ${state.name} | CrossLinkd`,
   description: stateListings.length > 0
-    ? `${stateListings.length} owner-submitted listing${stateListings.length === 1 ? '' : 's'} in ${state.name}. CrossLinkd has not independently verified them.`
-    : `No published listings in ${state.name} yet.`,
+    ? `${stateListings.length} listing${stateListings.length === 1 ? '' : 's'} in ${state.name}. Details are not independently verified; inclusion is not an endorsement.`
+    : `No published listings in ${state.name} yet. Listings are not independently verified.`,
   path: `/states/${state.slug}`,
   noindex: stateListings.length === 0,
   schema: breadcrumbSchema([
@@ -39,13 +41,11 @@ const seo = {
     </nav>
 
     <h1 class="mt-2 text-3xl font-bold">Listings in {state.name}</h1>
-    <p class="section-sub">
-      {stateListings.length} owner-submitted listing{stateListings.length === 1 ? '' : 's'}. CrossLinkd has not independently verified faith, ownership, licenses, or service quality.
-    </p>
+    <p class="section-sub">{stateListings.length} listing{stateListings.length === 1 ? '' : 's'} in this area. {SHORT_DISCLAIMER}</p>
 
     <div class="mt-6 flex flex-wrap gap-2">
       {citiesWithListings.map((c) => (
-        <a href={`/locations/${c.slug}`} class="chip !px-4 !py-2 !text-[13px] hover:border-[var(--accent)]">{c.city}, {c.region} ({allPublic.filter((l) => l.city === c.city && !l.isOnlineOnly).length})</a>
+        <a href={`/locations/${c.slug}`} class="chip !px-4 !py-2 !text-[13px] hover:border-[var(--accent)]">{c.city}, {formatRegionForDisplay(c.region)} ({allPublic.filter((l) => l.city === c.city && !l.isOnlineOnly).length})</a>
       ))}
       <a href={`/search?near=${encodeURIComponent(state.name)}`} class="chip !px-4 !py-2 !text-[13px] hover:border-[var(--accent)]">Search all of {state.name}</a>
     </div>

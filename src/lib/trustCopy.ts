@@ -1,28 +1,42 @@
-/** Exact public trust language. Do not paraphrase these strings in page copy. */
+/** Canonical public trust language. Reuse these strings rather than inventing variants. */
 
 export const LONG_DISCLAIMER =
-  'CrossLinkd is a community directory. Business owners submit information about their business and may identify it as Christian-owned. CrossLinkd reviews submissions for completeness and obvious inconsistencies but does not independently verify faith, ownership, licenses, certifications, credentials, or service quality. Please perform your own due diligence before hiring or supporting a listed organization.';
+  'Listings may be submitted by owners or community members. Details are not independently verified by CrossLinkd, and inclusion is not an endorsement. Please evaluate each listing independently before engaging with it.';
 
 export const SHORT_DISCLAIMER =
-  'Listing on CrossLinkd does not constitute an endorsement. Please independently evaluate each business, church, ministry, or organization before engaging with it.';
+  'Listings may be submitted by owners or community members. Details are not independently verified; inclusion is not an endorsement.';
+
+export const REPORT_DISCLOSURE =
+  'Use the contact form to flag inaccurate, outdated, spam, or inappropriate content for review. No response time or outcome is promised.';
 
 export const ATTESTATION =
   'I confirm that the information submitted is accurate to the best of my knowledge.';
 
+/** Submission-source labels are shown only when the source has been recorded. */
+export const SUBMISSION_SOURCES = {
+  owner: {
+    name: 'Owner-submitted',
+    definition: 'The business owner or an authorized representative says they submitted the listing. The source is self-reported; the details are not independently verified.',
+  },
+  community: {
+    name: 'Community-submitted',
+    definition: 'A community member submitted or shared the listing. The details are not independently verified.',
+  },
+} as const;
+
 export const LISTING_STATUSES: { name: string; definition: string }[] = [
-  { name: 'Owner-submitted', definition: 'The business provided the listing information.' },
-  { name: 'Owner claimed', definition: 'Someone demonstrated control of the listing or business contact channel.' },
-  { name: 'Website confirmed', definition: 'The owner demonstrated control of the listed website or email address.' },
-  { name: 'Recently confirmed by owner', definition: 'The owner recently reconfirmed that the profile information is current.' },
-  { name: 'Community reported', definition: 'A user submitted feedback or reported a concern.' },
-  { name: 'Needs update', definition: 'Some information may be outdated.' },
-  { name: 'Inactive', definition: 'The listing is no longer actively maintained.' },
+  SUBMISSION_SOURCES.owner,
+  SUBMISSION_SOURCES.community,
+  { name: 'Owner-managed', definition: 'The listing is connected to an account that can manage or update it. This does not verify legal ownership or profile details.' },
+  { name: 'Community reported', definition: 'A user flagged content for review. A report does not confirm that the reported issue is accurate.' },
+  { name: 'Needs update', definition: 'Information may be outdated; this label is not an independent check.' },
+  { name: 'Inactive', definition: 'The listing is marked inactive. This is not a finding about the organization’s legitimacy or quality.' },
 ];
 
-/** Directory presence. Not one of the seven maintenance statuses, and not a verification. */
+/** Directory presence, separate from both submission source and management access. */
 export const COMMUNITY_LISTED = {
-  name: 'Community-listed',
-  definition: 'The listing is in the directory. That does not mean CrossLinkd investigated the organization.',
+  name: 'Directory-listed',
+  definition: 'The profile appears in the directory. Inclusion is not an endorsement or an independent verification.',
 };
 
 const US_REGIONS = new Set([

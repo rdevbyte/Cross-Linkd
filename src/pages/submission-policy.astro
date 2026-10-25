@@ -1,60 +1,52 @@
 ---
 import BaseLayout from '@/layouts/BaseLayout.astro';
+import { LONG_DISCLAIMER, REPORT_DISCLOSURE } from '@/lib/trustCopy';
 const user = Astro.locals.user;
 const seo = {
   title: 'Business Submission Policy | CrossLinkd',
-  description: 'What we accept, what we reject, and what gets a listing removed: the complete submission and quality policy for the CrossLinkd directory.',
+  description: 'Submission guidelines for CrossLinkd listings. Details are not independently verified, and inclusion is not an endorsement.',
   path: '/submission-policy',
 };
 ---
 <BaseLayout user={user} seo={seo}>
   <div class="mx-auto max-w-3xl px-4 py-12">
     <h1 class="text-3xl font-bold">Business submission policy</h1>
-    <p class="section-sub">What we accept, what we reject, and what gets a listing removed. A rejection is a directory decision, not a verification of the listings that remain.</p>
+    <p class="section-sub">What can be listed, what information is self-reported, and how to flag a concern.</p>
+    <p class="card mt-5 p-5 text-sm leading-relaxed" style="color:var(--text-soft)">{LONG_DISCLAIMER}</p>
 
     <div class="prose-custom mt-8 space-y-6 text-[15px] leading-relaxed" style="color:var(--text-soft)">
       <div>
-        <h2 class="text-xl font-semibold" style="color:var(--text)">What we accept</h2>
+        <h2 class="text-xl font-semibold" style="color:var(--text)">Who may submit a listing</h2>
+        <p class="mt-2">Listings may be submitted by business owners, authorized representatives, or community members. Where the source is recorded, the profile is labeled Owner-submitted or Community-submitted. If no source label appears, the source was not recorded.</p>
         <ul class="mt-2 list-disc space-y-1.5 pl-5">
-          <li>Businesses whose owners identify them as Christian-owned. That identification is owner-submitted. CrossLinkd does not independently confirm it.</li>
-          <li>Churches, ministries, nonprofits, and Christian schools that provide a public name and a way to contact them.</li>
-          <li>Individual professionals who list under their own name. Any credential they mention is their statement, not a CrossLinkd check.</li>
-          <li>Online businesses that provide ownership contact details. Those details are not independently verified by default.</li>
+          <li>Businesses whose owners identify them as Christian-owned. That identification is self-reported and not independently confirmed.</li>
+          <li>Churches, ministries, nonprofits, schools, and organizations with a public name and contact option.</li>
+          <li>Individual professionals. Any credential or license mentioned is supplied by the submitter, not independently checked by CrossLinkd.</li>
+          <li>Online businesses and organizations. Details are not independently verified.</li>
         </ul>
       </div>
+
       <div>
-        <h2 class="text-xl font-semibold" style="color:var(--text)">What we reject</h2>
+        <h2 class="text-xl font-semibold" style="color:var(--text)">Content requirements</h2>
         <ul class="mt-2 list-disc space-y-1.5 pl-5">
-          <li>Duplicate listings for the same business (submit one; we will link additional locations).</li>
-          <li>Incomplete submissions: no working phone, no service area or address, template filler text.</li>
-          <li>Listings that are incomplete or that contradict themselves in an obvious way. CrossLinkd does not judge the sincerity of a faith claim.</li>
-          <li>Anything illegal, or that violates our <a href="/guidelines" class="underline">community guidelines</a>.</li>
+          <li>Use the organization's public name and accurate information to the best of your knowledge.</li>
+          <li>Required form fields must be present to submit. A field being present does not mean its contents were checked.</li>
+          <li>Descriptions should explain the organization, not repeat search keywords.</li>
+          <li>Do not submit spam, impersonation, illegal content, or material that violates the <a href="/guidelines" class="underline">community guidelines</a>.</li>
+          <li>Reviews follow the <a href="/reviews-policy" class="underline">review policy</a>; owners may not review their own business.</li>
         </ul>
       </div>
+
       <div>
-        <h2 class="text-xl font-semibold" style="color:var(--text)">Quality standards for published listings</h2>
-        <ul class="mt-2 list-disc space-y-1.5 pl-5">
-          <li>Name, category, hours, and contact details should be filled in. A completeness review does not confirm that they are still true.</li>
-          <li>Descriptions describe the business, not a search-engine keyword list.</li>
-          <li>Reviews follow the <a href="/reviews-policy" class="underline">review &amp; moderation policy</a>; owners may not review their own business.</li>
-        </ul>
+        <h2 id="removal" class="text-xl font-semibold" style="color:var(--text)">Corrections and reports</h2>
+        <p class="mt-2">{REPORT_DISCLOSURE} Submitting a report does not guarantee a response or content change. Copyright notices use the <a href="/copyright" class="underline">copyright page</a>.</p>
+        <p class="mt-2">Owners can request access to manage or update an existing listing. Management access does not verify the business or its claims. To ask about a moderation decision, use the <a href="/appeals" class="underline">appeals page</a>.</p>
       </div>
+
       <div>
-        <h2 id="removal" class="text-xl font-semibold" style="color:var(--text)">Correction and removal</h2>
-        <p class="mt-2">To ask for a correction or removal, use the <a href="/contact?topic=report" class="underline">contact form</a>. A request is community reported. It is not proof that CrossLinkd has already investigated the business. Copyright reports use the <a href="/copyright" class="underline">copyright page</a>.</p>
-        <ul class="mt-2 list-disc space-y-1.5 pl-5">
-          <li>A listing the owner no longer maintains may be marked Inactive.</li>
-          <li>A license claim that the owner cannot explain may be removed from the text. CrossLinkd does not itself check license databases.</li>
-          <li>Repeated inability to reach the contact channel the owner provided.</li>
-          <li>Fraud, misrepresentation, or patterns in reviews that suggest deception.</li>
-        </ul>
-        <p class="mt-2">Owners are always told why, and can respond through the <a href="/appeals" class="underline">appeals process</a>.</p>
-      </div>
-      <div>
-        <h2 class="text-xl font-semibold" style="color:var(--text)">Timing</h2>
-        <p class="mt-2">A listing may publish as owner-submitted before anyone reviews it for completeness. If we decline or ask for a fix, we should say why. Do not read silence as a verification.</p>
+        <h2 class="text-xl font-semibold" style="color:var(--text)">Publication</h2>
+        <p class="mt-2">Some submissions may be held for content moderation before publication. A published listing is visible in the directory; publication does not mean the profile details were independently verified or endorsed.</p>
       </div>
     </div>
-
   </div>
 </BaseLayout>

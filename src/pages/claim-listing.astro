@@ -1,5 +1,6 @@
 ---
 import BaseLayout from '@/layouts/BaseLayout.astro';
+import { SHORT_DISCLAIMER } from '@/lib/trustCopy';
 import { getPublicListings } from '@/lib/publicListings';
 const user = Astro.locals.user;
 const preselected = Astro.url.searchParams.get('listing') ?? '';
@@ -9,36 +10,37 @@ const corpus = await getPublicListings();
 const claimableListings = corpus.filter((l) => l.claimable === true);
 const unavailableSelection = Boolean(preselected && !claimableListings.some((listing) => listing.slug === preselected));
 ---
-<BaseLayout user={user} seo={{ title: 'Claim a Listing — CrossLinkd', description: 'Claim a listing by showing control of a contact channel. Claiming is not a verification of faith, ownership, or credentials.', path: '/claim-listing' }}>
+<BaseLayout user={user} seo={{ title: 'Manage a Listing — CrossLinkd', description: 'Request access to manage or update a listing. Management access does not verify the business or its claims.', path: '/claim-listing' }}>
   <div class="mx-auto max-w-3xl px-4 py-10">
-    <h1 class="text-3xl font-bold">Claim your listing</h1>
-    <p class="section-sub">Show that you control the listing or a business contact channel. A successful claim is labeled Owner claimed. It does not verify faith, ownership, licenses, or credentials.</p>
+    <h1 class="text-3xl font-bold">Manage a listing</h1>
+    <p class="section-sub">Owners or authorized representatives can request access to update an existing profile. Access connects an account for management; it does not verify the business or its details.</p>
+    <p class="mt-3 text-sm leading-relaxed" style="color:var(--text-soft)">{SHORT_DISCLAIMER}</p>
 
     <div class="mt-6 grid gap-3 sm:grid-cols-3">
-      {[['1. Find it', 'Select your profile below.'], ['2. Show control', 'Use a work email, domain, or another contact channel you control.'], ['3. Manage it', 'Edit the listing and respond to messages. This is not a verification.']].map(([title, body]) => (
+      {[['1. Find the profile', 'Select the published listing you want to manage.'], ['2. Request access', 'Share a public contact channel that connects you with the organization.'], ['3. Update the listing', 'If access is granted, use your account to edit the profile.']].map(([title, body]) => (
         <div class="card p-4"><p class="text-sm font-bold">{title}</p><p class="mt-1 text-[13px]" style="color:var(--text-soft)">{body}</p></div>
       ))}
     </div>
 
-    {!success && unavailableSelection && <p class="card mt-6 p-4 text-sm" role="status" style="color:var(--text-soft)">That listing is no longer available to claim. New listings are managed by the account that posted them. You can choose another available profile below.</p>}
+    {!success && unavailableSelection && <p class="card mt-6 p-4 text-sm" role="status" style="color:var(--text-soft)">That listing is no longer available for a management request. New listings are managed by the account that submitted them. You can choose another available profile below.</p>}
 
     {success ? (
-      <div class="card mt-6 border-l-4 p-6" style="border-left-color:var(--teal)">
-        <h2 class="text-lg font-semibold">Claim received</h2>
-        <p class="mt-1 text-sm" style="color:var(--text-soft)" role="status">We received your request. Owner claimed is not applied until you show control of a contact channel. A claim is not a verification of faith, ownership, or credentials. {user ? '' : 'Create an account with the same email so you can edit the listing after the claim is accepted.'}</p>
+      <div class="card mt-6 p-6 pl-[27px]">
+        <h2 class="text-lg font-semibold">Management request received</h2>
+        <p class="mt-1 text-sm" style="color:var(--text-soft)" role="status">We received your request. If access is granted, you can update the profile from your account. A management request does not verify the business or its claims. {user ? '' : 'Create an account with the same email to manage the listing if the request is accepted.'}</p>
       </div>
     ) : claimableListings.length === 0 ? (
       <div class="card mt-6 p-6" role="status">
-        <h2 class="text-lg font-semibold">No listings are available to claim right now</h2>
-        <p class="mt-1 text-sm" style="color:var(--text-soft)">Only published listings with no owner and no existing claim are shown here. New listings are managed by the account that posted them.</p>
+        <h2 class="text-lg font-semibold">No listings are available to manage right now</h2>
+        <p class="mt-1 text-sm" style="color:var(--text-soft)">Only published profiles without a linked management account are shown here. New listings are connected to the account that submitted them.</p>
         <a href="/add-listing" class="btn btn-primary mt-4">Add a new listing</a>
       </div>
     ) : (
       <form method="POST" action="/api/claims" class="card mt-6 space-y-4 p-6 sm:p-8">
         <p class="hp-field" aria-hidden="true"><label>Leave this blank<input type="text" name="hp_company" tabindex="-1" autocomplete="off" /></label></p>
         {error && <p class="rounded-xl bg-red-500/10 p-3 text-sm font-medium text-red-700" role="alert">{error}</p>}
-        <p class="text-sm leading-relaxed" style="color:var(--text-soft)">Only published, unowned profiles that have not already been claimed are available. Describe a public contact channel you control, such as a work email that matches the website. Do not send identity documents, licenses, or private religious records.</p>
-        <label class="block text-sm font-medium">Which listing is yours? *
+        <p class="text-sm leading-relaxed" style="color:var(--text-soft)">Only published profiles without a linked management account are available. Provide a public contact channel that connects you to this listing, such as a work email matching the website. Do not send identity documents, licenses, or private religious records. The request is for profile access, not verification.</p>
+        <label class="block text-sm font-medium">Which listing would you like to manage? *
           <select name="listingId" class="input mt-1.5" required>
             <option value="">Select a listing…</option>
             {claimableListings.map((l) => <option value={l.id} selected={l.slug === preselected}>{l.name} — {l.city}, {l.region}</option>)}
@@ -53,17 +55,17 @@ const unavailableSelection = Boolean(preselected && !claimableListings.some((lis
             <option value="">Select…</option><option>Owner</option><option>Pastor / Ministry leader</option><option>Employee</option><option>Authorized representative</option><option>Other</option>
           </select>
         </label>
-        <label class="block text-sm font-medium">How you can show control of a contact channel *
+        <label class="block text-sm font-medium">How this contact channel connects you to the listing *
           <textarea name="evidence" required minlength="10" rows="4" class="input mt-1.5" placeholder="Example: my work email matches the website domain, or my name is on the public staff page at this URL."></textarea>
         </label>
-        <button class="btn btn-primary w-full !py-3" type="submit">Submit claim</button>
-        <p class="text-center text-[13px]" style="color:var(--text-mute)">False claims are removed and may result in account suspension.</p>
+        <button class="btn btn-primary w-full !py-3" type="submit">Request management access</button>
+        <p class="text-center text-[13px]" style="color:var(--text-mute)">False requests may be declined and may result in account suspension.</p>
       </form>
     )}
 
     {claimableListings.length > 0 && (
       <section class="mt-8">
-        <h2 class="font-semibold">Unclaimed profiles waiting for their owners</h2>
+        <h2 class="font-semibold">Profiles available to manage</h2>
         <div class="mt-3 flex flex-wrap gap-2">
           {claimableListings.map((l) => <a href={`/claim-listing?listing=${l.slug}`} class="chip hover:border-[var(--accent)]">{l.name}</a>)}
         </div>

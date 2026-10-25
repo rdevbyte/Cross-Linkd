@@ -30,7 +30,7 @@ npm install
 #    AUTH_SECRET=any-long-random-string
 #    ADMIN_SETUP_KEY=some-one-time-bootstrap-key
 #    PUBLIC_SITE_URL=http://localhost:4321
-#    SHOW_SAMPLE_CONTENT=1
+#    SHOW_SAMPLE_CONTENT=1  # optional: illustrative events/testimonials only, never business listings
 
 # 3. Start the embedded local Postgres (first run downloads + initialises it)
 node scripts/start-pg.mjs
@@ -67,7 +67,7 @@ npm run admin:promote -- you@example.com
 | `AUTH_SECRET` | **always** | JWT signing secret. App **fails closed** (no sign-in) when unset. |
 | `ADMIN_SETUP_KEY` | first-run only | One-time bootstrap for the first super-admin; endpoint 409s afterwards. |
 | `PUBLIC_SITE_URL` | always | Canonical base URL for sitemap/mail links. |
-| `SHOW_SAMPLE_CONTENT` | optional | `1` seeds sample listings into the public catalog (default off). |
+| `SHOW_SAMPLE_CONTENT` | optional | `1` enables illustrative local sample events/testimonials only. No sample business listings are bundled or loaded. |
 | `CRON_SECRET` | prod | Protects `/api/cron/*`. Endpoints **fail closed (401)** when unset in production. |
 
 ## Industry taxonomy (new directory)
@@ -158,9 +158,9 @@ npm run db:reset                 # terminal 2 → drop/create + migrate + seed
 | `npm run build` / `npm run preview` | Production build / preview. |
 | `npm run typecheck` | `astro check`. |
 | `node scripts/start-pg.mjs` | Start embedded Postgres (port 5433, user `crosslinkd`/`cl_local_dev`). |
-| `npm run db:reset` | **Local only** — drop/create DB, apply all migrations, seed taxonomy + samples. Refuses non-localhost hosts. |
+| `npm run db:reset` | **Local only** — drop/create DB and apply all migrations; seeds reference taxonomy only, never businesses. Refuses non-localhost hosts. |
 | `npm run db:migrate` | Apply pending migrations (idempotent, state in `schema_migrations`). |
-| `npm run db:seed` | Seed taxonomy/sample data. |
+| `npm run db:seed` | Seed taxonomy, hashtags, and event categories (no business listings). |
 | `npm run admin:promote -- <email>` | Promote/revoke an account's role; bumps the session watermark. |
 | `npm run e2e` | Layout suite (64 checks). |
 | `npm run test:creation` | Listing-creation suite (60 checks). |

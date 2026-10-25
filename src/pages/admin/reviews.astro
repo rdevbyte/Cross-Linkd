@@ -72,7 +72,7 @@ if (hasDatabase()) {
 <DashboardLayout user={user} admin active="reviews" seo={{ title: 'Admin: Reviews', description: 'Moderate reviews.', path: '/admin/reviews', noindex: true }}>
   <h1 class="text-2xl font-bold">Review moderation</h1>
   <p class="mt-1 text-sm" style="color:var(--text-soft)">Policy: <a href="/reviews-policy" class="underline">Review Policy</a>. Never publish anonymous accusations of serious misconduct without process.</p>
-  <div id="review-banner" class="card mt-4 hidden border-l-4 p-4" role="status" style="border-left-color:var(--accent)"><p id="review-banner-text" class="text-sm font-bold"></p></div>
+  <div id="review-banner" class="card mt-4 hidden p-4 pl-[19px]" role="status"><p id="review-banner-text" class="text-sm font-bold"></p></div>
 
   {rows.length === 0 ? (
     <div class="card mt-6 p-8 text-center sm:p-12">
@@ -128,7 +128,6 @@ if (hasDatabase()) {
       const text = document.getElementById('review-banner-text');
       if (!banner || !text) return;
       text.textContent = message;
-      banner.style.borderLeftColor = 'var(--accent)';
       banner.classList.remove('hidden');
       banner.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }

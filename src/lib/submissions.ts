@@ -186,7 +186,7 @@ export async function saveListing(
     communionPractice: values.communionPractice?.trim() || null,
     ministryFocus: values.ministryFocus ?? [],
     holidayHours: values.holidayHours ?? {},
-    languages: values.languages?.length ? values.languages : ['English'],
+    languages: values.languages?.length ? values.languages : [],
     status,
     updatedAt: new Date(),
   };
@@ -496,6 +496,11 @@ export function mapListingRow(
   const denoms = (row.denominationsList && row.denominationsList.length > 0)
     ? row.denominationsList
     : denominationsList;
+  const storedLanguages = row.languages ?? [];
+  // Older rows inherited an automatic English default; don't present that as submitter-provided.
+  const publicLanguages = storedLanguages.length === 1 && storedLanguages[0]?.trim().toLowerCase() === 'english'
+    ? []
+    : storedLanguages;
   const publishedTimestamp = row.publishedAt?.getTime?.() ?? row.createdAt?.getTime?.();
   const ageMs = typeof publishedTimestamp === 'number' ? Date.now() - publishedTimestamp : Number.NaN;
   const addedDaysAgo = Number.isFinite(ageMs) ? Math.max(0, Math.floor(ageMs / (24 * 60 * 60 * 1000))) : undefined;
@@ -505,10 +510,10 @@ export function mapListingRow(
     slug: row.slug,
     name: row.name,
     typeSlug: row.typeSlug,
-    tagline: row.tagline ?? 'Christian-owned business in the CrossLinkd directory.',
+    tagline: row.tagline ?? '',
     description: row.description ?? '',
-    city: loc?.city ?? '—',
-    region: loc?.region ?? '—',
+    city: loc?.city ?? '',
+    region: loc?.region ?? '',
     // Only expose postal code if showAddress is enabled
     postalCode: row.showAddress ? (loc?.postalCode ?? undefined) : undefined,
     lat: loc?.latitude ? Number(loc.latitude) : undefined,
@@ -538,7 +543,7 @@ export function mapListingRow(
     denominations: row.showDenomination ? denoms.slice(0, 2) : [],
     hashtags: hashtagsList,
     services: taxonomy.services ?? [],
-    languages: row.languages ?? ['English'],
+    languages: publicLanguages,
     accessibility: row.accessibility ?? [],
     badges: [],
     rating: Number(row.avgRating ?? 0),
@@ -546,7 +551,8 @@ export function mapListingRow(
     recommendations: row.recommendationCount,
     views: row.viewCount,
     verified: false,
-    claimed: row.isClaimed,
+    claimed: Boolean(row.ownerId || row.isClaimed),
+    // The listings table has no submission-source column; do not infer a source from ownerId.
     claimable: isListingClaimable(row),
     hours: row.hours ?? undefined,
     // Postgres column is jsonb string[]; expose a display string for the profile.

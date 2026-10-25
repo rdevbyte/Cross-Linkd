@@ -1,7 +1,6 @@
 /**
- * Focus locations — CrossLinkd launches in selected metro areas only.
- * We add a city page once it has enough reviewed listings to be useful.
- * (No thin pages: every city listed here has real listings.)
+ * Search-suggestion focus locations. These are starter autocomplete suggestions,
+ * not a limit on submissions; published profiles may appear elsewhere.
  */
 
 export interface FocusCity {
@@ -73,8 +72,8 @@ export const cityBySlug = (slug: string) => FOCUS_CITIES.find((c) => c.slug === 
 
 /**
  * Resolve free-text location input — "Dallas", "Dallas, TX", "Texas", "TX",
- * or a ZIP code — to a city (or state) filter. Returns null when the input
- * is outside our focus areas (the UI then explains where we do operate).
+ * or a ZIP code — to a city (or state) filter. Returns null outside these
+ * focus locations; callers can still match published location text.
  */
 export function resolveLocation(input: string | undefined | null): { city?: FocusCity; state?: FocusState } | null {
   if (!input) return null;

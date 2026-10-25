@@ -48,9 +48,9 @@ if (hasDatabase()) {
   }
 }
 ---
-<DashboardLayout user={user} admin active="claims" seo={{ title: 'Admin: Claims', description: 'Saved listing claim requests.', path: '/admin/claims', noindex: true }}>
-  <h1 class="text-2xl font-bold">Listing claims</h1>
-  <p class="section-sub">A saved claim is only a pending request, not an ownership verification. Requests are accepted only for live, unowned, unclaimed listings.</p>
+<DashboardLayout user={user} admin active="claims" seo={{ title: 'Admin: Management requests', description: 'Saved requests for listing management access.', path: '/admin/claims', noindex: true }}>
+  <h1 class="text-2xl font-bold">Management access requests</h1>
+  <p class="section-sub">A saved request asks to connect an account for profile updates. It is not proof of business ownership or a verification of listing details. Requests are accepted only for live profiles without a linked management account.</p>
   {unavailable ? (
     <p class="card mt-6 p-5 text-sm" role="status" style="color:var(--text-soft)">The directory database is not connected, so claims cannot be listed.</p>
   ) : rows.length === 0 ? (

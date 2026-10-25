@@ -13,10 +13,10 @@ const icon =
   key.includes('inactive') ? 'pause'
   : key.includes('needs update') ? 'clock'
   : key.includes('reported') ? 'flag'
-  : key.includes('community-listed') || key.includes('community listed') ? 'people'
+  : key.includes('community-submitted') || key.includes('community submitted') || key.includes('directory-listed') || key.includes('directory listed') ? 'people'
   : key.includes('website') ? 'link'
   : key.includes('confirmed') ? 'refresh'
-  : key.includes('claimed') || key.includes('unclaimed') ? 'person'
+  : key.includes('owner-managed') || key.includes('owner managed') || key.includes('claimed') || key.includes('unclaimed') ? 'person'
   : 'doc';
 ---
 <span class="status-pill">

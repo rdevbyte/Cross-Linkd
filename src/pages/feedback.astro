@@ -5,7 +5,7 @@ const sent = Astro.url.searchParams.get('sent') === '1';
 const error = Astro.url.searchParams.get('error') ?? '';
 const seo = {
   title: 'Suggest an improvement | CrossLinkd',
-  description: 'Send a product suggestion. A saved suggestion is not a promise to build it, and it is not a verification.',
+  description: 'Send a product suggestion. Saving it does not guarantee a response or implementation.',
   path: '/feedback',
 };
 ---
@@ -15,9 +15,9 @@ const seo = {
     <p class="section-sub">Tell us what would make the directory easier to use. A suggestion is not a feature promise.</p>
 
     {sent ? (
-      <div class="card mt-6 p-6" style="border-left:4px solid var(--teal)" role="status">
+      <div class="card mt-6 p-6 pl-[27px]" role="status">
         <p class="font-bold">Suggestion saved</p>
-        <p class="mt-1 text-sm" style="color:var(--text-soft)">A person can read it when the inbox is checked. We do not promise a reply time.</p>
+        <p class="mt-1 text-sm" style="color:var(--text-soft)">Saving a suggestion does not guarantee a response or that it will be implemented.</p>
       </div>
     ) : (
       <form method="POST" action="/api/contact" class="card mt-6 space-y-4 p-6">

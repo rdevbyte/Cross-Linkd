@@ -1,12 +1,11 @@
 /** Curated hashtag catalog powering autocomplete + filter chips. */
-export interface HashtagDef { tag: string; kind: 'denomination' | 'industry' | 'profession' | 'location' | 'type' | 'verification' | 'general'; }
+export interface HashtagDef { tag: string; kind: 'denomination' | 'industry' | 'profession' | 'location' | 'type' | 'general'; }
 
 const D = (tag: string): HashtagDef => ({ tag, kind: 'denomination' });
 const I = (tag: string): HashtagDef => ({ tag, kind: 'industry' });
 const P = (tag: string): HashtagDef => ({ tag, kind: 'profession' });
 const L = (tag: string): HashtagDef => ({ tag, kind: 'location' });
 const T = (tag: string): HashtagDef => ({ tag, kind: 'type' });
-const V = (tag: string): HashtagDef => ({ tag, kind: 'verification' });
 const G = (tag: string): HashtagDef => ({ tag, kind: 'general' });
 
 export const HASHTAG_CATALOG: HashtagDef[] = [
@@ -29,8 +28,8 @@ export const HASHTAG_CATALOG: HashtagDef[] = [
   // Locations
   L('Dallas'), L('Atlanta'), L('Nashville'), L('Houston'), L('Austin'), L('Phoenix'),
   L('Chicago'), L('Orlando'), L('Charlotte'), L('Denver'), L('Texas'), L('Georgia'),
-  // Owner-applied labels. These are not CrossLinkd verification results.
-  V('ChristianOwned'), V('Claimed'),
+  // Submitter-applied identity label; it is not a CrossLinkd check.
+  G('ChristianOwned'),
   // General / values
   G('FamilyOwned'), G('SpanishSpeaking'), G('WheelchairAccess'), G('FinancingAvailable'),
   G('OnlineServices'), G('VeteranOwned'), G('WomenOwned'), G('YouthMinistry'),

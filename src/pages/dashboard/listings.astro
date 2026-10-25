@@ -9,6 +9,7 @@ import { requireUserPage } from '@/lib/guards';
 import { DENOMINATIONS } from '@/data/denominations';
 import { INDUSTRIES } from '@/data/industries';
 import { recentlyUpdatedState } from '@/lib/recentlyUpdated.mjs';
+import { formatRegionForDisplay } from '@/lib/location';
 
 const gate = requireUserPage(Astro);
 if (gate) return gate;
@@ -183,7 +184,7 @@ const notice = Astro.url.searchParams.get('notice') ?? '';
 const notices: Record<string, { title: string; body: string; tone: string }> = {
   'verify-email': { title: 'Confirm your email', body: 'We sent an account confirmation link to your inbox. This does not verify a business.', tone: 'var(--accent)' },
   'email-verified': { title: 'Email confirmed — thank you!', body: 'Your account email address is confirmed. This does not verify a business.', tone: 'var(--teal)' },
-  'listing-published': { title: 'Listing published!', body: 'Your profile is now live as an owner-submitted listing. Publishing is not a verification.', tone: 'var(--teal)' },
+  'listing-published': { title: 'Listing published!', body: 'Your profile is live in the directory. Its details are not independently verified, and inclusion is not an endorsement.', tone: 'var(--teal)' },
   'listing-saved': { title: 'Changes saved', body: 'Your listing updates have been saved.', tone: 'var(--teal)' },
 };
 const banner = notices[notice];
@@ -226,14 +227,14 @@ const allOtherDenominations = [...DENOMINATIONS]
   </div>
 
   {banner && (
-    <div class="card mt-4 border-l-4 p-4" style={`border-left-color:${banner.tone}`} role="status">
+    <div class="card mt-4 p-4 pl-[19px]" role="status">
       <p class="text-sm font-bold">{banner.title}</p>
       <p class="mt-0.5 text-sm" style="color:var(--text-soft)">{banner.body}</p>
     </div>
   )}
 
   {!dbReady && (
-    <div class="card mt-4 border-l-4 p-4" style="border-left-color:var(--accent)">
+    <div class="card mt-4 p-4 pl-[19px]">
       <p class="text-sm font-bold">Preview mode</p>
       <p class="mt-0.5 text-sm" style="color:var(--text-soft)">Submissions need the database configured. Sign in on a deployment with <code>DATABASE_URL</code> configured.</p>
     </div>
@@ -267,7 +268,7 @@ const allOtherDenominations = [...DENOMINATIONS]
     </div>
   </section>
 
-  <div id="form-banner" class="card mt-4 hidden border-l-4 p-4" role="alert" style="border-left-color:var(--accent)">
+  <div id="form-banner" class="card mt-4 hidden p-4 pl-[19px]" role="alert">
     <p id="form-banner-text" class="text-sm font-bold"></p>
     <div id="recent-update-share" class="hidden mt-3 rounded-xl border p-3" style="border-color:var(--border);background:var(--surface-2)">
       <p class="text-sm">Share your updated listing with your customers.</p>
@@ -683,7 +684,7 @@ const allOtherDenominations = [...DENOMINATIONS]
     ) : rows.map((r) => (
       <article class="card p-4" data-owner-listing data-owner-view="mobile" data-id={r.id} data-name={r.name} data-location={`${r.city ?? ''} ${r.region ?? ''}`} data-status={r.status}>
         <div class="flex items-start justify-between gap-3">
-          <div class="min-w-0"><h2 class="font-semibold">{r.name}</h2><p class="text-xs" style="color:var(--text-mute)">{r.typeSlug} · {r.city || '—'}{r.region ? `, ${r.region}` : ''}</p></div>
+          <div class="min-w-0"><h2 class="font-semibold">{r.name}</h2><p class="text-xs" style="color:var(--text-mute)">{r.typeSlug} · {r.city || '—'}{r.region ? `, ${formatRegionForDisplay(r.region)}` : ''}</p></div>
           <span class={`chip shrink-0 !text-[11px] ${STATUS_CHIP[r.status] ?? ''}`} style={r.status === 'published' ? 'color:var(--teal)' : ''}>{STATUS_LABEL[r.status] ?? r.status}</span>
         </div>
         {r.reviewNote && <p class="mt-2 rounded-lg bg-[var(--surface-2)] p-2 text-xs" style="color:var(--text-soft)"><strong>Reviewer note:</strong> {r.reviewNote}</p>}
@@ -735,7 +736,7 @@ const allOtherDenominations = [...DENOMINATIONS]
                   <p class="mt-1 text-xs text-amber-600 font-medium">Reviewer note: {r.reviewNote}</p>
                 )}
               </td>
-              <td class="p-3">{r.city || '—'}{r.region ? `, ${r.region}` : ''}</td>
+              <td class="p-3">{r.city || '—'}{r.region ? `, ${formatRegionForDisplay(r.region)}` : ''}</td>
               <td class="p-3">
                 <span class={`chip !text-[11px] ${STATUS_CHIP[r.status] ?? ''}`} style={r.status === 'published' ? 'color:var(--teal)' : ''}>
                   {STATUS_LABEL[r.status] ?? r.status}
@@ -1051,9 +1052,8 @@ const allOtherDenominations = [...DENOMINATIONS]
       moreSelect.value = '';
     });
 
-    function showBanner(ok: boolean, msg: string) {
+    function showBanner(_ok: boolean, msg: string) {
       if (!banner || !bannerText) return;
-      banner.style.borderLeftColor = ok ? 'var(--teal)' : 'var(--accent)';
       bannerText.textContent = msg;
       banner.classList.remove('hidden');
       banner.scrollIntoView({ behavior: 'smooth', block: 'center' });

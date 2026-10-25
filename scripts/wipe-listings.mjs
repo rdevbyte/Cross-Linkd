@@ -31,8 +31,7 @@ try {
   const after = (await client.query('select count(*)::int as n from listings')).rows[0].n;
   console.log(`Removed ${before} listing(s). Listings remaining: ${after}.`);
   console.log('Users, accounts, and sessions were not touched.');
-  console.log('Note: the bundled demo listings are code, not DB rows — they are now');
-  console.log('hidden by default (SHOW_SAMPLE_CONTENT). Leave it unset for a clean slate.');
+  console.log('Bundled demo business listings have been removed; this wipe only affects database rows.');
 } finally {
   await client.end();
 }

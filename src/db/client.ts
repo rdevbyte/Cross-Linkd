@@ -1,8 +1,8 @@
 /**
  * Database client — pooled Postgres for Vercel serverless.
  * Uses the postgres.js driver (ESM-safe, works with Neon/Supabase/any PG).
- * Returns `null` when no database URL is set so the site can run
- * on bundled sample data (preview / demo mode).
+ * Returns `null` when no database URL is set. Public listing pages/search then
+ * return an empty catalog; unrelated local preview content has its own gate.
  */
 import postgres from 'postgres';
 import { drizzle, type PostgresJsDatabase } from 'drizzle-orm/postgres-js';

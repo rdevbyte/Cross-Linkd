@@ -2,45 +2,15 @@
 import DashboardLayout from '@/layouts/DashboardLayout.astro';
 import { requireAdminPage } from '@/lib/guards';
 
-const __adminGate = requireAdminPage(Astro);
-if (__adminGate) return __adminGate;
+const gate = requireAdminPage(Astro);
+if (gate) return gate;
 const user = Astro.locals.user;
-
-const rows: Array<{
-  id: string;
-  name: string;
-  badge: string;
-  evidence: string;
-  state: string;
-}> = [];
 ---
-<DashboardLayout user={user} admin active="verifications" seo={{ title: 'Admin: Listing notes', description: 'Internal listing notes. Not a verification queue.', path: '/admin/verifications', noindex: true }}>
+<DashboardLayout user={user} admin active="verifications" seo={{ title: 'Admin: Listing notes', description: 'Internal notes about listing labels. This is not a verification queue.', path: '/admin/verifications', noindex: true }}>
   <h1 class="text-2xl font-bold">Listing notes</h1>
-  <p class="mt-1 text-sm" style="color:var(--text-soft)">This queue does not grant a verification badge. CrossLinkd does not independently verify faith, ownership, licenses, or credentials. See the <a href="/trust" class="underline">trust page</a>.</p>
-
-  {rows.length === 0 ? (
-    <div class="card mt-6 p-8 text-center sm:p-12">
-      <div class="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl" style="background:var(--surface-2);color:var(--teal)">
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 14 14"/></svg>
-      </div>
-      <h2 class="mt-4 text-base font-semibold">No pending listing notes</h2>
-      <p class="mt-1 text-sm" style="color:var(--text-soft)">Owner documents, if any are collected later, would be completeness notes. They would not create a verified or credentialed badge.</p>
-    </div>
-  ) : (
-    <div class="mt-4 space-y-3">
-      {rows.map((r) => (
-        <div class="card p-4">
-          <div class="flex flex-wrap items-center justify-between gap-2">
-            <div><p class="font-bold">{r.name}</p><p class="text-[13px]" style="color:var(--text-mute)">{r.badge} • {r.evidence}</p></div>
-            <span class="chip !text-[11px]">{r.state === 'ready' ? 'Ready to approve' : 'Needs review'}</span>
-          </div>
-          <div class="mt-3 flex gap-2">
-            <button class="btn btn-primary !py-1.5 !text-sm" type="button" onclick={`alert('Badge granted for ${r.name}.')`}>Approve</button>
-            <button class="btn btn-secondary !py-1.5 !text-sm" type="button" onclick={`alert('Evidence requested for ${r.name}.')`}>Request evidence</button>
-            <button class="btn btn-ghost !py-1.5 !text-sm" type="button" onclick={`alert('Badge rejected for ${r.name}.')`}>Reject</button>
-          </div>
-        </div>
-      ))}
-    </div>
-  )}
+  <p class="mt-1 text-sm leading-relaxed" style="color:var(--text-soft)">This page does not approve verification badges or certify businesses. Public labels describe a recorded submission source, account access to manage a profile, or directory status.</p>
+  <div class="card mt-6 p-6">
+    <h2 class="font-semibold">No listing-verification queue</h2>
+    <p class="mt-2 text-sm leading-relaxed" style="color:var(--text-soft)">CrossLinkd does not independently verify listing details. Inclusion is not an endorsement. Use the listings and messages queues for their existing moderation tasks.</p>
+  </div>
 </DashboardLayout>

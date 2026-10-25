@@ -1,6 +1,6 @@
 ---
 import BaseLayout from '@/layouts/BaseLayout.astro';
-import { LONG_DISCLAIMER, SHORT_DISCLAIMER } from '@/lib/trustCopy';
+import { LONG_DISCLAIMER, REPORT_DISCLOSURE, SHORT_DISCLAIMER } from '@/lib/trustCopy';
 const user = Astro.locals.user;
 const seo = {
   title: 'Trust Center — CrossLinkd',
@@ -8,7 +8,7 @@ const seo = {
   path: '/trust',
 };
 const cards: [string, string, string, string][] = [
-  ['Listing Statuses', 'What owner-submitted, owner claimed, and community reported mean — and what they do not mean.', '/listing-statuses', 'Read the statuses'],
+  ['Listing Statuses', 'How submission-source, management, and community-report labels should be read.', '/listing-statuses', 'Read the statuses'],
   ['Review & moderation policy', 'Who can review, what gets removed, and how decisions are appealed.', '/reviews-policy', 'Read the policy'],
   ['Submission policy', 'What we accept, what we reject, and what gets a listing removed.', '/submission-policy', 'See the standards'],
   ['Editorial policy', 'How our guides are written and how to request a correction.', '/editorial-policy', 'How we write'],
@@ -38,7 +38,7 @@ const cards: [string, string, string, string][] = [
 
     <div class="card mt-8 p-6" style="background:rgba(216,149,34,.08)">
       <h2 class="font-semibold">Report something</h2>
-      <p class="mt-1 text-sm" style="color:var(--text-soft)">Impersonation, duplicates, outdated information, or safety concerns can be reported. A report is community reported. It is not proof that CrossLinkd has already investigated the business.</p>
+      <p class="mt-1 text-sm" style="color:var(--text-soft)">{REPORT_DISCLOSURE}</p>
       <div class="mt-3 flex flex-wrap gap-2">
         <a href="/contact?topic=report" class="btn btn-primary !py-2 !text-sm">File a report</a>
       </div>

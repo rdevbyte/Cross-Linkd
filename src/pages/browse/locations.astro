@@ -3,7 +3,8 @@ import BaseLayout from '@/layouts/BaseLayout.astro';
 import { getPublicListings } from '@/lib/publicListings';
 import { FOCUS_STATES } from '@/data/locations';
 import { slugify } from '@/lib/slug';
-import { isUsRegion } from '@/lib/trustCopy';
+import { isUsRegion, SHORT_DISCLAIMER } from '@/lib/trustCopy';
+import { formatRegionForDisplay } from '@/lib/location';
 
 const corpus = await getPublicListings();
 const user = Astro.locals.user;
@@ -63,12 +64,9 @@ for (const item of corpus) {
 const activeStates = Array.from(stateMap.values()).sort((a, b) => b.count - a.count);
 activeStates.forEach((s) => s.cities.sort((a, b) => b.count - a.count));
 
-const hasInternational = activeStates.some((s) => !isUsRegion(s.abbr));
 const seo = {
   title: 'Browse locations | CrossLinkd',
-  description: hasInternational
-    ? 'Owner-submitted listings by place, including locations outside the United States. A place is not a verification.'
-    : 'Owner-submitted listings by place. A place is shown only when it has a published listing. That is not a verification.',
+  description: `Browse directory listings by place. ${SHORT_DISCLAIMER}`,
   path: '/browse/locations',
 };
 ---
@@ -77,8 +75,8 @@ const seo = {
     <h1 class="text-3xl font-bold">Browse by location</h1>
     <p class="section-sub">
       {activeStates.length > 0
-        ? 'A place is listed only when it has a published, owner-submitted listing. That is not a verification, and it is not limited to U.S. states.'
-        : 'No places are listed yet. A city appears here after an owner submits a listing with a location.'}
+        ? `Only places with published listings appear here. Search suggestions focus on selected metros in Texas, Tennessee, Georgia, Arizona, and Colorado; other places appear when listings are published. Coverage is not comprehensive. ${SHORT_DISCLAIMER}`
+        : 'No places are listed yet. Locations appear here when profiles are published. Search suggestions focus on selected U.S. metros; coverage is not comprehensive.'}
     </p>
 
     {activeStates.length > 0 ? (
@@ -86,7 +84,7 @@ const seo = {
         <section class="mt-8" aria-label={state.name}>
           <div class="flex items-baseline justify-between">
             <h2 class="text-xl font-semibold">
-              <a href={isUsRegion(state.abbr) ? `/states/${state.slug}` : (state.cities[0] ? `/locations/${state.cities[0].slug}` : '/search')} class="hover:underline">{state.name}</a>
+              <a href={isUsRegion(state.abbr) ? `/states/${state.slug}` : (state.cities[0] ? `/locations/${state.cities[0].slug}` : '/search')} class="hover:underline">{formatRegionForDisplay(state.abbr)}</a>
             </h2>
             <span class="chip">{state.count} {state.count === 1 ? 'listing' : 'listings'}</span>
           </div>
@@ -94,15 +92,15 @@ const seo = {
             {state.cities.map((c) => (
               <a href={`/locations/${c.slug}`} class="card card-hover p-4">
                 <div class="flex items-baseline justify-between gap-2">
-                  <p class="font-bold">{c.city}, {c.region}</p>
+                  <p class="font-bold">{c.city}, {formatRegionForDisplay(c.region)}</p>
                   <span class="chip !py-0.5 !text-[11px] font-bold">{c.count}</span>
                 </div>
-                <p class="mt-1 text-[13px]" style="color:var(--text-soft)">{isUsRegion(c.region) ? 'Owner-submitted listings. Not independently verified.' : 'Owner-submitted listing outside the United States.'}</p>
+                <p class="mt-1 text-[13px]" style="color:var(--text-soft)">Published listings in this location.</p>
               </a>
             ))}
             <a href={`/search?near=${encodeURIComponent(state.name)}`} class="card card-hover p-4">
-              <p class="font-bold">All of {state.name}</p>
-              <p class="mt-1 text-[13px]" style="color:var(--text-soft)">{isUsRegion(state.abbr) ? 'Search owner-submitted listings in this state.' : 'This is not a U.S. state. Search owner-submitted listings in this place.'}</p>
+              <p class="font-bold">All of {formatRegionForDisplay(state.abbr)}</p>
+              <p class="mt-1 text-[13px]" style="color:var(--text-soft)">Search published listings in this place.</p>
             </a>
           </div>
         </section>
@@ -117,15 +115,15 @@ const seo = {
         </div>
         <h2 class="mt-4 text-lg font-semibold">No places listed yet</h2>
         <p class="mt-2 max-w-md text-sm leading-relaxed" style="color:var(--text-soft)">
-          CrossLinkd is not a nationwide verified directory. A location card appears only after a listing is published.
+          Location cards show where profiles have been published. They do not indicate that listings were checked or endorsed.
         </p>
       </div>
     )}
 
     <div class="card mt-10 p-6">
-      <h2 class="font-semibold">Online-only & nationwide services</h2>
+      <h2 class="font-semibold">Online-only listings</h2>
       <p class="mt-1 text-sm" style="color:var(--text-soft)">
-        Online-only businesses say they serve customers without a storefront — <a href="/search?onlineOnly=1" class="underline">browse them here</a>. A listing is owner-submitted, not verified.
+        If an online-only profile includes a service area, it was supplied with the listing. <a href="/search?onlineOnly=1" class="underline">Browse online-only listings</a>. {SHORT_DISCLAIMER}
       </p>
     </div>
   </div>

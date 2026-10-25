@@ -1,7 +1,7 @@
 /**
  * Hashtag parsing / suggestion utilities shared by client + server.
  * Supports: `bakery #Bap` → suggests `#Baptist`, multi-tag chips,
- * denomination / industry / profession / location / type / verification tags.
+ * denomination / industry / profession / location / type / listing-management tags.
  */
 import { HASHTAG_CATALOG } from '@/data/hashtags';
 

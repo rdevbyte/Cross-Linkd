@@ -4,10 +4,9 @@
  *
  * Production paths use src/lib/dbSearch.ts so filtering, counting, sorting,
  * and pagination happen in Postgres before page-only hydration. This in-memory
- * engine remains for the explicitly gated sample-data preview and unit tests.
+ * engine remains for explicitly supplied data and unit tests.
  */
-import { SAMPLE_LISTINGS, type SampleListing } from '@/data/listings';
-import { includeSamples } from '@/lib/sampleGate';
+import type { SampleListing } from '@/data/listings';
 import { DENOMINATIONS } from '@/data/denominations';
 import { taxonomyTermsForSlug, listingMatchesIndustry, categoryBySlug, canonicalProfessionSlug } from '@/data/industries';
 import { FOCUS_CITIES, resolveLocation } from '@/data/locations';
@@ -85,7 +84,7 @@ function tagMatchesListing(tag: string, l: SampleListing): boolean {
     l.typeSlug.toLowerCase().replace(/-/g, ''),
     l.city.toLowerCase().replace(/\s/g, ''),
     ...(l.verified ? ['verified'] : []),
-    ...(l.claimed ? ['claimed'] : []),
+    ...(l.claimed ? ['ownermanaged', 'claimed'] : []),
   ];
   // denomination aliases
   for (const d of DENOMINATIONS) {
@@ -142,7 +141,7 @@ export function searchListings(rawFilters: Partial<SearchFilters> & { q?: string
     }
   }
 
-  let pool: SearchHit[] = [...extra, ...(includeSamples() ? SAMPLE_LISTINGS : [])].map((l) => ({ ...l, score: 0, matchedTags: [] as string[] }));
+  let pool: SearchHit[] = extra.map((l) => ({ ...l, score: 0, matchedTags: [] as string[] }));
 
   // --- tag filtering (AND semantics) ---
   if (tags.length) {
@@ -289,13 +288,13 @@ export function buildSuggestions(q: string, hitCount: number): string[] {
   if (hitCount > 0 || !q.trim()) {
     return ['bakery #Baptist', 'Christian counselor', 'plumber Dallas', 'accountant Nashville'].filter((s) => s !== q).slice(0, 3);
   }
-  return ['Try removing a hashtag', 'Try a different city', 'Browse owner-submitted listings'];
+  return ['Try removing a hashtag', 'Try a different city', 'Browse published listings'];
 }
 
 export function autocompleteSuggestions(
   fragment: string,
   limit = 8,
-  corpus: SampleListing[] = includeSamples() ? SAMPLE_LISTINGS : [],
+  corpus: SampleListing[] = [],
 ): { label: string; kind: string; value: string }[] {
   const q = fragment.toLowerCase().trim();
   if (!q) return [];

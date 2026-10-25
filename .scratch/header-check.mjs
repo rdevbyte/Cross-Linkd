@@ -1,0 +1,3 @@
+import { chromium } from 'playwright';
+const b=await chromium.launch(); const p=await b.newPage({viewport:{width:320,height:844}});
+try { await p.goto('http://127.0.0.1:4321/',{waitUntil:'networkidle'}); console.log(JSON.stringify(await p.evaluate(()=>[...document.querySelectorAll('header a.logo-link,header .theme-slider,header details,header .logo-mark,header .logo-wordmark,header > div')].map(e=>{let r=e.getBoundingClientRect();let s=getComputedStyle(e);return {sel:e.tagName+'.'+(e.className.baseVal??e.className),left:r.left,right:r.right,width:r.width,height:r.height,font:s.fontSize,white:s.whiteSpace,overflow:s.overflow}})),null,2)); } finally {await b.close()}

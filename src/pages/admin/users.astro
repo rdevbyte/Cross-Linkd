@@ -41,10 +41,10 @@ const flash = Astro.url.searchParams.get('flash') ?? '';
   </p>
 
   {flash && (
-    <div class="card mt-4 border-l-4 p-4" role="status" style="border-left-color:var(--teal)"><p class="text-sm font-bold">{flash}</p></div>
+    <div class="card mt-4 p-4 pl-[19px]" role="status"><p class="text-sm font-bold">{flash}</p></div>
   )}
 
-  <div id="users-banner" class="card mt-4 hidden border-l-4 p-4" role="alert" style="border-left-color:var(--accent)"><p id="users-banner-text" class="text-sm font-bold"></p></div>
+  <div id="users-banner" class="card mt-4 hidden p-4 pl-[19px]" role="alert"><p id="users-banner-text" class="text-sm font-bold"></p></div>
 
   <div class="card mt-4 overflow-x-auto">
     {rows.length === 0 ? (
@@ -85,11 +85,10 @@ const flash = Astro.url.searchParams.get('flash') ?? '';
   </div>
 
   <script>
-    function show(ok: boolean, msg: string) {
+    function show(_ok: boolean, msg: string) {
       const b = document.getElementById('users-banner');
       const t = document.getElementById('users-banner-text');
       if (!b || !t) return;
-      b.style.borderLeftColor = ok ? 'var(--teal)' : 'var(--accent)';
       t.textContent = msg;
       b.classList.remove('hidden');
       b.scrollIntoView({ behavior: 'smooth', block: 'center' });

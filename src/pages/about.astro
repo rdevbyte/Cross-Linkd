@@ -1,85 +1,45 @@
 ---
 import BaseLayout from '@/layouts/BaseLayout.astro';
+import { LONG_DISCLAIMER } from '@/lib/trustCopy';
 const user = Astro.locals.user;
-
-const team: { name: string; role: string; bio: string; hue: number }[] = [
-  {
-    name: 'Tom Whitaker',
-    role: 'Founder',
-    bio: 'Founder. CrossLinkd is a community directory. It does not independently verify the businesses it lists.',
-    hue: 36,
-  },
-  {
-    name: 'Grace Okafor',
-    role: 'Operations',
-    bio: 'Named on this page by the site owner. CrossLinkd does not currently run an independent verification desk for faith, ownership, licenses, or credentials.',
-    hue: 160,
-  },
-  {
-    name: 'Diego Ramos',
-    role: 'Community & Moderation',
-    bio: 'Named on this page by the site owner. Reports and appeals are described on the appeals page. A reply-time promise is not confirmed here.',
-    hue: 200,
-  },
-];
-
 const seo = {
   title: 'About CrossLinkd — Who We Are & How We Work',
-  description: 'CrossLinkd is a community directory of owner-submitted Christian businesses, churches, and ministries. It does not independently verify listings.',
+  description: 'CrossLinkd is a small, one-person community directory. Listings may be submitted by owners or community members; details are not independently verified.',
   path: '/about',
 };
 ---
 <BaseLayout user={user} seo={seo}>
   <div class="mx-auto max-w-3xl px-4 py-12">
     <h1 class="text-3xl font-bold">About CrossLinkd</h1>
-    <p class="section-sub">A small, independent company. We are not a denomination, a church network, or a marketing agency.</p>
+    <p class="section-sub">A small, independently run, one-person directory — not a denomination, church network, or marketing agency.</p>
 
     <div class="prose-custom mt-8 space-y-4 text-[15px] leading-relaxed" style="color:var(--text-soft)">
       <p>
-        <strong style="color:var(--text)">Why we built this.</strong> People want to hire businesses that share their values, and Christian
-        business owners want to be findable. But "Christian directory" searches turn up sites where anyone can pay for a listing and nobody
-        checks it. CrossLinkd does not solve that by claiming to check faith, ownership, or licenses. It is a place to read owner-submitted listings and do your own diligence.
+        <strong style="color:var(--text)">Why we built this.</strong> CrossLinkd helps people find Christian businesses and community organizations, and helps those organizations share a directory profile. It does not decide which business is right for you.
       </p>
       <p>
-        <strong style="color:var(--text)">What we are.</strong> CrossLinkd is a community directory of Christian businesses, churches, ministries,
-        and professionals. Listings are owner-submitted and may be in the United States or elsewhere. Publication is not a check that the listing is accurate.
+        <strong style="color:var(--text)">Who and where.</strong> The directory includes businesses, churches, ministries, schools, nonprofits, professionals, and related organizations. Location suggestions focus on selected U.S. metros: Dallas–Fort Worth, Nashville, Atlanta, Phoenix, and Colorado Springs. Other places appear only when profiles are published; online-only profiles are shown separately. Coverage is not comprehensive.
       </p>
       <p>
-        <strong style="color:var(--text)">What we are not.</strong> We are not a denomination and we do not judge anyone's doctrine. We describe
-        traditions neutrally and never rank them. We do not independently verify faith, ownership, licenses, certifications, credentials, or service quality.
-        Directory inclusion is not an endorsement.
+        <strong style="color:var(--text)">How to read a listing.</strong> Profiles may be submitted by business owners or community members. Where the submission source is recorded, it is labeled on the profile. Details are not independently verified, and directory inclusion is not an endorsement.
       </p>
       <p>
-        <strong style="color:var(--text)">How we operate.</strong> Listing and claiming are free right now. CrossLinkd does not charge for a verification,
-        because it does not offer one. We do not sell your data and we do not run third-party ad networks. If we ever introduce paid features,
-        they will be clearly explained here first.
+        <strong style="color:var(--text)">What we are not.</strong> We are not a denomination and do not judge anyone's doctrine. We describe traditions neutrally and do not rank them. Listing information, including faith, ownership, licenses, credentials, and service quality, is not independently verified by CrossLinkd.
+      </p>
+      <p>
+        <strong style="color:var(--text)">How owners can manage a profile.</strong> An owner or authorized representative can request access to update an existing listing. Management access is not proof that the business or its claims have been verified.
       </p>
     </div>
 
-    <h2 class="mt-12 text-2xl font-semibold">The team</h2>
-    <p class="mt-2 text-sm" style="color:var(--text-mute)">Names below still need the site owner to confirm they should be published. Earlier bios claimed a verification operation this directory does not have. Those claims have been removed.</p>
-    <div class="mt-4 grid gap-4 sm:grid-cols-3">
-      {team.map((m) => (
-        <div class="card p-5 text-center">
-          <span class="mx-auto flex h-16 w-16 items-center justify-center rounded-full text-xl font-bold text-white" style={`background:hsl(${m.hue},45%,55%)`} aria-hidden="true">{m.name.split(' ').map((n) => n[0]).join('')}</span>
-          <p class="mt-3 font-bold">{m.name}</p>
-          <p class="text-xs font-bold uppercase tracking-wide" style="color:var(--teal)">{m.role}</p>
-          <p class="mt-2 text-[13px] leading-relaxed" style="color:var(--text-soft)">{m.bio}</p>
-        </div>
-      ))}
+    <div class="card mt-8 p-5 text-sm leading-relaxed" style="color:var(--text-soft)">
+      <p>{LONG_DISCLAIMER}</p>
+      <p class="mt-3">Use the <a href="/contact?topic=inaccurate" class="underline">contact form</a> to flag inaccurate, outdated, spam, or inappropriate content for review. No response time or outcome is promised.</p>
     </div>
 
-    <h2 class="mt-12 text-2xl font-semibold">How the directory is managed</h2>
-    <div class="prose-custom mt-3 space-y-3 text-[15px] leading-relaxed" style="color:var(--text-soft)">
-      <p>A submission may be reviewed for completeness and obvious inconsistencies — see <a href="/how-it-works" class="underline">how it works</a>. That is not an independent verification. Reviews are screened under our <a href="/reviews-policy" class="underline">review &amp; moderation policy</a>. Appeals are requested on the <a href="/appeals" class="underline">appeals page</a>. An appeal is not a verification. Our <a href="/editorial-policy" class="underline">editorial policy</a> governs the guides we publish, and the <a href="/submission-policy" class="underline">submission policy</a> explains what we accept and what we remove.</p>
-      <p>Owners can claim a listing and update it. If a listing is no longer maintained, the accurate status is Inactive, not verified.</p>
-    </div>
-
-    <div class="card mt-10 p-6">
-      <h2 class="text-lg font-semibold">Contact us</h2>
-      <p class="mt-2 text-sm leading-relaxed" style="color:var(--text-soft)">
-        Have questions, feedback, or need assistance? Use the contact form. A person can read a saved message. We do not promise a reply within 1–2 business days.
-      </p>
+    <div class="mt-8 flex flex-wrap gap-3">
+      <a href="/how-it-works" class="btn btn-secondary">How it works</a>
+      <a href="/submission-policy" class="btn btn-secondary">Submission policy</a>
+      <a href="/contact" class="btn btn-primary">Contact us</a>
     </div>
   </div>
 </BaseLayout>

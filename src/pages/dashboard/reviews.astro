@@ -64,10 +64,10 @@ if (hasDatabase()) {
   <p class="mt-1 text-sm" style="color:var(--text-soft)">Customer reviews for your listings. Owner responses are moderated before publication, with one response allowed per review.</p>
 
   {Astro.url.searchParams.has('submitted') && (
-    <p class="card mt-4 border-l-4 p-4 text-sm" role="status" style="border-left-color:var(--teal)">Your response was submitted for moderation. It will appear publicly if approved.</p>
+    <p class="card mt-4 p-4 pl-[19px] text-sm" role="status">Your response was submitted for moderation. It will appear publicly if approved.</p>
   )}
   {Astro.url.searchParams.has('error') && (
-    <p class="card mt-4 border-l-4 p-4 text-sm" role="alert" style="border-left-color:var(--accent)">
+    <p class="card mt-4 p-4 pl-[19px] text-sm" role="alert">
       {Astro.url.searchParams.get('error') === 'already-responded'
         ? 'A response has already been submitted for this review. The one-response limit applies.'
         : Astro.url.searchParams.get('error') === 'response-length'

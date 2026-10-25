@@ -10,9 +10,15 @@ import { LISTING_TYPES } from '@/data/listing-types';
 import { DENOMINATIONS, TRADITIONS } from '@/data/denominations';
 import { INDUSTRIES } from '@/data/industries';
 import StructuredSelect from '@/components/StructuredSelect.astro';
+import { SHORT_DISCLAIMER } from '@/lib/trustCopy';
 
 const user = Astro.locals.user;
 const params = Astro.url.searchParams;
+const filterFormParamNames = new Set([
+  'q', 'sort', 'ltype', 'denomination', 'service', 'city', 'radiusMi', 'minRating', 'openNow', 'onlineOnly', 'page',
+]);
+// Keep search context and any filters not represented in the sidebar when the form auto-submits.
+const preservedFilterParams = [...params].filter(([name]) => !filterFormParamNames.has(name));
 const getAll = (k: string) => params.getAll(k).filter(Boolean);
 
 // ---- Structured "Listing type" dropdown (ltype) ----
@@ -123,7 +129,7 @@ const sortOptions: [string, string][] = [
 
 const seo = {
   title: filters.q ? `Results for “${filters.q}” — CrossLinkd` : 'Search — CrossLinkd',
-  description: 'Search Christian businesses, churches, ministries, professionals, and events by keyword, hashtag, denomination, industry, and location.',
+  description: 'Search directory profiles submitted by owners or community members. Details are not independently verified, and inclusion is not an endorsement.',
   path: `/search`,
 };
 ---
@@ -131,8 +137,9 @@ const seo = {
   <div class="mx-auto max-w-7xl px-4 py-8">
     <div class="max-w-3xl">
       <h1 class="text-2xl font-bold sm:text-3xl">Search the directory</h1>
-      <p class="mt-1 text-sm" style="color:var(--text-soft)">Results are owner-submitted listings. A search result is not a verification or an endorsement.</p>
+      <p class="mt-1 text-sm" style="color:var(--text-soft)">{SHORT_DISCLAIMER}</p>
       <p class="mt-1 text-sm" style="color:var(--text-soft)">Try <code class="rounded bg-[var(--surface-2)] px-1.5 py-0.5 text-[13px]">bakery #Baptist</code>, <code class="rounded bg-[var(--surface-2)] px-1.5 py-0.5 text-[13px]">counselor near me</code>, or <code class="rounded bg-[var(--surface-2)] px-1.5 py-0.5 text-[13px]">churches with wheelchair access</code></p>
+      <p class="mt-1 text-xs" style="color:var(--text-mute)">Location suggestions reflect published places; directory coverage is not comprehensive.</p>
       <div class="mt-4"><SearchBar client:load initialQuery={filters.q} initialLocation={filters.onlineOnly ? 'Online' : (filters.near ?? '')} locationChoices={locationChoices} size="compact" /></div>
       {result.appliedTags.length > 0 && (
         <div class="mt-2 flex flex-wrap gap-1.5" aria-label="Applied hashtag filters">
@@ -144,9 +151,10 @@ const seo = {
     <div class="mt-6 grid gap-6 lg:grid-cols-[260px_1fr]">
       <!-- Filters -->
       <aside class="card h-fit p-4 lg:sticky lg:top-20" aria-label="Search filters">
-        <form method="GET" action="/search" class="space-y-4">
+        <form id="search-filter-form" method="GET" action="/search" class="space-y-4">
           <input type="hidden" name="q" value={filters.q} />
           <input type="hidden" name="sort" value={filters.sort} />
+          {preservedFilterParams.map(([name, value]) => <input type="hidden" name={name} value={value} />)}
           <h2 class="text-[12px] font-semibold uppercase tracking-[0.08em]" style="color:var(--text-mute)">Filters</h2>
           <StructuredSelect
             name="ltype"
@@ -196,7 +204,6 @@ const seo = {
             <label class="flex items-center gap-2.5 text-sm font-medium"><input type="checkbox" name="onlineOnly" value="1" checked={filters.onlineOnly} class="h-4 w-4 rounded accent-[var(--accent)]" /> Online services</label>
           </div>
           <div class="flex gap-2">
-            <button class="btn btn-primary flex-1 !py-2 !text-sm" type="submit">Apply</button>
             <a href="/search" class="btn btn-secondary !py-2 !text-sm">Reset</a>
           </div>
         </form>
@@ -204,7 +211,7 @@ const seo = {
       </aside>
 
       <!-- Results -->
-      <div data-recent-filter-active={filters.sort === 'recently-updated' ? 'true' : undefined}>
+      <div class="min-w-0" data-recent-filter-active={filters.sort === 'recently-updated' ? 'true' : undefined}>
         <div class="flex flex-wrap items-center justify-between gap-3">
           <p class="text-sm" style="color:var(--text-soft)" role="status" aria-live="polite" aria-atomic="true">
             <strong style="color:var(--text)">{result.total}</strong> result{result.total === 1 ? '' : 's'}
@@ -212,15 +219,15 @@ const seo = {
             {ltypeLabel && <> in <strong style="color:var(--text)">{ltypeLabel}</strong></>}
             {filters.near && <> near <strong style="color:var(--text)">{filters.near}</strong></>}
           </p>
-          <div class="flex items-center gap-2">
+          <div class="flex min-w-0 flex-wrap items-center gap-2">
             <button id="layout-toggle" type="button" class="btn btn-secondary inline-flex items-center gap-1.5 !px-3 !py-1.5 !text-sm" aria-pressed="false" aria-label="List view. Switch to grid view">
               <svg id="icon-list" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path d="M3 4.5h14v1.8H3V4.5Zm0 4.6h14v1.8H3V9.1Zm0 4.6h14v1.8H3v-1.8Z" /></svg>
               <svg id="icon-grid" class="hidden h-4 w-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path d="M3 3h6.2v6.2H3V3Zm7.8 0H17v6.2h-6.2V3ZM3 10.8h6.2V17H3v-6.2Zm7.8 0H17V17h-6.2v-6.2Z" /></svg>
               <span id="layout-toggle-label">List view</span>
             </button>
             <p id="layout-status" class="sr-only" role="status"></p>
-            <label class="flex items-center gap-1.5 text-sm" style="color:var(--text-mute)">Sort
-              <select id="sort" class="input !w-auto !py-1.5 !text-sm" aria-label="Sort results">
+            <label class="flex min-w-0 flex-wrap items-center gap-1.5 text-sm" style="color:var(--text-mute)">Sort
+              <select id="sort" class="input min-w-0 max-w-[11rem] !w-auto !py-1.5 !text-sm" aria-label="Sort results">
                 {sortOptions.map(([v, l]) => <option value={v} selected={filters.sort === v}>{l}</option>)}
               </select>
             </label>
@@ -251,8 +258,9 @@ const seo = {
             <EmptyState title="No published listings match" body="Nothing published matches these terms and filters. Try removing a filter, broadening your search, or browsing categories and places that have published listings. We don’t invent entries to fill empty results.">
               <div class="mt-4 flex flex-wrap justify-center gap-2">
                 <a href={clearSearchUrl} class="chip hover:border-[var(--accent)]">Clear filters</a>
-                <a href="/#browse-published" class="chip hover:border-[var(--accent)]">Browse published categories and places</a>
-                <a href="/add-listing" class="chip hover:border-[var(--accent)]">Submit a real listing</a>
+                <a href="/browse/industries" class="chip hover:border-[var(--accent)]">Browse industry categories</a>
+                <a href="/contact?topic=suggest" class="chip hover:border-[var(--accent)]">Suggest a listing</a>
+                <a href="/add-listing" class="chip hover:border-[var(--accent)]">Add a listing</a>
                 {filters.q && result.suggestions.map((suggestion) => (
                   <a href={`/search?q=${encodeURIComponent(suggestion)}`} class="chip hover:border-[var(--accent)]">Try: {suggestion}</a>
                 ))}
@@ -286,6 +294,34 @@ const seo = {
       const join = sortBase.includes('?') && !sortBase.endsWith('?') ? '&' : '';
       window.location.href = `${sortBase}${join}sort=${v}`;
     });
+
+    const filtersForm = document.getElementById('search-filter-form');
+    if (filtersForm instanceof HTMLFormElement) {
+      let textFilterTimer = 0;
+      const submitFilters = () => {
+        if (textFilterTimer) {
+          window.clearTimeout(textFilterTimer);
+          textFilterTimer = 0;
+        }
+        filtersForm.requestSubmit();
+      };
+
+      // Dropdowns and toggles submit as soon as their value changes.
+      filtersForm.addEventListener('change', (event) => {
+        const target = event.target;
+        if (!(target instanceof HTMLInputElement || target instanceof HTMLSelectElement)) return;
+        if (target.name) submitFilters();
+      });
+
+      // Text filters submit shortly after typing stops, avoiding a reload per keystroke.
+      filtersForm.addEventListener('input', (event) => {
+        const target = event.target;
+        if (!(target instanceof HTMLInputElement) || (target.name !== 'service' && target.name !== 'city')) return;
+        if (textFilterTimer) window.clearTimeout(textFilterTimer);
+        textFilterTimer = window.setTimeout(submitFilters, 350);
+      });
+    }
+
     document.getElementById('near-me')?.addEventListener('click', () => {
       if (!navigator.geolocation) return alert('Geolocation is not supported by your browser.');
       navigator.geolocation.getCurrentPosition(

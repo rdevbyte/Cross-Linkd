@@ -13,7 +13,7 @@ const mine: Array<{ title: string; date: string; city: string; cost: string; slu
   <h1 class="text-2xl font-bold">Events & announcements</h1>
   <p class="mt-1 text-sm" style="color:var(--text-soft)">Publish community gatherings, service projects, conferences, and seminars.</p>
   
-  {created && <p class="card mt-4 border-l-4 p-3 text-sm font-medium" style="border-left-color:var(--teal)">Event created and submitted for review.</p>}
+  {created && <p class="card mt-4 p-3 pl-[15px] text-sm font-medium">Event created and submitted for review.</p>}
   
   {mine.length === 0 ? (
     <div class="card mt-4 p-8 text-center sm:p-10">

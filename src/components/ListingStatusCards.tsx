@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, type ReactNode } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
 import { MOTION } from '@/lib/motion';
+import { REPORT_DISCLOSURE } from '@/lib/trustCopy';
 
 /**
  * Motion split, so nothing animates the same property twice:
@@ -55,7 +56,8 @@ function iconFor(name: string) {
   if (key.includes('inactive')) return 'pause';
   if (key.includes('needs update')) return 'clock';
   if (key.includes('reported')) return 'flag';
-  if (key.includes('community-listed') || key.includes('community listed')) return 'people';
+  if (key.includes('community-submitted') || key.includes('community submitted') || key.includes('directory-listed') || key.includes('directory listed')) return 'people';
+  if (key.includes('owner-managed') || key.includes('owner managed')) return 'person';
   if (key.includes('website')) return 'link';
   if (key.includes('confirmed')) return 'refresh';
   if (key.includes('claimed') || key.includes('unclaimed')) return 'person';
@@ -189,12 +191,12 @@ export default function ListingStatusCards({ disclaimer, statuses, terms, recomm
 
       <MotionCard index={1} className="card mt-4 p-5" interactive={false}>
         <h2 className="font-semibold">Saw something wrong?</h2>
-        <p className="mt-1 text-sm leading-relaxed" style={{ color: 'var(--text-soft)' }}>
-          A report is community reported. It asks a person to look at the listing. It does not mean CrossLinkd has already confirmed or rejected the business.
-        </p>
+        <p className="mt-1 text-sm leading-relaxed" style={{ color: 'var(--text-soft)' }}>{REPORT_DISCLOSURE}</p>
         <div className="mt-3 flex flex-wrap gap-2">
-          <a href="/contact?topic=inaccurate" className="btn btn-secondary min-h-11">Report inaccurate information</a>
+          <a href="/contact?topic=inaccurate" className="btn btn-secondary min-h-11">Flag inaccurate or outdated information</a>
+          <a href="/contact?topic=spam" className="btn btn-secondary min-h-11">Report spam or inappropriate content</a>
           <a href="/contact?topic=duplicate" className="btn btn-secondary min-h-11">Report a duplicate</a>
+          <a href="/contact?topic=correction" className="btn btn-secondary min-h-11">Request a correction</a>
           <a href="/contact?topic=removal" className="btn btn-secondary min-h-11">Request removal</a>
           <a href="/appeals" className="btn btn-secondary min-h-11">Appeals</a>
         </div>

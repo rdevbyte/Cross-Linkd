@@ -37,10 +37,62 @@ test('empty journeys link to clear filters, published taxonomy, and real submiss
   ]);
   assert.match(home, /Submit a real listing/);
   assert.match(home, /id="browse-published"/);
+  assert.match(home, /SHORT_DISCLAIMER/);
+  assert.match(home, /href="\/contact\?topic=suggest"/);
   assert.match(search, /Clear filters/);
-  assert.match(search, /#browse-published/);
-  assert.match(search, /Submit a real listing/);
+  assert.match(search, /href="\/browse\/industries"/);
+  assert.match(search, /Suggest a listing/);
   assert.match(section, /id\?: string/);
+});
+
+test('staff can open saved contact messages from the dashboard navigation', async () => {
+  const [dashboardLayout, contactRoute, reportsPage] = await Promise.all([
+    read('src/layouts/DashboardLayout.astro'),
+    read('src/pages/api/contact.ts'),
+    read('src/pages/admin/reports.astro'),
+  ]);
+  assert.match(dashboardLayout, /canViewAdmin\s*=\s*isStaff\(user\)/);
+  assert.match(dashboardLayout, /Messages & reports/);
+  assert.match(dashboardLayout, /\/admin\/reports/);
+  const adminLinks = dashboardLayout.match(/const adminLinks: SidebarLink\[\] = \[([\s\S]*?)\n\];/)?.[1];
+  assert.ok(adminLinks, 'admin navigation links should have a stable list');
+  assert.deepEqual(
+    [...adminLinks.matchAll(/label: '([^']+)'/g)].map(([, label]) => label),
+    ['Overview', 'Listings', 'Listing notes', 'Claims', 'Reviews', 'Messages & reports', 'Taxonomy', 'Users', 'Analytics'],
+  );
+  assert.match(dashboardLayout, /<ul class="dashboard-nav-list">/);
+  assert.match(dashboardLayout, /aria-current={active === link\.key \? 'page' : undefined}/);
+  assert.match(dashboardLayout, /\.dashboard-nav-link\[aria-current='page'\]/);
+  assert.match(reportsPage, /<DashboardLayout user={user} admin active="reports"/);
+  assert.match(contactRoute, /db\.insert\(reports\)/);
+  assert.doesNotMatch(contactRoute, /sendMail/);
+  assert.match(reportsPage, /Reports and messages/);
+});
+
+test('resource center shows unique guide content inline in the How It Works style', async () => {
+  const [page, navbar, footer] = await Promise.all([
+    read('src/pages/articles/index.astro'),
+    read('src/components/Navbar.astro'),
+    read('src/components/Footer.astro'),
+  ]);
+  assert.match(page, /<h1[^>]*>Resource Center<\/h1>/);
+  assert.match(page, /import '@\/styles\/how-it-works\.css'/);
+  assert.match(page, /article\.sections\.map/);
+  assert.match(page, /JSON\.stringify\(\[article\.title, article\.excerpt, article\.sections\]\)/);
+  assert.doesNotMatch(page, /href=\{`\/articles\/\$\{article\.slug\}`\}/);
+  assert.match(navbar, /label: 'Resource Center'/);
+  assert.match(footer, /\['Resource Center', '\/articles'\]/);
+});
+
+test('browse industries keeps category links and counts visible in the How It Works style', async () => {
+  const page = await read('src/pages/browse/industries.astro');
+  assert.match(page, /import '@\/styles\/how-it-works\.css'/);
+  assert.match(page, /industrySummaries\.map/);
+  assert.match(page, /href=\{`\/industries\/\$\{industry\.slug\}`\}/);
+  assert.match(page, /industry\.description/);
+  assert.match(page, /industry\.categories\.length/);
+  assert.match(page, /industry\.publishedCount/);
+  assert.doesNotMatch(page, /<details/);
 });
 
 test('search widget retains combobox keyboard and screen-reader support', async () => {

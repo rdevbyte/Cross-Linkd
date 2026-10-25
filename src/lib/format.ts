@@ -5,7 +5,7 @@ export function timeAgo(daysAgo: number): string {
   if (daysAgo < 365) return `${Math.floor(daysAgo / 30)}mo ago`;
   return `${Math.floor(daysAgo / 365)}y ago`;
 }
-/** "Aug 2026" — used for verification badges ("Verified Aug 2026"). */
+/** Format the month and year for a date that many days in the past. */
 export function monthYear(daysAgo: number): string {
   const d = new Date();
   d.setDate(d.getDate() - Math.max(0, daysAgo));

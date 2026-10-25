@@ -16,13 +16,13 @@ const seo = {
 
     <div class="card mt-4 space-y-3 p-5 text-sm leading-relaxed" style="color:var(--text-soft)">
       <p>Include the listing or review, the decision you are asking about, and what you want changed. Do not send identity documents, licenses, or private religious records.</p>
-      <p>The request is saved when the database is connected. A person can read it from that inbox. This page does not promise that a separate reviewer will reply, or that the decision will change.</p>
+      <p>The request is saved when the database is connected. Submitting an appeal does not guarantee a response or a changed decision.</p>
     </div>
 
     {sent ? (
-      <div class="card mt-6 p-6" style="border-left:4px solid var(--teal)" role="status">
+      <div class="card mt-6 p-6 pl-[27px]" role="status">
         <p class="font-bold">Appeal saved</p>
-        <p class="mt-1 text-sm" style="color:var(--text-soft)">A person can read the saved request. Saving it does not reverse the decision or verify the organization.</p>
+        <p class="mt-1 text-sm" style="color:var(--text-soft)">Submitting an appeal does not reverse the decision or verify the organization. No response time or outcome is promised.</p>
       </div>
     ) : (
       <form method="POST" action="/api/contact" class="card mt-6 space-y-4 p-6">

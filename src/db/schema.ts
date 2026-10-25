@@ -273,7 +273,7 @@ export const listings = pgTable('listings', {
   baptismPractice: varchar('baptism_practice', { length: 160 }),
   communionPractice: varchar('communion_practice', { length: 160 }),
   ministryFocus: jsonb('ministry_focus').$type<string[]>().default([]),
-  languages: jsonb('languages').$type<string[]>().default(['English']),
+  languages: jsonb('languages').$type<string[]>().default([]),
   // Professional specifics
   credentials: jsonb('credentials').$type<string[]>().default([]),
   licenseInfo: text('license_info'),

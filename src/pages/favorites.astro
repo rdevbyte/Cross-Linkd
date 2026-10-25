@@ -13,6 +13,8 @@ const user = Astro.locals.user;
     </div>
   </div>
   <script>
+    import { formatRegionForDisplay } from '@/lib/location';
+
     const favs = JSON.parse(localStorage.getItem('cl:favorites:v1') ?? '[]');
     const grid = document.getElementById('fav-grid');
     const empty = document.getElementById('fav-empty');
@@ -41,7 +43,7 @@ const user = Astro.locals.user;
             const name = el('p', 'mt-1 text-lg font-bold', String(l.name ?? ''));
             const tagline = el('p', 'mt-1 text-sm', String(l.tagline ?? ''));
             tagline.style.color = 'var(--text-soft)';
-            const where = l.isOnlineOnly ? 'Online' : `${l.city ?? ''}, ${l.region ?? ''}`;
+            const where = l.isOnlineOnly ? 'Online' : `${l.city ?? ''}, ${formatRegionForDisplay(l.region)}`;
             const meta = el('p', 'mt-2 text-sm', `★ ${Number(l.rating ?? 0).toFixed(1)} • ${where}`);
             link.append(type, name, tagline, meta);
             article.append(link);

@@ -10,7 +10,7 @@ const error = Astro.url.searchParams.get('error') ?? '';
     <p class="section-sub">These are the account controls this site can actually perform. There is no separate audit log.</p>
 
     {error && <p class="mt-4 rounded-xl bg-red-500/10 p-3 text-sm font-medium text-red-700" role="alert">{error}</p>}
-    {deleted && <p class="card mt-4 p-4 text-sm" style="border-left:4px solid var(--teal)" role="status">The account record was marked deleted and every signed-in session was ended. Published listings stay up until the owner removes them.</p>}
+    {deleted && <p class="card mt-4 p-4 pl-[19px] text-sm" role="status">The account record was marked deleted and every signed-in session was ended. Published listings stay up until the owner removes them.</p>}
 
     {user ? (
       <div class="mt-6 space-y-4">

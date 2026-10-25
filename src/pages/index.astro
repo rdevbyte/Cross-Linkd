@@ -8,7 +8,7 @@ import { ARTICLES } from '@/data/articles';
 import { industryBySlug } from '@/data/industries';
 import { LISTING_TYPES } from '@/data/listing-types';
 import { slugify } from '@/lib/slug';
-import { isUsRegion } from '@/lib/trustCopy';
+import { isUsRegion, REPORT_DISCLOSURE, SHORT_DISCLAIMER } from '@/lib/trustCopy';
 import { calculateHomepageMetrics, formatMetricCount, metricNoun } from '@/lib/homeMetrics.mjs';
 
 const user = Astro.locals.user;
@@ -107,7 +107,7 @@ const populatedCategories = Array.from(industryCounts.values()).sort((a, b) => b
 const preferredGuides = [
   'questions-before-trusting-christian-label',
   'vetting-a-contractor-who-shares-your-values',
-  'how-crosslinkd-verifies-a-business',
+  'what-crosslinkd-does-not-verify',
 ];
 const guides = preferredGuides
   .map((slug) => ARTICLES.find((article) => article.slug === slug))
@@ -120,12 +120,11 @@ const guides = preferredGuides
   }));
 
 const ownerSteps = [
-  ['Submit a basic listing', 'Name, contact, and what you offer. The basic listing is free.'],
-  ['Provide accurate information', 'You are responsible for what the profile says, including any faith or credential statement.'],
-  ['Receive a completeness review', 'Missing fields may be flagged. This is not a check of licenses, beliefs, or service quality.'],
-  ['Claim or confirm the listing', 'Show control of a contact channel, then confirm the profile when details change.'],
+  ['Submit a listing', 'Start with the organization name, a way to contact it, and what it offers. The form marks required and optional fields.'],
+  ['Provide accurate information', 'Listings may be submitted by owners or community members. Include only details you can support.'],
+  ['After you submit', 'A complete listing may publish when it meets the form requirements. Publication does not independently verify the organization or its claims.'],
+  ['Request management access', 'An account with access can manage or update a profile. This is not proof of legal ownership or verification.'],
   ['Keep information current', 'Update hours, service area, and contact details when they change.'],
-  ['Respond to corrections or reports', 'Readers can flag a problem. You can correct the profile or reply through the contact process.'],
 ];
 
 const siteUrl = (Astro.site ?? Astro.url).toString().replace(/\/$/, '');
@@ -207,17 +206,21 @@ const seo = {
     href={corpus.length > available.length ? '/search?sort=newest' : undefined}
     linkLabel="See all listings"
   >
+    <p class="mb-4 text-sm leading-relaxed" style="color:var(--text-soft)">{SHORT_DISCLAIMER}</p>
     {available.length > 0 ? (
       <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {available.map((listing) => <ListingCard listing={listing} />)}
       </div>
     ) : (
       <div class="card p-6 text-center sm:p-10">
-        <h3 class="text-xl font-semibold">Help grow the directory by adding a business or organization.</h3>
+        <h3 class="text-xl font-semibold">No published listings to show right now.</h3>
         <p class="mx-auto mt-2 max-w-lg text-sm leading-relaxed" style="color:var(--text-soft)">
-          There is nothing to browse yet. A free listing is owner-submitted. Publishing it does not verify the organization.
+          Try a broader search or browse published categories and locations. You can also suggest a listing or add one if you know a business or organization that belongs here.
         </p>
-        <a href="/add-listing" class="btn btn-primary mt-4 inline-flex">Submit a real listing</a>
+        <div class="mt-4 flex flex-wrap justify-center gap-2">
+          <a href="/contact?topic=suggest" class="btn btn-secondary">Suggest a listing</a>
+          <a href="/add-listing" class="btn btn-primary">Submit a real listing</a>
+        </div>
       </div>
     )}
   </Section>
@@ -258,7 +261,6 @@ const seo = {
                     <span class="font-bold">{loc.city}, {loc.region}</span>
                     <span class="chip shrink-0">{loc.count}</span>
                   </span>
-                  <span class="mt-1 block text-sm" style="color:var(--text-soft)">{isUsRegion(loc.region) ? 'Owner-submitted' : 'Owner-submitted, outside the U.S.'}</span>
                 </a>
               ))}
               {onlineOnlyCount > 0 && (
@@ -293,6 +295,11 @@ const seo = {
       <p class="mt-6">
         <a href="/submission-policy" class="text-sm font-semibold underline" style="color:var(--teal)">Read the submission policy</a>
       </p>
+      <div class="mt-6 border-t pt-4" style="border-color:var(--border)">
+        <h3 class="font-semibold">Corrections and reports</h3>
+        <p class="mt-1 text-sm leading-relaxed" style="color:var(--text-soft)">{REPORT_DISCLOSURE}</p>
+        <a href="/contact?topic=suggest" class="mt-2 inline-block text-sm font-semibold underline" style="color:var(--teal)">Send a correction or report</a>
+      </div>
     </div>
   </Section>
 

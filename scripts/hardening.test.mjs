@@ -455,14 +455,14 @@ test('destructive / polluting scripts need an explicit opt-in', () => {
   assert.match(wipe, /--yes/, 'wipe-listings must be a dry run unless --yes is given');
   assert.match(wipe, /--confirm-host=/, 'wiping a non-local database needs a second confirmation');
   const seed = read('src/db/seed.ts');
-  assert.match(seed, /--allow-demo-listings/, 'plain db:seed must not push fabricated listings into a remote database');
-  // the deploy docs must not tell operators to do either thing blindly
+  assert.doesNotMatch(seed, /SAMPLE_LISTINGS|insert\(schema\.listings\)/, 'db:seed must never add fabricated business listings');
+  // The seed is taxonomy-only now, so deployment docs may call it directly.
   for (const doc of ['DEPLOYMENT.md', 'DEPLOY.md']) {
     const text = read(doc);
     for (const line of text.split('\n')) {
       if (line.includes('npm run db:generate')) assert.match(line, /do not|don't|never/i, `${doc} recommends db:generate: ${line.trim().slice(0, 80)}`);
     }
-    assert.doesNotMatch(text, /npm run db:seed"?\s*$/m, `${doc} must seed the taxonomy only (-- --taxonomy)`);
+    assert.doesNotMatch(text, /48 sample listings|copies the bundled sample listings/i, `${doc} must not claim db:seed inserts samples`);
   }
 });
 
